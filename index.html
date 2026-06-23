@@ -926,6 +926,7 @@ function saveSplitSettings(){
   calc();
   renderAllSummaries();
   if(tab==='calendar') renderCalendar();
+  if(tab==='goals') renderGoals();
 }
 function updateMoneySplitUI(){
   const s = getSplitSettings();
@@ -1140,6 +1141,7 @@ function saveEntry(){
   clearActiveDraft();
   const saved=document.getElementById("draftSavedStatus"); if(saved) saved.innerText="";
   render();
+setInterval(()=>{calc(); renderAllSummaries();}, 60000);
   alert("Saved.");
 }
 function render(){
@@ -1453,7 +1455,7 @@ function renderCalendar(){
   const monthEntries=entries.filter(e=>String(e.date||"").slice(0,7)===monthKey);
   const mt=totals(monthEntries);
   const goalEl=document.getElementById("monthlyGoalInput");
-  const goal=Number(goalEl?.value || localStorage.getItem("monthlyNetGoal") || 0);
+  const goal=Number((goalEl && goalEl.value) ? goalEl.value : (localStorage.getItem("monthlyNetGoal") || 0));
   if(goalEl) localStorage.setItem("monthlyNetGoal", goalEl.value || "");
   const pct=goal>0?Math.min(100,(mt.net/goal)*100):0;
   const remaining=Math.max(0,goal-mt.net);
@@ -1520,12 +1522,22 @@ function uberSpendingTotals(){
   return {week:totals(p.week).available, month:totals(p.month).available, year:totals(p.year).available, all:t.available};
 }
 function saveGoal(){
-  const name = document.getElementById("goalName")?.value.trim();
-  const amount = Number(document.getElementById("goalAmount")?.value || 0);
-  if(!name || amount <= 0){alert("Enter a goal name and amount.");return}
-  spendingGoals.push({id:Date.now(),name,amount,saved:0});
-  localStorage.setItem("uberSpendingGoals",JSON.stringify(spendingGoals));
-  goalName.value=""; goalAmount.value="";
+  const nameEl = document.getElementById("goalName");
+  const amountEl = document.getElementById("goalAmount");
+  const name = nameEl ? nameEl.value.trim() : "";
+  const amount = amountEl ? Number(amountEl.value || 0) : 0;
+
+  if(!name || amount <= 0){
+    alert("Enter a goal name and amount.");
+    return;
+  }
+
+  spendingGoals.push({id:Date.now(), name:name, amount:amount, saved:0});
+  localStorage.setItem("uberSpendingGoals", JSON.stringify(spendingGoals));
+
+  if(nameEl) nameEl.value = "";
+  if(amountEl) amountEl.value = "";
+
   renderGoals();
 }
 function addToGoal(index){
@@ -1553,28 +1565,37 @@ function deleteGoal(index){
   }
 }
 function renderGoals(){
-  const el=document.getElementById("goalsList"); if(!el)return;
-  const spend=uberSpendingTotals();
-  let out=`<div class="summaryGrid">
-    ${card("Week Spending Money",money(spend.week))}
-    ${card("Month Spending Money",money(spend.month))}
-    ${card("Year Spending Money",money(spend.year))}
-    ${card("All-Time Spending Money",money(spend.all))}
+  const el = document.getElementById("goalsList");
+  if(!el) return;
+
+  spendingGoals = JSON.parse(localStorage.getItem("uberSpendingGoals") || "[]");
+
+  const spend = uberSpendingTotals();
+  let out = `<div class="summaryGrid">
+    ${card("Week Spending Money", money(spend.week))}
+    ${card("Month Spending Money", money(spend.month))}
+    ${card("Year Spending Money", money(spend.year))}
+    ${card("All-Time Spending Money", money(spend.all))}
   </div>`;
+
   if(!spendingGoals.length){
-    out+="<p class='small' style='margin-top:10px'>No goals yet.</p>";
+    out += "<p class='small' style='margin-top:10px'>No goals yet.</p>";
   }else{
-    out+=spendingGoals.map((g,i)=>{
-      const pct=g.amount>0?Math.min(100,(num(g.saved)/num(g.amount))*100):0;
+    out += spendingGoals.map((g,i)=>{
+      const pct = g.amount > 0 ? Math.min(100,(num(g.saved)/num(g.amount))*100) : 0;
       return `<div class="entry"><b>${escapeHtml(g.name)}</b><br>${money(g.saved)} / ${money(g.amount)}
         <div class="goalProgress"><div class="goalProgressFill" style="width:${pct}%"></div></div>
         <span class="small">${pct.toFixed(1)}% complete</span>
-        <div class="goalActions"><button class="editBtn" onclick="addToGoal(${i})">Add $</button><button class="editDayBtn" onclick="editGoal(${i})">Edit</button></div>
+        <div class="goalActions">
+          <button class="editBtn" onclick="addToGoal(${i})">Add $</button>
+          <button class="editDayBtn" onclick="editGoal(${i})">Edit</button>
+        </div>
         <button class="danger" onclick="deleteGoal(${i})">Delete</button>
       </div>`;
     }).join("");
   }
-  el.innerHTML=out;
+
+  el.innerHTML = out;
 }
 
 function showTab(tab,event){
@@ -1634,7 +1655,11 @@ initCalendarControls();
   const el=document.getElementById(id); if(el) el.addEventListener("input", renderCalendar);
 });
 const monthlyGoalEl=document.getElementById("monthlyGoalInput");
-if(monthlyGoalEl) monthlyGoalEl.addEventListener("input",()=>{localStorage.setItem("monthlyNetGoal", monthlyGoalEl.value || ""); renderCalendar();});
+if(monthlyGoalEl){
+  const saveMonthlyGoal=()=>{localStorage.setItem("monthlyNetGoal", monthlyGoalEl.value || ""); renderCalendar();};
+  monthlyGoalEl.addEventListener("input", saveMonthlyGoal);
+  monthlyGoalEl.addEventListener("change", saveMonthlyGoal);
+}
 updateMoneyPickerVisibility();
 
 
