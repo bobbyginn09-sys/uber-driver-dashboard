@@ -361,7 +361,7 @@ textarea{
   width:min(410px,calc(100% - 20px));
   z-index:20;
   display:grid;
-  grid-template-columns:repeat(7,1fr);
+  grid-template-columns:repeat(6,1fr);
   gap:2px;
   background:rgba(7,17,31,.97);
   border:1px solid var(--line);
@@ -495,7 +495,7 @@ textarea{
 
 
 .calendarControls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.calendarGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .calHeader{text-align:center;color:#94a3b8;font-size:10px;font-weight:900;padding:4px 0}
 .calDay{min-height:54px;border:1px solid var(--line);border-radius:10px;background:rgba(13,24,40,.88);color:white;padding:6px 4px;font-size:11px;text-align:left}
 .calDay.empty{background:transparent;border-color:transparent}
@@ -707,12 +707,6 @@ textarea{
     </div>
   </div>
 
-  <div id="summary" class="page">
-    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Week</h2><div id="weekSummary" class="summaryGrid"></div></div>
-    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Month</h2><div id="monthSummary" class="summaryGrid"></div></div>
-    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Year</h2><div id="yearSummary" class="summaryGrid"></div></div>
-  </div>
-
   <div id="money" class="page">
     <div class="card">
       <h2 style="margin:0 0 8px;font-size:17px">Money Split</h2>
@@ -834,9 +828,6 @@ textarea{
 <div class="bottomNav">
   <button class="navBtn active" onclick="showTab('daily',event)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h16M4 18h16"/></svg>Daily
-  </button>
-  <button class="navBtn" onclick="showTab('summary',event)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M9 19v-8M14 19V8M19 19v-5"/></svg>Summary
   </button>
   <button class="navBtn" onclick="showTab('money',event)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>Money
@@ -1141,7 +1132,6 @@ function saveEntry(){
   clearActiveDraft();
   const saved=document.getElementById("draftSavedStatus"); if(saved) saved.innerText="";
   render();
-setInterval(()=>{calc(); renderAllSummaries();}, 60000);
   alert("Saved.");
 }
 function render(){
@@ -1313,11 +1303,7 @@ function renderAnalytics(){
 
 function renderAllSummaries(){
   let p=getPeriods();
-  weekSummary.innerHTML=compactSummary(p.week);
-  monthSummary.innerHTML=compactSummary(p.month);
-  yearSummary.innerHTML=compactSummary(p.year);
-
-  let t=totals(entries);
+let t=totals(entries);
   renderMoneySummary();
   renderVehicle();
   taxSummary.innerHTML=`${card("Business Miles",t.miles.toFixed(2))}${card("Mileage Deduction",money(t.deduction))}${card("Rate Used",money(IRS_RATE)+"/mi")}`;
@@ -1665,6 +1651,11 @@ updateMoneyPickerVisibility();
 
 render();
 calc();
+
+let uberDashboardMainInterval = setInterval(() => {
+  calc();
+  renderAllSummaries();
+}, 60000);
 </script>
 
 <script>
