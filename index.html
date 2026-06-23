@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020617">
+<title>Uber Driver Dashboard</title>
+
+<style>
+:root{
+  --bg:#020617;
+  --card:#07111f;
+  --card2:#0b1626;
+  --field:#0d1828;
+  --line:#213149;
+  --text:#f8fafc;
+  --muted:#9aa8ba;
+  --green:#39d353;
+  --green2:#22c55e;
+  --red:#ef4444;
+  --blue:#3b82f6;
+  --purple:#8b5cf6;
+  --yellow:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100%;overflow-x:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 50% -5%,rgba(57,211,83,.12),transparent 26%),
+    radial-gradient(circle at 100% 0%,rgba(59,130,246,.10),transparent 22%),
+    linear-gradient(180deg,#020617 0%,#030712 100%);
+}
+.app{
+  width:100%;
+  max-width:430px;
+  min-height:100vh;
+  margin:0 auto;
+  padding:14px 10px calc(92px + env(safe-area-inset-bottom));
+}
+.topbar{
+  display:grid;
+  grid-template-columns:34px 1fr 34px;
+  align-items:start;
+  gap:8px;
+  padding:2px 0 12px;
+}
+.menu,.trend{
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  font-weight:900;
+}
+.menu svg,.trend svg{width:23px;height:23px}
+.trend{color:var(--green)}
+.title{text-align:center}
+.title h1{
+  margin:0;
+  font-size:20px;
+  line-height:1.1;
+  letter-spacing:-.4px;
+  font-weight:950;
+}
+.title .uber{color:var(--green)}
+.title p{
+  margin:7px auto 0;
+  color:#cbd5e1;
+  font-size:12.5px;
+  line-height:1.35;
+  max-width:310px;
+}
+.card{
+  background:rgba(7,17,31,.96);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:11px;
+  box-shadow:0 14px 30px rgba(0,0,0,.28);
+}
+.statusCard{
+  border-color:rgba(57,211,83,.22);
+  background:
+    radial-gradient(circle at 15% 20%,rgba(57,211,83,.09),transparent 34%),
+    rgba(7,17,31,.96);
+}
+.statusHeader{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.statusDot{
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  flex:0 0 auto;
+  background:radial-gradient(circle,#ff6b6b 0%,#ef4444 48%,#991b1b 100%);
+  box-shadow:0 0 16px rgba(239,68,68,.46);
+}
+.statusDot.on{
+  background:radial-gradient(circle,#86efac 0%,#22c55e 48%,#15803d 100%);
+  box-shadow:0 0 16px rgba(34,197,94,.46);
+}
+.statusTitle{
+  font-size:22px;
+  font-weight:950;
+  letter-spacing:-.35px;
+}
+.statusSub{
+  color:#cbd5e1;
+  font-size:13px;
+  margin:7px 0 10px;
+}
+.clockBtns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+button{
+  border:0;
+  border-radius:11px;
+  padding:12px 8px;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.clockIn{
+  background:linear-gradient(135deg,#1f8f3b,#47c968);
+  color:white;
+}
+.clockOut{
+  background:linear-gradient(135deg,#dc2626,#ef4444);
+  color:white;
+}
+.saveBtn{
+  width:100%;
+  background:linear-gradient(135deg,#1f8f3b,#47c968);
+  color:white;
+  margin-top:10px;
+}
+.secondary{
+  width:100%;
+  background:#334155;
+  color:white;
+  margin-top:8px;
+  padding:10px;
+  font-size:13px;
+}
+.danger{
+  width:100%;
+  background:linear-gradient(135deg,#dc2626,#ef4444);
+  color:white;
+  margin-top:8px;
+  padding:9px;
+  font-size:13px;
+}
+.rule{
+  height:1px;
+  background:rgba(255,255,255,.10);
+  margin:12px 0 0;
+}
+.shiftInfo{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  margin-top:8px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.shiftInfo div{
+  text-align:center;
+  padding:8px 4px 10px;
+  border-right:1px solid rgba(255,255,255,.10);
+}
+.shiftInfo div:last-child{border-right:0}
+.shiftInfo span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  color:#cbd5e1;
+  font-size:10.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.shiftInfo svg{width:12px;height:12px}
+.shiftInfo strong{
+  display:block;
+  margin-top:4px;
+  font-size:15px;
+}
+.hint{
+  text-align:center;
+  color:#cbd5e1;
+  font-size:12px;
+  margin:10px 0 0;
+}
+.profitBanner{
+  text-align:center;
+  padding:13px 10px;
+  background:
+    radial-gradient(circle at top,rgba(57,211,83,.18),transparent 45%),
+    linear-gradient(180deg,rgba(18,49,29,.96),rgba(9,32,18,.96));
+  border-color:rgba(57,211,83,.30);
+}
+.profitBanner span{
+  display:block;
+  color:#bff7cf;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+.profitBanner strong{
+  display:block;
+  margin-top:4px;
+  color:#7df0a1;
+  font-size:32px;
+  line-height:1;
+  letter-spacing:-.8px;
+}
+.sectionHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:10px;
+}
+.sectionHead h2{
+  margin:0;
+  font-size:17px;
+  font-weight:950;
+  letter-spacing:-.2px;
+}
+.sectionHead .muted{color:#94a3b8;font-weight:800}
+.dateText{
+  color:var(--green);
+  font-size:13px;
+  font-weight:850;
+  white-space:nowrap;
+}
+.quickGrid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.quickBox{
+  min-width:0;
+  text-align:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  border:1px solid var(--line);
+  border-radius:11px;
+  padding:9px 4px;
+}
+.quickIcon{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  margin:0 auto 6px;
+}
+.quickIcon svg{width:15px;height:15px}
+.greenIcon{background:rgba(57,211,83,.25);color:#86efac}
+.blueIcon{background:rgba(59,130,246,.25);color:#93c5fd}
+.purpleIcon{background:rgba(139,92,246,.25);color:#c4b5fd}
+.yellowIcon{background:rgba(245,158,11,.25);color:#fbbf24}
+.quickBox span{
+  display:block;
+  color:#cbd5e1;
+  font-size:10.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.quickBox strong{
+  display:block;
+  font-size:16px;
+  line-height:1;
+  margin-top:5px;
+  letter-spacing:-.25px;
+}
+.greenText{color:#4ade80}
+.blueText{color:#60a5fa}
+.purpleText{color:#a78bfa}
+.yellowText{color:#fbbf24}
+.entryGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.field{
+  min-width:0;
+  height:58px;
+  display:grid;
+  grid-template-columns:26px 1fr 12px;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(13,24,40,.88);
+  padding:7px 8px;
+}
+.field.wide{
+  grid-column:1/-1;
+  height:58px;
+}
+.icon{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  color:#cbd5e1;
+}
+.icon svg{width:18px;height:18px}
+.icon.green{color:#4ade80}
+.chev{
+  width:12px;
+  color:#94a3b8;
+}
+.chev svg{width:12px;height:12px}
+.field label{
+  display:block;
+  color:#aebbd0;
+  font-size:10.5px;
+  margin-bottom:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+input,select,textarea{
+  width:100%;
+  min-width:0;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:white;
+  font-size:15px;
+  padding:0;
+  font-family:inherit;
+  -webkit-appearance:none;
+  appearance:none;
+}
+input[type="date"]{font-size:13px}
+input::placeholder,textarea::placeholder{color:#64748b}
+input:disabled{opacity:1;color:white}
+textarea{
+  height:34px;
+  resize:none;
+  padding-top:2px;
+}
+.page{display:none}
+.page.activePage{display:block}
+.bottomNav{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(8px + env(safe-area-inset-bottom));
+  width:min(410px,calc(100% - 20px));
+  z-index:20;
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:2px;
+  background:rgba(7,17,31,.97);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:7px 4px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+.navBtn{
+  background:transparent;
+  padding:6px 2px;
+  border-radius:10px;
+  color:#cbd5e1;
+  font-size:10.5px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  align-items:center;
+}
+.navBtn.active{
+  color:var(--green);
+  background:rgba(57,211,83,.10);
+}
+.navBtn svg{width:17px;height:17px}
+.summaryGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.summaryItem{
+  background:rgba(13,24,40,.88);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px;
+  min-width:0;
+}
+.summaryItem span{
+  display:block;
+  color:#aebbd0;
+  font-size:10.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.summaryItem strong{
+  display:block;
+  font-size:16px;
+  margin-top:4px;
+  overflow-wrap:anywhere;
+}
+.entry{
+  background:rgba(13,24,40,.88);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px;
+  margin-top:8px;
+  font-size:12.5px;
+}
+.entryTop{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px;
+}
+.small{
+  font-size:11px;
+  color:#94a3b8;
+}
+.toolsNav{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+}
+@media(max-width:390px){
+  .app{padding-left:8px;padding-right:8px}
+  .quickGrid{gap:6px}
+  .quickBox{padding:8px 3px}
+  .quickBox strong{font-size:15px}
+  .field{height:56px;padding:6px;grid-template-columns:24px 1fr 10px}
+  .field label,.quickBox span{font-size:10px}
+  .statusTitle{font-size:20px}
+  .profitBanner strong{font-size:30px}
+}
+
+.cleanHeader{
+  display:block !important;
+  grid-template-columns:1fr !important;
+  text-align:center !important;
+  padding:8px 0 14px !important;
+}
+.cleanHeader .title{
+  text-align:center !important;
+}
+.cleanHeader .title p{
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+.menu,.trend{
+  display:none !important;
+}
+
+
+.moneyControls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.periodControls{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 12px}
+.periodBtn{background:#152338;color:#cbd5e1;border:1px solid var(--line);border-radius:10px;padding:9px 4px;font-size:12px}
+.periodBtn.activePeriod{background:rgba(57,211,83,.18);color:#4ade80;border-color:rgba(57,211,83,.35)}
+.percentTotal{margin:8px 0 10px;color:#cbd5e1;font-size:12px;text-align:center}
+.percentTotal.warn{color:#fbbf24}
+
+
+.expenseActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+.editBtn{
+  width:100%;
+  background:#334155;
+  color:white;
+  padding:9px;
+  font-size:13px;
+}
+.deleteExpenseBtn{
+  width:100%;
+  background:linear-gradient(135deg,#dc2626,#ef4444);
+  color:white;
+  padding:9px;
+  font-size:13px;
+}
+
+
+.calendarControls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.calHeader{text-align:center;color:#94a3b8;font-size:10px;font-weight:900;padding:4px 0}
+.calDay{min-height:54px;border:1px solid var(--line);border-radius:10px;background:rgba(13,24,40,.88);color:white;padding:6px 4px;font-size:11px;text-align:left}
+.calDay.empty{background:transparent;border-color:transparent}
+.calDay.hasEntry{border-color:rgba(57,211,83,.45);background:rgba(57,211,83,.10)}
+.calNum{font-weight:900;font-size:12px}
+.calEarn{display:block;color:#4ade80;font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dayBubble{margin-top:10px;border:1px solid rgba(57,211,83,.35);background:rgba(57,211,83,.08);border-radius:14px;padding:10px}
+.dayBubble h3{margin:0 0 8px;font-size:15px}
+.dayBubbleActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.moneyPickerGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px}
+.moneyPickerGrid .field{height:58px}
+
+
+.goalBox{margin:10px 0 12px;border:1px solid rgba(57,211,83,.32);background:rgba(57,211,83,.08);border-radius:14px;padding:10px}
+.goalTop{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+.goalTop b{font-size:14px}.goalTop span{font-size:12px;color:#cbd5e1}
+.goalBar{width:100%;height:12px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin:7px 0}
+.goalFill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#86efac);border-radius:999px}
+.goalDetails{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.calDay.good{border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.13)}
+.calDay.mid{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.12)}
+.calDay.low{border-color:rgba(239,68,68,.50);background:rgba(239,68,68,.10)}
+.calDot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:3px}
+.calDot.good{background:#22c55e}.calDot.mid{background:#f59e0b}.calDot.low{background:#ef4444}
+
+
+.forecastBox{
+  border:1px solid rgba(59,130,246,.35);
+  background:rgba(59,130,246,.08);
+  border-radius:14px;
+  padding:10px;
+  margin:10px 0;
+}
+.statusPill{
+  display:inline-block;
+  padding:5px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+  margin-top:6px;
+}
+.statusPill.good{background:rgba(34,197,94,.18);color:#86efac}
+.statusPill.warn{background:rgba(245,158,11,.18);color:#fbbf24}
+.statusPill.bad{background:rgba(239,68,68,.18);color:#fca5a5}
+.draftSaved{
+  color:#86efac;
+  font-size:11px;
+  text-align:center;
+  margin-top:6px;
+}
+
+
+.liveShiftBox{margin-top:10px;border:1px solid rgba(57,211,83,.28);background:rgba(57,211,83,.07);border-radius:14px;padding:10px}
+.goalProgress{width:100%;height:10px;background:rgba(255,255,255,.09);border-radius:999px;overflow:hidden;margin:8px 0}
+.goalProgressFill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#86efac)}
+.goalActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+
+</style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Uber Dashboard">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+</head>
+
+<body>
+<div class="app">
+  <div class="topbar cleanHeader">
+    <div class="title">
+      <h1><span class="uber">Uber</span> Driver Dashboard</h1>
+      <p>Track earnings, mileage, expenses, savings, investments, and vehicle maintenance.</p>
+    </div>
+  </div>
+
+  <div id="daily" class="page activePage">
+    <div class="card statusCard">
+      <div class="statusHeader">
+        <div id="statusDot" class="statusDot"></div>
+        <div class="statusTitle" id="statusText">Off Duty</div>
+      </div>
+      <div class="statusSub" id="statusDetails">You're currently off duty</div>
+      <div class="clockBtns">
+        <button class="clockIn" onclick="clockIn()">▶ &nbsp; Clock In</button>
+        <button class="clockOut" onclick="clockOut()">■ &nbsp; Clock Out</button>
+      </div>
+      <div class="rule"></div>
+      <div class="shiftInfo">
+        <div><span><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Clock In</span><strong id="miniIn">--:--</strong></div>
+        <div><span><svg viewBox="0 0 24 24" fill="currentColor" style="color:#ef4444"><circle cx="12" cy="12" r="8"/></svg>Clock Out</span><strong id="miniOut">--:--</strong></div>
+        <div><span><svg viewBox="0 0 24 24" fill="currentColor" style="color:#3b82f6"><circle cx="12" cy="12" r="8"/></svg>Hours</span><strong id="miniHours">0.00</strong></div>
+      </div>
+      <div class="hint" id="statusHint">Tap Clock In when you start driving</div>
+    </div>
+
+    <div class="card profitBanner">
+      <span>Today's Net Earnings</span>
+      <strong id="profitBig">$0.00</strong>
+    </div>
+    <div class="card liveShiftBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Current Shift</h2>
+      <div class="summaryGrid" id="liveShiftStats"></div>
+    </div>
+
+
+    <div class="card">
+      <div class="sectionHead"><h2>Quick Stats <span class="muted">(Today)</span></h2></div>
+      <div class="quickGrid">
+        <div class="quickBox">
+          <div class="quickIcon greenIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <span>Net Today</span><strong class="greenText" id="quickNet">$0.00</strong>
+        </div>
+        <div class="quickBox">
+          <div class="quickIcon blueIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 7h18v10H3z"/><path d="M7 7V5h10v2"/></svg></div>
+          <span>Spendable</span><strong class="blueText" id="quickAvailable">$0.00</strong>
+        </div>
+        <div class="quickBox">
+          <div class="quickIcon purpleIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <span>Hours</span><strong class="purpleText" id="quickHours">0.00</strong>
+        </div>
+        <div class="quickBox">
+          <div class="quickIcon yellowIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/></svg></div>
+          <span>$ / Hour</span><strong class="yellowText" id="quickHourly">$0.00</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sectionHead">
+        <h2>▣ Daily Entry</h2>
+        <div class="dateText" id="displayDate"></div>
+      </div>
+      <p class="small" style="margin-top:-3px;margin-bottom:9px">Your shift info auto-saves. You can manually edit Clock In/Out if needed.</p><div id="draftSavedStatus" class="draftSaved"></div>
+      <div class="entryGrid">
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17h10l2-6H5l2 6Z"/><path d="M7 17v2M17 17v2M6 11l2-5h8l2 5"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></svg></div>
+          <div><label>Platform</label><select id="platform"><option>Uber</option><option>Lyft</option><option>Uber + Lyft</option><option>Other</option></select></div>
+          <div class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v4M17 2v4M3 9h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div>
+          <div><label>Date</label><input type="date" id="date"></div>
+          <div class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><label>Clock In</label><input type="time" id="manualClockIn"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><label>Clock Out</label><input type="time" id="manualClockOut"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div><label>Gross Earnings</label><input type="number" id="gross" placeholder="0.00"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15"/><path d="M6 10h8"/><path d="M16 8h2l2 3v7a2 2 0 0 1-2 2h-2"/></svg></div>
+          <div><label>Gas / Expenses</label><input type="number" id="gas" placeholder="0.00"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0 1 16 0"/><path d="m12 14 4-4"/><path d="M7 14h.01M17 14h.01"/></svg></div>
+          <div><label>Start Miles</label><input type="number" id="startMiles" placeholder="0"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0 1 16 0"/><path d="m12 14 5-2"/><path d="M7 14h.01M17 14h.01"/></svg></div>
+          <div><label>End Miles</label><input type="number" id="endMiles" placeholder="0"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19c4-8 12 0 16-8"/><path d="M4 5h.01M20 19h.01"/></svg></div>
+          <div><label>Miles Driven</label><input id="milesDisplay" disabled value="0"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><label>Hours Worked</label><input id="hoursDisplay" disabled value="0.00"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/></svg></div>
+          <div><label>Hourly Rate</label><input id="hourlyDisplay" disabled value="0.00"></div><div></div>
+        </div>
+
+        <div class="field">
+          <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v12H3z"/><path d="M16 12h5"/><path d="M7 7V5h10v2"/></svg></div>
+          <div><label>Net Earnings</label><input id="netDisplay" disabled value="0.00"></div><div></div>
+        </div>
+
+        <div class="field wide">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+          <div><label>Notes</label><textarea id="notes" placeholder="Optional notes about your day..."></textarea></div><div></div>
+        </div>
+      </div>
+      <button class="saveBtn" onclick="saveEntry()">▣ &nbsp; Save Day</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Saved Days</h2>
+      <div id="entries"></div>
+    </div>
+  </div>
+
+  <div id="summary" class="page">
+    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Week</h2><div id="weekSummary" class="summaryGrid"></div></div>
+    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Month</h2><div id="monthSummary" class="summaryGrid"></div></div>
+    <div class="card"><h2 style="margin:0 0 8px;font-size:17px">This Year</h2><div id="yearSummary" class="summaryGrid"></div></div>
+  </div>
+
+  <div id="money" class="page">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Money Split</h2>
+      <p class="small">Edit your split percentages and view totals by day, week, month, or year.</p>
+
+      <div class="moneyControls">
+        <div class="field">
+          <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/></svg></div>
+          <div><label>Investments %</label><input type="number" id="investmentPctInput" value="10"></div><div></div>
+        </div>
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v12H3z"/><path d="M7 7V5h10v2"/></svg></div>
+          <div><label>Savings %</label><input type="number" id="savingsPctInput" value="10"></div><div></div>
+        </div>
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17h10l2-6H5l2 6Z"/><path d="M7 17v2M17 17v2M6 11l2-5h8l2 5"/></svg></div>
+          <div><label>Vehicle %</label><input type="number" id="vehiclePctInput" value="5"></div><div></div>
+        </div>
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div><label>Spendable</label><input id="spendablePctDisplay" disabled value="75%"></div><div></div>
+        </div>
+      </div>
+
+      <div id="percentTotal" class="percentTotal">Split total: 25% set aside, 75% spendable</div>
+
+      <div class="periodControls">
+        <button class="periodBtn activePeriod" onclick="setMoneyPeriod('daily',event)">Day</button>
+        <button class="periodBtn" onclick="setMoneyPeriod('weekly',event)">Week</button>
+        <button class="periodBtn" onclick="setMoneyPeriod('monthly',event)">Month</button>
+        <button class="periodBtn" onclick="setMoneyPeriod('yearly',event)">Year</button>
+      </div>
+
+      <div class="moneyPickerGrid">
+        <div class="field" id="moneyDayField"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v4M17 2v4M3 9h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div><div><label>Day</label><input type="date" id="moneyDayInput"></div><div></div></div>
+        <div class="field" id="moneyWeekField"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div><div><label>Week Starting</label><input type="date" id="moneyWeekInput"></div><div></div></div>
+        <div class="field" id="moneyMonthField"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v4M17 2v4M3 9h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div><div><label>Month</label><input type="month" id="moneyMonthInput"></div><div></div></div>
+        <div class="field" id="moneyYearField"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M5 8h14M5 16h14"/></svg></div><div><label>Year</label><input type="number" id="moneyYearInput"></div><div></div></div>
+      </div>
+
+      <div id="moneySummary" class="summaryGrid"></div>
+    </div>
+  </div>
+
+  <div id="calendar" class="page">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Calendar</h2>
+      <p class="small">Pick a month and tap any day to view, edit, or add that day.</p>
+      <div class="calendarControls">
+        <div class="field"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v4M17 2v4M3 9h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div><div><label>Month</label><select id="calendarMonth"></select></div><div></div></div>
+        <div class="field"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3v18"/></svg></div><div><label>Year</label><input type="number" id="calendarYear"></div><div></div></div>
+      </div>
+      <div class="field wide" style="margin-bottom:10px">
+        <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/></svg></div>
+        <div><label>Monthly Net Goal</label><input type="number" id="monthlyGoalInput" placeholder="5000"></div><div></div>
+      </div>
+      <div id="calendarGoalBox" class="goalBox"></div>
+      <div class="calendarGrid" id="calendarGrid"></div>
+      <div id="calendarDayDetail"></div>
+    </div>
+  </div>
+
+  <div id="vehicle" class="page">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Vehicle Maintenance</h2>
+      <div class="entryGrid">
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div><label>Expense</label><input type="number" id="maintAmount" placeholder="0.00"></div><div></div>
+        </div>
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-3 3-3-3 3-3Z"/></svg></div>
+          <div><label>Type</label><select id="maintType"><option>Oil Change</option><option>Tires</option><option>Brakes</option><option>Car Wash</option><option>Repair</option><option>Other</option></select></div><div></div>
+        </div>
+        <div class="field wide">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+          <div><label>Note</label><input type="text" id="maintNote" placeholder="Example: front brakes"></div><div></div>
+        </div>
+      </div>
+      <button class="secondary" onclick="saveMaintenance()">Subtract Expense</button>
+      <div style="margin-top:12px" id="vehicleSummary"></div>
+    </div>
+  </div>
+
+  <div id="goals" class="page">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Spending Goals</h2>
+      <p class="small">Use Uber money for fun goals like trips, tattoos, gear, or whatever you want.</p>
+      <div class="entryGrid">
+        <div class="field">
+          <div class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/></svg></div>
+          <div><label>Goal Name</label><input type="text" id="goalName" placeholder="Vegas Fund"></div><div></div>
+        </div>
+        <div class="field">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div><label>Goal Amount</label><input type="number" id="goalAmount" placeholder="1500"></div><div></div>
+        </div>
+      </div>
+      <button class="saveBtn" onclick="saveGoal()">Add Goal</button>
+      <div id="goalsList" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div id="tools" class="page">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:17px">Tools</h2>
+      <div class="summaryGrid" id="taxSummary"></div><div id="analyticsPanel"></div>
+      <p class="small">Tax mileage estimate is shown above. Confirm the current IRS rate when filing taxes.</p>
+      <div class="toolsNav">
+        <button class="saveBtn" onclick="downloadCSV()">Export CSV / Excel</button>
+        <button class="secondary" onclick="backupData()">Copy Backup Data</button>
+        <button class="secondary" onclick="restoreData()">Restore From Backup</button>
+        <button class="danger" onclick="clearAll()">Delete All Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bottomNav">
+  <button class="navBtn active" onclick="showTab('daily',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h16M4 18h16"/></svg>Daily
+  </button>
+  <button class="navBtn" onclick="showTab('summary',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M9 19v-8M14 19V8M19 19v-5"/></svg>Summary
+  </button>
+  <button class="navBtn" onclick="showTab('money',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>Money
+  </button>
+  <button class="navBtn" onclick="showTab('calendar',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v4M17 2v4M3 9h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Calendar
+  </button>
+  <button class="navBtn" onclick="showTab('vehicle',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17h10l2-6H5l2 6Z"/><path d="M7 17v2M17 17v2M6 11l2-5h8l2 5"/></svg>Vehicle
+  </button>
+  <button class="navBtn" onclick="showTab('goals',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-11a4 4 0 0 1 7-2.7A4 4 0 0 1 19 10c0 6.5-7 11-7 11Z"/></svg>Goals
+  </button>
+  <button class="navBtn" onclick="showTab('tools',event)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a8 8 0 0 0 .1-6l2-1.5-2-3.4-2.4 1a8 8 0 0 0-5.2-3L11.5 0h-4l-.4 2.1a8 8 0 0 0-5.2 3l-2.4-1-2 3.4L-1.5 9a8 8 0 0 0 .1 6l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 5.2 3l.4 2.1h4l.4-2.1a8 8 0 0 0 5.2-3l2.4 1 2-3.4-2-1.5Z"/></svg>Tools
+  </button>
+</div>
+
+<script>
+const IRS_RATE=0.67;
+let entries=JSON.parse(localStorage.getItem("uberEntries")||"[]");
+let maintenance=JSON.parse(localStorage.getItem("uberMaintenance")||"[]");
+let spendingGoals=JSON.parse(localStorage.getItem("uberSpendingGoals")||"[]");
+
+const ACTIVE_DRAFT_KEY = "activeShiftDraft";
+
+function saveActiveDraft(){
+  const ids = ["date","platform","manualClockIn","manualClockOut","gross","gas","startMiles","endMiles","notes"];
+  const draft = {};
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) draft[id] = el.value || "";
+  });
+  draft.clockInTime = localStorage.getItem("clockInTime") || draft.manualClockIn || "";
+  draft.clockOutTime = localStorage.getItem("clockOutTime") || draft.manualClockOut || "";
+  draft.savedAt = new Date().toISOString();
+  localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draft));
+  const saved = document.getElementById("draftSavedStatus");
+  if(saved) saved.innerText = "Draft saved";
+}
+
+function loadActiveDraft(){
+  const raw = localStorage.getItem(ACTIVE_DRAFT_KEY);
+  if(!raw) return;
+  try{
+    const draft = JSON.parse(raw);
+    Object.keys(draft).forEach(id=>{
+      const el = document.getElementById(id);
+      if(el && typeof draft[id] === "string") el.value = draft[id];
+    });
+    if(draft.clockInTime || draft.manualClockIn) localStorage.setItem("clockInTime", draft.clockInTime || draft.manualClockIn);
+    if(draft.clockOutTime || draft.manualClockOut) localStorage.setItem("clockOutTime", draft.clockOutTime || draft.manualClockOut);
+    syncManualClockFields();
+    const saved = document.getElementById("draftSavedStatus");
+    if(saved && draft.savedAt){
+      saved.innerText = "Draft restored";
+    }
+  }catch(e){}
+}
+
+function clearActiveDraft(){
+  localStorage.removeItem(ACTIVE_DRAFT_KEY);
+}
+
+
+let moneyPeriod = localStorage.getItem("moneyPeriod") || "weekly";
+
+function getSplitSettings(){
+  return {
+    investment: Number(localStorage.getItem("investmentPct") || 10),
+    savings: Number(localStorage.getItem("savingsPct") || 10),
+    vehicle: Number(localStorage.getItem("vehiclePct") || 5)
+  };
+}
+function splitFractions(){
+  const s = getSplitSettings();
+  return {investment:s.investment/100, savings:s.savings/100, vehicle:s.vehicle/100};
+}
+function saveSplitSettings(){
+  const inv = Number(document.getElementById("investmentPctInput")?.value || 0);
+  const sav = Number(document.getElementById("savingsPctInput")?.value || 0);
+  const veh = Number(document.getElementById("vehiclePctInput")?.value || 0);
+  localStorage.setItem("investmentPct", inv);
+  localStorage.setItem("savingsPct", sav);
+  localStorage.setItem("vehiclePct", veh);
+  updateMoneySplitUI();
+  calc();
+  renderAllSummaries();
+  if(tab==='calendar') renderCalendar();
+}
+function updateMoneySplitUI(){
+  const s = getSplitSettings();
+  const invEl = document.getElementById("investmentPctInput");
+  const savEl = document.getElementById("savingsPctInput");
+  const vehEl = document.getElementById("vehiclePctInput");
+  if(invEl) invEl.value = s.investment;
+  if(savEl) savEl.value = s.savings;
+  if(vehEl) vehEl.value = s.vehicle;
+  const setAside = s.investment + s.savings + s.vehicle;
+  const spend = 100 - setAside;
+  const spendEl = document.getElementById("spendablePctDisplay");
+  const totalEl = document.getElementById("percentTotal");
+  if(spendEl) spendEl.value = spend.toFixed(0) + "%";
+  if(totalEl){
+    totalEl.innerText = "Split total: " + setAside.toFixed(0) + "% set aside, " + spend.toFixed(0) + "% spendable";
+    totalEl.classList.toggle("warn", spend < 0);
+  }
+}
+function setMoneyPeriod(period,event){
+  moneyPeriod = period;
+  localStorage.setItem("moneyPeriod", period);
+  document.querySelectorAll(".periodBtn").forEach(b=>b.classList.remove("activePeriod"));
+  if(event && event.currentTarget) event.currentTarget.classList.add("activePeriod");
+  updateMoneyPickerVisibility();
+  renderMoneySummary();
+}
+function setActiveMoneyPeriodButton(){
+  document.querySelectorAll(".periodBtn").forEach(b=>{
+    const label = b.textContent.trim().toLowerCase();
+    b.classList.toggle("activePeriod", label === moneyPeriod || label.startsWith(moneyPeriod[0]));
+  });
+}
+function moneyPeriodEntries(){
+  const selectedDay = document.getElementById("moneyDayInput")?.value || todayISO();
+  const selectedWeek = document.getElementById("moneyWeekInput")?.value || todayISO();
+  const selectedMonth = document.getElementById("moneyMonthInput")?.value || todayISO().slice(0,7);
+  const selectedYear = Number(document.getElementById("moneyYearInput")?.value || new Date().getFullYear());
+
+  if(moneyPeriod==="daily"){
+    return entries.filter(e=>e.date===selectedDay);
+  }
+  if(moneyPeriod==="weekly"){
+    let start = new Date(selectedWeek + "T00:00:00");
+    let end = new Date(start);
+    end.setDate(start.getDate()+7);
+    return entries.filter(e=>{
+      let d = new Date(e.date + "T00:00:00");
+      return d >= start && d < end;
+    });
+  }
+  if(moneyPeriod==="monthly"){
+    return entries.filter(e=>String(e.date || "").slice(0,7) === selectedMonth);
+  }
+  return entries.filter(e=>new Date(e.date + "T00:00:00").getFullYear() === selectedYear);
+}
+
+function updateMoneyPickerVisibility(){
+  const fields = {daily:"moneyDayField", weekly:"moneyWeekField", monthly:"moneyMonthField", yearly:"moneyYearField"};
+  Object.values(fields).forEach(id=>{const el=document.getElementById(id); if(el) el.style.display="none";});
+  const active=document.getElementById(fields[moneyPeriod]);
+  if(active) active.style.display="grid";
+}
+
+
+function money(n){return "$"+Number(n||0).toFixed(2)}
+function num(n){return Number(n||0)}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function timeNow(){let d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+function getClockIn(){return localStorage.getItem("clockInTime")||""}
+function getClockOut(){return localStorage.getItem("clockOutTime")||""}
+
+function syncManualClockFields(){
+  const inEl = document.getElementById("manualClockIn");
+  const outEl = document.getElementById("manualClockOut");
+  if(inEl) inEl.value = getClockIn();
+  if(outEl) outEl.value = getClockOut();
+}
+
+function updateClockFromManual(){
+  const inEl = document.getElementById("manualClockIn");
+  const outEl = document.getElementById("manualClockOut");
+  const inVal = inEl ? inEl.value : "";
+  const outVal = outEl ? outEl.value : "";
+
+  if(inVal){
+    localStorage.setItem("clockInTime", inVal);
+  }else{
+    localStorage.removeItem("clockInTime");
+  }
+
+  if(outVal){
+    localStorage.setItem("clockOutTime", outVal);
+  }else{
+    localStorage.removeItem("clockOutTime");
+  }
+
+  calc();
+  saveActiveDraft();
+}
+
+
+function formatDate(){
+  if(!date.value){displayDate.innerText="";return}
+  let d=new Date(date.value+"T12:00:00");
+  displayDate.innerText=d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function clockIn(){
+  date.value=todayISO();
+  localStorage.setItem("clockInTime", timeNow());
+  localStorage.removeItem("clockOutTime");
+  syncManualClockFields();
+  calc();
+  saveActiveDraft();
+}
+function clockOut(){
+  if(!getClockIn()){alert("Clock in first.");return}
+  localStorage.setItem("clockOutTime", timeNow());
+  syncManualClockFields();
+  calc();
+  saveActiveDraft();
+}
+function updateShift(hours){
+  let st=getClockIn(), et=getClockOut();
+  statusDot.classList.remove("on");
+  if(st&&!et){
+    statusDot.classList.add("on");
+    statusText.innerText="On Duty";
+    statusDetails.innerText="You're currently driving";
+    statusHint.innerText="Tap Clock Out when you finish driving";
+  }else if(st&&et){
+    statusText.innerText="Off Duty";
+    statusDetails.innerText="Shift complete. Review your numbers and save the day";
+    statusHint.innerText="Review and save your shift";
+  }else{
+    statusText.innerText="Off Duty";
+    statusDetails.innerText="You're currently off duty";
+    statusHint.innerText="Tap Clock In when you start driving";
+  }
+  miniIn.innerText=st||"--:--";
+  miniOut.innerText=et||"--:--";
+  miniHours.innerText=Number(hours||0).toFixed(2);
+}
+function calc(){
+  let st=getClockIn(), et=getClockOut();
+  let sm=num(startMiles.value), em=num(endMiles.value), gross=num(grossInput()), gas=num(gasInput());
+  let hours=0;
+  if(st&&et){
+    let s=new Date("2000-01-01T"+st), e=new Date("2000-01-01T"+et);
+    if(e<s)e.setDate(e.getDate()+1);
+    hours=(e-s)/3600000;
+  }
+  let miles=Math.max(0,em-sm), net=gross-gas, hourly=hours>0?net/hours:0;
+  let grossMile=miles>0?gross/miles:0, netMile=miles>0?net/miles:0;
+  let splits=splitFractions();
+  let investment=Math.max(0,net)*splits.investment;
+  let savings=Math.max(0,net)*splits.savings;
+  let vehicleFund=Math.max(0,net)*splits.vehicle;
+  let available=net-investment-savings-vehicleFund;
+  let deduction=miles*IRS_RATE;
+
+  quickNet.innerText=money(net);
+  profitBig.innerText=money(net);
+  quickAvailable.innerText=money(available);
+  quickHours.innerText=hours.toFixed(2);
+  quickHourly.innerText=money(hourly);
+
+  milesDisplay.value=miles.toFixed(2);
+  hoursDisplay.value=hours.toFixed(2);
+  hourlyDisplay.value=money(hourly);
+  netDisplay.value=money(net);
+
+  updateShift(hours);
+  formatDate();
+  if(document.getElementById("liveShiftStats")){
+    liveShiftStats.innerHTML =
+      card("Gross", money(gross)) +
+      card("Gas", money(gas)) +
+      card("Net", money(net)) +
+      card("Hours", hours.toFixed(2)) +
+      card("Net / Hour", money(hourly)+"/hr") +
+      card("Net / Mile", money(netMile)+"/mi") +
+      card("Spendable", money(available)) +
+      card("Non-Spendable", money(investment+savings+vehicleFund+gas));
+  }
+  return{startTime:st,endTime:et,hours,miles,net,hourly,grossMile,netMile,investment,savings,vehicleFund,available,deduction};
+}
+function grossInput(){return document.getElementById("gross").value}
+function gasInput(){return document.getElementById("gas").value}
+document.querySelectorAll("input,select,textarea").forEach(i=>i.addEventListener("input",()=>{
+  if(i.id === "manualClockIn" || i.id === "manualClockOut"){
+    updateClockFromManual();
+  }else{
+    calc();
+    saveActiveDraft();
+  }
+}));
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") saveActiveDraft(); });
+window.addEventListener("pagehide", saveActiveDraft);
+window.addEventListener("beforeunload", saveActiveDraft);
+
+function saveEntry(){
+  let c=calc();
+  let entry={id:Date.now(),date:date.value,platform:platform.value,startTime:c.startTime,endTime:c.endTime,startMiles:num(startMiles.value),endMiles:num(endMiles.value),gross:num(gross.value),gas:num(gas.value),notes:notes.value,...c};
+  if(!entry.date){alert("Put in a date first.");return}
+  if(!entry.startTime||!entry.endTime){alert("Clock in and clock out first.");return}
+  entries.push(entry);
+  localStorage.setItem("uberEntries",JSON.stringify(entries));
+  localStorage.removeItem("clockInTime");
+  localStorage.removeItem("clockOutTime");
+  clearActiveDraft();
+  const saved=document.getElementById("draftSavedStatus"); if(saved) saved.innerText="";
+  render();
+  alert("Saved.");
+}
+function render(){
+  entries.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById("entries").innerHTML=entries.map((e,i)=>`<div class="entry">
+    <div class="entryTop"><b>${e.date} • ${e.platform||"Uber"}</b><span class="small">${e.startTime||""} - ${e.endTime||""}</span></div>
+    <div style="margin-top:7px">Net ${money(e.net)} • Spendable ${money(e.available)} • ${money(e.hourly)}/hr</div>
+    <div class="small">Miles ${Number(e.miles).toFixed(2)} • Investments ${money(e.investment)} • Savings ${money(e.savings)} • Vehicle ${money(e.vehicleFund)}</div>
+    ${e.notes?`<div class="small">Notes: ${escapeHtml(e.notes)}</div>`:""}
+    <button class="danger" onclick="deleteEntry(${i})">Delete</button>
+  </div>`).join("")||"<p class='small'>No saved days yet.</p>";
+  renderAllSummaries();
+  calc();
+}
+function deleteEntry(i){
+  entries.splice(i,1);
+  localStorage.setItem("uberEntries",JSON.stringify(entries));
+  render();
+}
+function clearAll(){
+  if(confirm("Delete all saved Uber data and maintenance data?")){
+    entries=[]; maintenance=[];
+    localStorage.clear();
+    render(); calc();
+  }
+}
+function totals(list){
+  let t={gross:0,gas:0,net:0,hours:0,miles:0,investment:0,savings:0,vehicleFund:0,available:0,deduction:0};
+  list.forEach(e=>Object.keys(t).forEach(k=>t[k]+=num(e[k])));
+  t.hourly=t.hours>0?t.net/t.hours:0;
+  t.netMile=t.miles>0?t.net/t.miles:0;
+  return t;
+}
+function card(label,value){return `<div class="summaryItem"><span>${label}</span><strong>${value}</strong></div>`}
+function compactSummary(list){
+  let t=totals(list);
+  return `${card("Gross",money(t.gross))}${card("Net",money(t.net))}${card("Spendable",money(t.available))}${card("Hours",t.hours.toFixed(2))}${card("Miles",t.miles.toFixed(2))}${card("Avg Hourly",money(t.hourly)+"/hr")}${card("Net / Mile",money(t.netMile)+"/mi")}${card("Investments",money(t.investment))}${card("Savings",money(t.savings))}${card("Vehicle Fund",money(t.vehicleFund))}`;
+}
+function getPeriods(){
+  let now=new Date(), startWeek=new Date(now);
+  startWeek.setDate(now.getDate()-now.getDay());
+  startWeek.setHours(0,0,0,0);
+  let startMonth=new Date(now.getFullYear(),now.getMonth(),1);
+  let startYear=new Date(now.getFullYear(),0,1);
+  return{
+    week:entries.filter(e=>new Date(e.date)>=startWeek),
+    month:entries.filter(e=>new Date(e.date)>=startMonth),
+    year:entries.filter(e=>new Date(e.date)>=startYear)
+  };
+}
+
+function groupByWeekday(){
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const grouped = {};
+  days.forEach(d=>grouped[d]={net:0,hours:0,count:0});
+  entries.forEach(e=>{
+    const day = days[new Date(e.date+"T12:00:00").getDay()];
+    grouped[day].net += num(e.net);
+    grouped[day].hours += num(e.hours);
+    grouped[day].count += 1;
+  });
+  return grouped;
+}
+function bestWorstDayStats(){
+  const grouped = groupByWeekday();
+  let arr = Object.keys(grouped).filter(k=>grouped[k].count>0).map(k=>({
+    day:k,
+    avgNet:grouped[k].net/grouped[k].count,
+    avgHours:grouped[k].hours/grouped[k].count
+  }));
+  if(!arr.length) return null;
+  arr.sort((a,b)=>b.avgNet-a.avgNet);
+  return {best:arr[0], worst:arr[arr.length-1]};
+}
+function vehicleCostPerMile(){
+  const t = totals(entries);
+  const spent = maintenance.reduce((a,m)=>a+num(m.amount),0);
+  return t.miles > 0 ? spent / t.miles : 0;
+}
+function monthlyForecast(){
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const monthEntries = entries.filter(e=>String(e.date||"").slice(0,7)===monthKey);
+  const t = totals(monthEntries);
+  const day = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const projected = day > 0 ? (t.net/day)*daysInMonth : 0;
+  const goal = Number(localStorage.getItem("monthlyNetGoal") || document.getElementById("monthlyGoalInput")?.value || 0);
+  return {current:t.net, projected, goal, onTrack:goal ? projected >= goal : null};
+}
+function investmentProjection(){
+  const t = totals(entries);
+  const months = Math.max(1, new Set(entries.map(e=>String(e.date||"").slice(0,7))).size);
+  const avgMonthly = t.investment / months;
+  const annualRate = 0.07;
+  const monthlyRate = annualRate/12;
+  const n = 120;
+  const tenYear = avgMonthly > 0 ? avgMonthly * (((1+monthlyRate)**n - 1)/monthlyRate) : 0;
+  return {total:t.investment, avgMonthly, tenYear};
+}
+function renderAnalytics(){
+  const forecast = monthlyForecast();
+  const bw = bestWorstDayStats();
+  const t = totals(entries);
+  const spent = maintenance.reduce((a,m)=>a+num(m.amount),0);
+  const vpm = vehicleCostPerMile();
+  const inv = investmentProjection();
+
+  const onTrackClass = forecast.onTrack === null ? "warn" : (forecast.onTrack ? "good" : "bad");
+  const onTrackText = forecast.onTrack === null ? "Set a monthly goal" : (forecast.onTrack ? "On Track" : "Behind Goal");
+
+  const spendMoney = uberSpendingTotals();
+  const analyticsHTML = `<div class="forecastBox"><h2 style="margin:0 0 8px;font-size:17px">Uber Spending Money</h2><div class="summaryGrid">${card("This Week",money(spendMoney.week))}${card("This Month",money(spendMoney.month))}${card("This Year",money(spendMoney.year))}${card("All-Time",money(spendMoney.all))}</div></div>
+    <div class="forecastBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Revenue Forecast</h2>
+      <div class="summaryGrid">
+        ${card("Current Month Net", money(forecast.current))}
+        ${card("Projected Month", money(forecast.projected))}
+        ${card("Monthly Goal", forecast.goal ? money(forecast.goal) : "Not Set")}
+        ${card("Status", `<span class="statusPill ${onTrackClass}">${onTrackText}</span>`)}
+      </div>
+    </div>
+
+    <div class="forecastBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Spendable Breakdown</h2>
+      <div class="summaryGrid">
+        ${card("Gross", money(t.gross))}
+        ${card("Gas", money(t.gas))}
+        ${card("Savings", money(t.savings))}
+        ${card("Investments", money(t.investment))}
+        ${card("Vehicle Fund", money(t.vehicleFund))}
+        ${card("Available To Spend", money(t.available))}
+      </div>
+    </div>
+
+    <div class="forecastBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Best / Worst Days</h2>
+      <div class="summaryGrid">
+        ${card("Best Day", bw ? bw.best.day : "No Data")}
+        ${card("Best Avg Net", bw ? money(bw.best.avgNet) : "$0.00")}
+        ${card("Worst Day", bw ? bw.worst.day : "No Data")}
+        ${card("Worst Avg Net", bw ? money(bw.worst.avgNet) : "$0.00")}
+      </div>
+    </div>
+
+    <div class="forecastBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Vehicle Cost</h2>
+      <div class="summaryGrid">
+        ${card("Maintenance Spent", money(spent))}
+        ${card("Vehicle Cost / Mile", money(vpm)+"/mi")}
+        ${card("Total Miles", t.miles.toFixed(2))}
+        ${card("Vehicle Fund", money(t.vehicleFund))}
+      </div>
+    </div>
+
+    <div class="forecastBox">
+      <h2 style="margin:0 0 8px;font-size:17px">Investment Projection</h2>
+      <div class="summaryGrid">
+        ${card("Invested So Far", money(inv.total))}
+        ${card("Avg Monthly", money(inv.avgMonthly))}
+        ${card("10-Year Estimate", money(inv.tenYear))}
+        ${card("Assumed Growth", "7% / yr")}
+      </div>
+    </div>
+  `;
+  const tools = document.getElementById("analyticsPanel");
+  if(tools) tools.innerHTML = analyticsHTML;
+}
+
+function renderAllSummaries(){
+  let p=getPeriods();
+  weekSummary.innerHTML=compactSummary(p.week);
+  monthSummary.innerHTML=compactSummary(p.month);
+  yearSummary.innerHTML=compactSummary(p.year);
+
+  let t=totals(entries);
+  renderMoneySummary();
+  renderVehicle();
+  taxSummary.innerHTML=`${card("Business Miles",t.miles.toFixed(2))}${card("Mileage Deduction",money(t.deduction))}${card("Rate Used",money(IRS_RATE)+"/mi")}`;
+  renderAnalytics();
+  renderCalendar();
+}
+
+function renderMoneySummary(){
+  updateMoneySplitUI();
+  setActiveMoneyPeriodButton();
+  updateMoneyPickerVisibility();
+  const list = moneyPeriodEntries();
+  const t = totals(list);
+  const labelMap = {daily:"Day", weekly:"Week", monthly:"Month", yearly:"Year"};
+  const label = labelMap[moneyPeriod] || "Selected";
+  const el = document.getElementById("moneySummary");
+  if(!el) return;
+  el.innerHTML =
+    card(label + " Gross", money(t.gross)) +
+    card(label + " Net", money(t.net)) +
+    card("Non-Spendable", money(t.investment + t.savings + t.vehicleFund + t.gas)) +
+    card("Spendable Cash", money(t.available)) +
+    card("Investments", money(t.investment)) +
+    card("Savings", money(t.savings)) +
+    card("Vehicle Fund", money(t.vehicleFund)) +
+    card("Gas Spent", money(t.gas)) +
+    card("Hours", t.hours.toFixed(2)) +
+    card("Miles", t.miles.toFixed(2));
+}
+
+function saveMaintenance(){
+  let amount=num(maintAmount.value);
+  if(amount<=0){alert("Enter a maintenance expense amount.");return}
+  maintenance.push({id:Date.now(),date:todayISO(),amount,type:maintType.value,note:maintNote.value});
+  localStorage.setItem("uberMaintenance",JSON.stringify(maintenance));
+  maintAmount.value=""; maintNote.value="";
+  renderVehicle();
+}
+
+function editMaintenance(index){
+  const item = maintenance[index];
+  if(!item) return;
+
+  const newAmount = prompt("Edit expense amount:", item.amount);
+  if(newAmount === null) return;
+  const amount = Number(newAmount);
+  if(!amount || amount <= 0){
+    alert("Enter a valid amount.");
+    return;
+  }
+
+  const newType = prompt("Edit expense type:", item.type || "Other");
+  if(newType === null) return;
+
+  const newNote = prompt("Edit expense note:", item.note || "");
+  if(newNote === null) return;
+
+  maintenance[index] = {
+    ...item,
+    amount: amount,
+    type: newType || "Other",
+    note: newNote || ""
+  };
+
+  localStorage.setItem("uberMaintenance", JSON.stringify(maintenance));
+  renderVehicle();
+}
+
+function deleteMaintenance(index){
+  const item = maintenance[index];
+  if(!item) return;
+  if(confirm("Delete this maintenance expense?")){
+    maintenance.splice(index, 1);
+    localStorage.setItem("uberMaintenance", JSON.stringify(maintenance));
+    renderVehicle();
+  }
+}
+
+function renderVehicle(){
+  let totalVehicle = totals(entries).vehicleFund;
+  let spent = maintenance.reduce((a,m)=>a+num(m.amount),0);
+  let balance = totalVehicle - spent;
+
+  let html = `<div class="summaryGrid">
+    ${card("Contributions",money(totalVehicle))}
+    ${card("Spent",money(spent))}
+    ${card("Balance",money(balance))}
+  </div><h2 style="margin:14px 0 8px;font-size:17px">Expenses</h2>`;
+
+  if(!maintenance.length){
+    html += "<p class='small'>No maintenance expenses yet.</p>";
+  }else{
+    html += maintenance.slice().reverse().map((m,revIndex)=>{
+      const originalIndex = maintenance.length - 1 - revIndex;
+      return `<div class="entry">
+        <b>${m.date} • ${escapeHtml(m.type || "Other")}</b><br>
+        ${money(m.amount)}<br>
+        <span class="small">${escapeHtml(m.note || "")}</span>
+        <div class="expenseActions">
+          <button class="editBtn" onclick="editMaintenance(${originalIndex})">Edit</button>
+          <button class="deleteExpenseBtn" onclick="deleteMaintenance(${originalIndex})">Delete</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  vehicleSummary.innerHTML = html;
+}
+function initCalendarControls(){
+  const monthEl=document.getElementById("calendarMonth");
+  const yearEl=document.getElementById("calendarYear");
+  if(monthEl && !monthEl.options.length){
+    ["January","February","March","April","May","June","July","August","September","October","November","December"].forEach((name,i)=>{
+      const opt=document.createElement("option"); opt.value=i; opt.textContent=name; monthEl.appendChild(opt);
+    });
+    monthEl.value=new Date().getMonth();
+  }
+  if(yearEl && !yearEl.value) yearEl.value=new Date().getFullYear();
+  const goalEl=document.getElementById("monthlyGoalInput");
+  if(goalEl && !goalEl.value) goalEl.value=localStorage.getItem("monthlyNetGoal") || "";
+}
+function entriesForDate(dateStr){return entries.filter(e=>e.date===dateStr)}
+function totalsForDate(dateStr){return totals(entriesForDate(dateStr))}
+function renderCalendar(){
+  initCalendarControls();
+  const grid=document.getElementById("calendarGrid");
+  if(!grid) return;
+  const month=Number(document.getElementById("calendarMonth").value);
+  const year=Number(document.getElementById("calendarYear").value);
+  const first=new Date(year,month,1);
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const startDay=first.getDay();
+
+  const monthKey=`${year}-${String(month+1).padStart(2,"0")}`;
+  const monthEntries=entries.filter(e=>String(e.date||"").slice(0,7)===monthKey);
+  const mt=totals(monthEntries);
+  const goalEl=document.getElementById("monthlyGoalInput");
+  const goal=Number(goalEl?.value || localStorage.getItem("monthlyNetGoal") || 0);
+  if(goalEl) localStorage.setItem("monthlyNetGoal", goalEl.value || "");
+  const pct=goal>0?Math.min(100,(mt.net/goal)*100):0;
+  const remaining=Math.max(0,goal-mt.net);
+  const today=new Date();
+  const remainingDays=(today.getFullYear()===year && today.getMonth()===month)?Math.max(0,daysInMonth-today.getDate()):daysInMonth;
+  const perDay=remainingDays>0?remaining/remainingDays:remaining;
+
+  const goalBox=document.getElementById("calendarGoalBox");
+  if(goalBox){
+    goalBox.innerHTML=`<div class="goalTop"><b>${first.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</b><span>Goal: ${goal?money(goal):"Not set"}</span></div>
+      <div class="summaryGrid">${card("Month Net",money(mt.net))}${card("Month Gross",money(mt.gross))}${card("Hours",mt.hours.toFixed(2))}${card("Miles",mt.miles.toFixed(2))}</div>
+      <div class="goalBar"><div class="goalFill" style="width:${pct}%"></div></div>
+      <div class="goalTop"><span>${pct.toFixed(1)}% complete</span><span>${money(remaining)} left</span></div>
+      <div class="goalDetails">${card("Needed / Day",money(perDay))}${card("Days Left",remainingDays)}</div>`;
+  }
+
+  let out=["S","M","T","W","T","F","S"].map(h=>`<div class="calHeader">${h}</div>`).join("");
+  for(let i=0;i<startDay;i++) out+=`<button class="calDay empty" disabled></button>`;
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const t=totalsForDate(dateStr);
+    const has=entriesForDate(dateStr).length>0;
+    let level="";
+    if(has){level=t.net>=200?"good":(t.net>=100?"mid":"low");}
+    out+=`<button class="calDay ${has?"hasEntry":""} ${level}" onclick="selectCalendarDay('${dateStr}')">
+      <span class="calNum">${day}${has?`<span class="calDot ${level}"></span>`:""}</span>
+      ${has?`<span class="calEarn">${money(t.net)}</span><span class="calEarn">${t.hours.toFixed(1)} hr</span>`:""}
+    </button>`;
+  }
+  grid.innerHTML=out;
+}
+function selectCalendarDay(dateStr){
+  const list=entriesForDate(dateStr);
+  const detail=document.getElementById("calendarDayDetail");
+  if(!detail) return;
+  const readable=new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  if(!list.length){
+    detail.innerHTML=`<div class="dayBubble"><h3>${readable}</h3><p class="small">No saved shift for this day.</p><div class="dayBubbleActions"><button class="editDayBtn" onclick="addDayFromCalendar('${dateStr}')">Add Day</button><button class="secondary" onclick="document.getElementById('calendarDayDetail').innerHTML=''">Close</button></div></div>`;
+    return;
+  }
+  const t=totals(list);
+  const originalIndex=entries.findIndex(e=>e.id===list[0].id);
+  detail.innerHTML=`<div class="dayBubble"><h3>${readable}</h3><div class="summaryGrid">
+    ${card("Net",money(t.net))}${card("Gross",money(t.gross))}${card("Gas",money(t.gas))}${card("Hours",t.hours.toFixed(2))}${card("Miles",t.miles.toFixed(2))}${card("Hourly",money(t.hourly)+"/hr")}
+    </div><div class="dayBubbleActions"><button class="editDayBtn" onclick="editSavedDay(${originalIndex})">Edit Day</button><button class="secondary" onclick="document.getElementById('calendarDayDetail').innerHTML=''">Close</button></div></div>`;
+}
+function addDayFromCalendar(dateStr){
+  if(document.getElementById("date")) date.value=dateStr;
+  if(document.getElementById("platform")) platform.value="Uber";
+  if(document.getElementById("gross")) gross.value="";
+  if(document.getElementById("gas")) gas.value="";
+  if(document.getElementById("startMiles")) startMiles.value="";
+  if(document.getElementById("endMiles")) endMiles.value="";
+  if(document.getElementById("notes")) notes.value="";
+  localStorage.removeItem("clockInTime"); localStorage.removeItem("clockOutTime");
+  syncManualClockFields(); saveActiveDraft(); showTabByName("daily"); calc();
+  alert("Day loaded. Fill it out, then tap Save Day.");
+}
+
+
+function uberSpendingTotals(){
+  const p = getPeriods();
+  const t = totals(entries);
+  return {week:totals(p.week).available, month:totals(p.month).available, year:totals(p.year).available, all:t.available};
+}
+function saveGoal(){
+  const name = document.getElementById("goalName")?.value.trim();
+  const amount = Number(document.getElementById("goalAmount")?.value || 0);
+  if(!name || amount <= 0){alert("Enter a goal name and amount.");return}
+  spendingGoals.push({id:Date.now(),name,amount,saved:0});
+  localStorage.setItem("uberSpendingGoals",JSON.stringify(spendingGoals));
+  goalName.value=""; goalAmount.value="";
+  renderGoals();
+}
+function addToGoal(index){
+  const g=spendingGoals[index]; if(!g)return;
+  const amount=Number(prompt("Add how much to this goal?","0")||0);
+  if(amount<=0)return;
+  g.saved=num(g.saved)+amount;
+  localStorage.setItem("uberSpendingGoals",JSON.stringify(spendingGoals));
+  renderGoals();
+}
+function editGoal(index){
+  const g=spendingGoals[index]; if(!g)return;
+  const name=prompt("Goal name:",g.name); if(name===null)return;
+  const amount=Number(prompt("Goal amount:",g.amount)||0); if(amount<=0){alert("Enter a valid amount.");return}
+  const saved=Number(prompt("Current saved amount:",g.saved||0)||0);
+  g.name=name||g.name; g.amount=amount; g.saved=saved;
+  localStorage.setItem("uberSpendingGoals",JSON.stringify(spendingGoals));
+  renderGoals();
+}
+function deleteGoal(index){
+  if(confirm("Delete this goal?")){
+    spendingGoals.splice(index,1);
+    localStorage.setItem("uberSpendingGoals",JSON.stringify(spendingGoals));
+    renderGoals();
+  }
+}
+function renderGoals(){
+  const el=document.getElementById("goalsList"); if(!el)return;
+  const spend=uberSpendingTotals();
+  let out=`<div class="summaryGrid">
+    ${card("Week Spending Money",money(spend.week))}
+    ${card("Month Spending Money",money(spend.month))}
+    ${card("Year Spending Money",money(spend.year))}
+    ${card("All-Time Spending Money",money(spend.all))}
+  </div>`;
+  if(!spendingGoals.length){
+    out+="<p class='small' style='margin-top:10px'>No goals yet.</p>";
+  }else{
+    out+=spendingGoals.map((g,i)=>{
+      const pct=g.amount>0?Math.min(100,(num(g.saved)/num(g.amount))*100):0;
+      return `<div class="entry"><b>${escapeHtml(g.name)}</b><br>${money(g.saved)} / ${money(g.amount)}
+        <div class="goalProgress"><div class="goalProgressFill" style="width:${pct}%"></div></div>
+        <span class="small">${pct.toFixed(1)}% complete</span>
+        <div class="goalActions"><button class="editBtn" onclick="addToGoal(${i})">Add $</button><button class="editDayBtn" onclick="editGoal(${i})">Edit</button></div>
+        <button class="danger" onclick="deleteGoal(${i})">Delete</button>
+      </div>`;
+    }).join("");
+  }
+  el.innerHTML=out;
+}
+
+function showTab(tab,event){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("activePage"));
+  document.getElementById(tab).classList.add("activePage");
+  document.querySelectorAll(".navBtn").forEach(b=>b.classList.remove("active"));
+  event.currentTarget.classList.add("active");
+  renderAllSummaries();
+}
+function downloadCSV(){
+  let headers=["date","platform","startTime","endTime","startMiles","endMiles","miles","gross","gas","net","hours","hourly","grossMile","netMile","investment","savings","vehicleFund","available","deduction","notes"];
+  let csv=[headers.join(",")].concat(entries.map(e=>headers.map(h=>`"${String(e[h]??"").replaceAll('"','""')}"`).join(","))).join("\n");
+  let blob=new Blob([csv],{type:"text/csv"}), a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="uber-driver-dashboard.csv";
+  a.click();
+}
+function backupData(){
+  navigator.clipboard.writeText(JSON.stringify({entries,maintenance}));
+  alert("Backup copied. Save it somewhere safe.");
+}
+function restoreData(){
+  let data=prompt("Paste backup data here:");
+  if(!data)return;
+  try{
+    let parsed=JSON.parse(data);
+    entries=parsed.entries||parsed;
+    maintenance=parsed.maintenance||[];
+    localStorage.setItem("uberEntries",JSON.stringify(entries));
+    localStorage.setItem("uberMaintenance",JSON.stringify(maintenance));
+    render();
+    alert("Restored.");
+  }catch(e){alert("That backup did not work.")}
+}
+
+date.valueAsDate=new Date();
+loadActiveDraft();
+
+["investmentPctInput","savingsPctInput","vehiclePctInput"].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener("input", saveSplitSettings);
+});
+updateMoneySplitUI();
+setActiveMoneyPeriodButton();
+
+const nowForPickers = new Date();
+const todayForPickers = todayISO();
+if(document.getElementById("moneyDayInput") && !moneyDayInput.value) moneyDayInput.value = todayForPickers;
+if(document.getElementById("moneyWeekInput") && !moneyWeekInput.value) moneyWeekInput.value = todayForPickers;
+if(document.getElementById("moneyMonthInput") && !moneyMonthInput.value) moneyMonthInput.value = todayForPickers.slice(0,7);
+if(document.getElementById("moneyYearInput") && !moneyYearInput.value) moneyYearInput.value = nowForPickers.getFullYear();
+["moneyDayInput","moneyWeekInput","moneyMonthInput","moneyYearInput"].forEach(id=>{
+  const el=document.getElementById(id); if(el) el.addEventListener("input", renderMoneySummary);
+});
+initCalendarControls();
+["calendarMonth","calendarYear"].forEach(id=>{
+  const el=document.getElementById(id); if(el) el.addEventListener("input", renderCalendar);
+});
+const monthlyGoalEl=document.getElementById("monthlyGoalInput");
+if(monthlyGoalEl) monthlyGoalEl.addEventListener("input",()=>{localStorage.setItem("monthlyNetGoal", monthlyGoalEl.value || ""); renderCalendar();});
+updateMoneyPickerVisibility();
+
+
+render();
+calc();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./service-worker.js").catch(function (error) {
+      console.log("Service worker registration failed:", error);
+    });
+  });
+}
+</script>
+
+</body>
+</html>
