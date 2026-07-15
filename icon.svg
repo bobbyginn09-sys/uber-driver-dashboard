@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Driver Command app icon">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="44" x2="452" y2="468" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151B19"/>
+      <stop offset="1" stop-color="#060807"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="140" y1="350" x2="388" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1BC96A"/>
+      <stop offset="1" stop-color="#65F2A2"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.15 0 0 0 0 0.95 0 0 0 0 0.52 0 0 0 .48 0"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="178" fill="none" stroke="#FFFFFF" stroke-opacity=".10" stroke-width="4"/>
+  <circle cx="256" cy="256" r="150" fill="#FFFFFF" fill-opacity=".025"/>
+  <path d="M144 338 240 278l71 39 70-91" fill="none" stroke="#42E887" stroke-opacity=".34" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M144 338 240 278l71 39 70-91" fill="none" stroke="url(#accent)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M314 194h76v76" fill="none" stroke="#74F6AC" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="144" cy="338" r="18" fill="#0B100D" stroke="#52EC94" stroke-width="10"/>
+</svg>
