@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.0.0";
+  const APP_VERSION = "3.1.0";
 
   const DEFAULT_TAX_RATES = Object.freeze([
     { id: "rate-2024", effective: "2024-01-01", rate: 0.67, label: "2024" },

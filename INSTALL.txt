@@ -1,0 +1,13 @@
+DRIVER COMMAND 3.1.0 — INSTALL
+
+1. Extract the entire folder.
+2. In the extracted folder, run:  python3 -m http.server 8080
+3. Open:  http://localhost:8080
+
+You may also open index.html directly for normal dashboard use. PWA installation and offline service-worker caching require HTTP/HTTPS.
+
+UPDATING AN EXISTING COPY
+- Export a Full backup from Settings & data first.
+- Replace the old application files with this complete folder.
+- Reload the page. Installed/PWA copies may need one additional reload after the service worker updates.
+- Your browser-stored version 3 data remains compatible.

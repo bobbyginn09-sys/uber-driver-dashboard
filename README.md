@@ -1,8 +1,19 @@
-# Driver Command 3.0
+# Driver Command 3.1
 
 A premium, local-first dashboard for managing rideshare shifts, earnings, mileage, allocations, goals, and vehicle costs.
 
 This rebuild keeps compatibility with the original dashboard's browser storage while replacing the cramped single-page experience with a responsive command center designed for desktop, tablet, and phone.
+
+## 3.1 compact-mobile update
+
+This package includes the low-scroll mobile redesign requested after the original premium rebuild:
+
+- Start-live-shift now shows only the fields required to begin, with odometer and notes tucked into an optional disclosure.
+- Completed shifts use compact expandable rows instead of tall cards.
+- Search stays visible while filters and sorting collapse behind one control.
+- Analytics, settings, maintenance, and goal forms use progressive disclosure so secondary controls do not dominate the screen.
+- Mobile grids, action bars, date/time controls, and fixed modal footers were tightened to prevent clipping and horizontal overflow.
+- The service-worker cache version was advanced so installed copies can receive the new interface.
 
 ## What changed
 
@@ -126,4 +137,4 @@ The calculation suite validates strict dates, periods, normalization, allocation
 
 ## Version
 
-Driver Command 3.0.0 — premium rebuild.
+Driver Command 3.1.0 — compact mobile management update.

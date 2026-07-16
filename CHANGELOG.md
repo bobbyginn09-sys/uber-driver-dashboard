@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.0 — Compact mobile management
+
+### Changed
+- Rebuilt the live-shift start sheet around essential fields so it fits common phone viewports without an internal scroll
+- Replaced tall mobile shift cards with compact expandable ledger rows
+- Collapsed secondary filters, analytics panels, settings groups, maintenance fields, and goal details using progressive disclosure
+- Reduced vertical spacing across the overview, analytics, ledger, vehicle, goals, and settings workspaces
+- Tightened responsive grids and iOS date/time controls to prevent clipping and horizontal overflow
+- Advanced the offline cache version so installed dashboards receive the refreshed assets
+
 ## 3.0.0 — Premium rebuild
 
 ### Added
