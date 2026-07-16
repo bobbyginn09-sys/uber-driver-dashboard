@@ -1,33 +1,44 @@
-# Driver Command 3.2
+# Driver Command 3.3
 
 A premium, local-first dashboard for managing rideshare shifts, earnings, mileage, allocations, goals, and vehicle costs.
 
 This rebuild keeps compatibility with the original dashboard's browser storage while replacing the cramped single-page experience with a responsive command center designed for desktop, tablet, and phone.
 
+## 3.3 glance-mode redesign
+
+This release is organized around immediate answers instead of long pages:
+
+- **Overview fits in one phone screen** with weekly net, goal pace, start-shift controls, three efficiency figures, four money snapshots, and the two most recent shifts.
+- **Shift history starts with the five newest records.** Search remains visible, advanced filters stay collapsed, and older records load five at a time.
+- **Analytics shows one report at a time** through Trend, Money, and Patterns tabs rather than stacking every chart vertically.
+- **Calendar keeps the whole month visible** and opens a compact day sheet only when a date is selected.
+- **Vehicle Status and History are separate views,** so reminders do not compete with the maintenance ledger.
+- **Goals start with three active targets** and load more only on request; archived goals have their own tab.
+- **Settings uses a compact index** with one expanded section at a time.
+- Mobile type, contrast, spacing, and touch targets were retuned together so the interface is calmer without relying on unreadably small text.
+- The top-right quick-add button now follows the current workspace: shifts add a shift, Vehicle logs service, and Goals creates a goal.
+
 ## 3.2 mileage-first shift flow
 
-Live shifts now follow the real-world order of a driver's workflow:
+The live-shift workflow now follows the way a driver actually works:
 
-- Tapping **Start shift** opens a focused **Starting mileage** checkpoint before anything else.
-- The latest saved odometer is pre-filled when available, and the platform remains selectable in the same compact sheet.
-- Date and start time are captured automatically when the shift begins.
-- Tapping **End shift** opens a focused **Ending mileage** checkpoint first.
-- After ending mileage is entered, a compact final-totals review opens for earnings, trips, fuel, end time, and optional details.
-- The final review shows the captured start-to-end mileage and calculated distance, with an Edit control that preserves any totals already entered.
-- Older active shifts without starting mileage receive a safe recovery field instead of producing an incorrect distance.
+- **Start shift** opens a dedicated, single-purpose starting-mileage prompt. Date and start time are captured automatically when the shift is confirmed.
+- The last saved odometer is suggested when available, while the platform remains one compact tap away.
+- **End shift** opens a dedicated ending-mileage prompt before any earnings fields appear.
+- Business miles are calculated live from the starting and ending readings, with clear protection against an ending reading below the start.
+- Final earnings and costs appear only after mileage is captured, in a compact follow-up sheet that fits common phone viewports without internal scrolling.
+- The ending mileage can be edited without losing gross earnings, trips, fuel, or other values already entered in the final step.
+- Active-shift cards now show the captured starting mileage so the driver can verify it at a glance.
 
-The start and end mileage checkpoints are designed to fit common phone viewports without internal scrolling.
+## 3.1 compact-mobile foundation
 
-## 3.1 compact-mobile update
+The low-scroll mobile redesign remains included:
 
-This package includes the low-scroll mobile redesign requested after the original premium rebuild:
-
-- Start-live-shift now shows only the fields required to begin, with odometer and notes tucked into an optional disclosure.
 - Completed shifts use compact expandable rows instead of tall cards.
 - Search stays visible while filters and sorting collapse behind one control.
 - Analytics, settings, maintenance, and goal forms use progressive disclosure so secondary controls do not dominate the screen.
-- Mobile grids, action bars, date/time controls, and fixed modal footers were tightened to prevent clipping and horizontal overflow.
-- The service-worker cache version was advanced so installed copies can receive the new interface.
+- Mobile grids, action bars, date/time controls, and fixed modal footers are tightened to prevent clipping and horizontal overflow.
+- The service-worker cache version advances with each release so installed copies receive refreshed assets.
 
 ## What changed
 
@@ -112,10 +123,13 @@ Net, hourly, per-mile, allocation amounts, spendable cash, and mileage-deduction
 
 ## Mileage-rate schedule
 
-The built-in schedule is editable in **Settings & data**. It includes the published 2024 and 2025 business-mile rates, plus the two federal 2026 periods:
+The built-in schedule is editable in **Settings & data**. It includes the default business-mile rates used by the dashboard:
 
-- January 1–June 30, 2026: $0.725 per business mile
-- July 1–December 31, 2026: $0.76 per business mile
+- 2024: $0.67 per business mile
+- 2025: $0.70 per business mile
+- 2026: $0.725 per business mile
+
+Version 3.3 also corrects the earlier built-in 2026 split schedule when it detects the exact unedited version 3.0–3.2 defaults. Custom schedules are preserved.
 
 Mileage figures in the dashboard are organizational estimates, not tax advice. Confirm eligibility, contemporaneous recordkeeping, and applicable rates with authoritative guidance or a qualified tax professional.
 
@@ -151,4 +165,4 @@ The calculation suite validates strict dates, periods, normalization, allocation
 
 ## Version
 
-Driver Command 3.2.0 — mileage-first live-shift workflow.
+Driver Command 3.3.0 — glance-mode mobile redesign with mileage-first shift capture.

@@ -1,13 +1,18 @@
-DRIVER COMMAND 3.2.0 — INSTALL
+DRIVER COMMAND 3.3.0 — INSTALL
 
-1. Extract the entire folder.
+1. Extract the complete folder.
 2. In the extracted folder, run:  python3 -m http.server 8080
 3. Open:  http://localhost:8080
 
-You may also open index.html directly for normal dashboard use. PWA installation and offline service-worker caching require HTTP/HTTPS.
+You may open index.html directly for ordinary dashboard use. Installation and offline service-worker caching require HTTP or HTTPS.
 
 UPDATING AN EXISTING COPY
-- Export a Full backup from Settings & data first.
+- Open Settings & data and create a Full backup first.
 - Replace the old application files with this complete folder.
-- Reload the page. Installed/PWA copies may need one additional reload after the service worker updates.
-- Your browser-stored version 3 data remains compatible.
+- Reload the page. An installed home-screen copy may need one additional reload while the new cache takes control.
+- Existing version 3 browser data remains compatible.
+
+3.3 GLANCE MODE
+- Home, Analytics, Calendar, Vehicle status, and Settings are designed to fit in about one phone screen.
+- Shifts, maintenance, and goals begin with a short recent list and expand only when requested.
+- Starting mileage still appears first when starting a shift; ending mileage still appears first when ending one.

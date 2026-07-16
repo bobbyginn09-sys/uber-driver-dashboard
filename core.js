@@ -5,13 +5,12 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.2.0";
+  const APP_VERSION = "3.3.0";
 
   const DEFAULT_TAX_RATES = Object.freeze([
     { id: "rate-2024", effective: "2024-01-01", rate: 0.67, label: "2024" },
     { id: "rate-2025", effective: "2025-01-01", rate: 0.70, label: "2025" },
-    { id: "rate-2026-h1", effective: "2026-01-01", rate: 0.725, label: "2026 Jan–Jun" },
-    { id: "rate-2026-h2", effective: "2026-07-01", rate: 0.76, label: "2026 Jul–Dec" }
+    { id: "rate-2026", effective: "2026-01-01", rate: 0.725, label: "2026" }
   ]);
 
   const DEFAULT_SETTINGS = Object.freeze({
@@ -199,7 +198,7 @@
 
   function normalizeTaxRates(value) {
     const list = Array.isArray(value) ? value : DEFAULT_TAX_RATES;
-    const normalized = list
+    let normalized = list
       .map((item, index) => ({
         id: String(item && item.id ? item.id : `rate_${index}_${Date.now()}`),
         effective: item && parseISODate(item.effective || "") ? item.effective : "2000-01-01",
@@ -208,6 +207,16 @@
       }))
       .filter((item) => item.rate > 0)
       .sort((a, b) => a.effective.localeCompare(b.effective));
+
+    // Correct the exact 3.0–3.2 built-in 2026 split without overwriting custom schedules.
+    const legacyFirstHalf = normalized.find((item) => item.id === "rate-2026-h1" && item.effective === "2026-01-01" && Math.abs(item.rate - 0.725) < 0.000001);
+    const legacySecondHalf = normalized.find((item) => item.id === "rate-2026-h2" && item.effective === "2026-07-01" && Math.abs(item.rate - 0.76) < 0.000001);
+    if (legacyFirstHalf && legacySecondHalf) {
+      normalized = normalized.filter((item) => item !== legacyFirstHalf && item !== legacySecondHalf);
+      normalized.push(clone(DEFAULT_TAX_RATES[DEFAULT_TAX_RATES.length - 1]));
+      normalized.sort((a, b) => a.effective.localeCompare(b.effective));
+    }
+
     return normalized.length ? normalized : clone(DEFAULT_TAX_RATES);
   }
 

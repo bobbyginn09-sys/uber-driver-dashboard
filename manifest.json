@@ -1,7 +1,7 @@
 {
   "name": "Driver Command — Rideshare Dashboard",
   "short_name": "Driver Command",
-  "description": "A private, offline-ready command center for rideshare earnings, mileage, allocations, goals, and vehicle costs.",
+  "description": "A calm, glanceable, offline-ready dashboard for rideshare shifts, earnings, mileage, goals, and vehicle care.",
   "id": "./index.html",
   "start_url": "./index.html#overview",
   "scope": "./",

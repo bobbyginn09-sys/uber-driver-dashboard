@@ -3619,6 +3619,308 @@ details > summary::-webkit-details-marker {
   background: color-mix(in srgb, var(--surface-soft) 82%, var(--surface-solid));
 }
 
+.mileage-prompt {
+  width: min(500px, 100%);
+}
+
+.mileage-prompt-form {
+  display: grid;
+  gap: 12px;
+}
+
+.mileage-focus-card {
+  display: grid;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 86%, transparent), transparent 70%),
+    var(--surface-soft);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.mileage-focus-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.mileage-focus-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--accent-border);
+  border-radius: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.mileage-focus-heading span,
+.mileage-focus-heading strong {
+  display: block;
+}
+
+.mileage-focus-heading div > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mileage-focus-heading strong {
+  margin-top: 2px;
+  font-size: 14px;
+  letter-spacing: -.015em;
+}
+
+.mileage-input-shell {
+  position: relative;
+}
+
+.mileage-focus-input {
+  width: 100%;
+  height: 76px;
+  padding: 10px 62px 10px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--surface-solid);
+  font-size: clamp(30px, 7vw, 40px);
+  font-weight: 880;
+  letter-spacing: -.035em;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.mileage-focus-input:hover {
+  border-color: var(--accent-border);
+}
+
+.mileage-focus-input:focus {
+  border-color: var(--accent);
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 12px 34px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.mileage-focus-input[aria-invalid="true"] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 4px var(--red-soft);
+}
+
+.mileage-focus-input::-webkit-inner-spin-button,
+.mileage-focus-input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.mileage-input-shell > span {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 850;
+  pointer-events: none;
+}
+
+.mileage-focus-card > p {
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.mileage-start-context,
+.mileage-journey-card {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface-soft);
+}
+
+.mileage-start-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, .9fr);
+  gap: 12px;
+  align-items: end;
+  padding: 13px;
+}
+
+.mileage-context-item {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mileage-context-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  color: var(--text-soft);
+  background: var(--surface-2);
+}
+
+.mileage-context-item div > span,
+.mileage-context-item strong {
+  display: block;
+}
+
+.mileage-context-item div > span,
+.mileage-platform-field label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.mileage-context-item strong {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.mileage-platform-field label {
+  margin-bottom: 4px;
+}
+
+.mileage-platform-field select {
+  min-height: 42px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  font-size: 14px;
+}
+
+.mileage-journey-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+}
+
+.mileage-journey-point {
+  min-width: 0;
+}
+
+.mileage-journey-point span,
+.mileage-journey-point strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mileage-journey-point span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.mileage-journey-point strong {
+  margin-top: 3px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-journey-point.is-ending {
+  text-align: right;
+}
+
+.mileage-journey-arrow {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+}
+
+.mileage-distance-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.mileage-distance-row strong {
+  color: var(--accent);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mileage-distance-row strong.is-error {
+  color: var(--red);
+}
+
+.captured-mileage-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 13px;
+  background: var(--accent-soft);
+}
+
+.captured-mileage-card > div {
+  min-width: 0;
+}
+
+.captured-mileage-card span,
+.captured-mileage-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.captured-mileage-card div > span {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 820;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.captured-mileage-card strong {
+  margin-top: 2px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.captured-mileage-arrow {
+  color: var(--faint);
+}
+
+.captured-mileage-total {
+  padding-left: 10px;
+  border-left: 1px solid var(--accent-border);
+  text-align: right;
+}
+
+.captured-mileage-total strong {
+  color: var(--accent);
+}
+
 .settings-form {
   display: grid;
   gap: 12px;
@@ -4507,6 +4809,85 @@ details > summary::-webkit-details-marker {
     font-size: 11.5px;
   }
 
+  .mileage-prompt {
+    max-height: min(620px, calc(100dvh - max(8px, env(safe-area-inset-top))));
+  }
+
+  .mileage-prompt .modal-body {
+    overflow-y: auto;
+    padding: 12px 13px;
+  }
+
+  .mileage-prompt-form {
+    gap: 10px;
+  }
+
+  .mileage-focus-card {
+    gap: 11px;
+    padding: 14px;
+    border-radius: 15px;
+  }
+
+  .mileage-focus-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mileage-focus-heading strong {
+    font-size: 13px;
+  }
+
+  .mileage-focus-input {
+    height: 68px;
+    padding-right: 54px;
+    border-radius: 14px;
+    font-size: 34px;
+  }
+
+  .mileage-input-shell > span {
+    right: 17px;
+    font-size: 13px;
+  }
+
+  .mileage-start-context,
+  .mileage-journey-card {
+    padding: 11px;
+    border-radius: 13px;
+  }
+
+  .mileage-start-context {
+    grid-template-columns: minmax(0, 1fr) minmax(128px, .88fr);
+    gap: 9px;
+  }
+
+  .mileage-context-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .mileage-platform-field select {
+    min-height: 40px;
+    font-size: 16px;
+  }
+
+  .mileage-journey-point strong {
+    font-size: 12.5px;
+  }
+
+  .mileage-distance-row {
+    padding-top: 9px;
+  }
+
+  .captured-mileage-card {
+    gap: 7px;
+    margin-bottom: 9px;
+    padding: 9px 10px;
+  }
+
+  .captured-mileage-card strong {
+    font-size: 10.5px;
+  }
+
   .shift-form .form-grid,
   .shift-form .form-grid.is-three,
   .shift-form .shift-pair-grid {
@@ -4968,395 +5349,2316 @@ details > summary::-webkit-details-marker {
 }
 
 /* ========================================================================== 
-   Mileage-first live-shift checkpoints
+   Driver Command 3.3 — Glance mode
+   Less vertical travel, calmer surfaces, and progressive drill-down.
    ========================================================================== */
 
-.mileage-checkpoint-modal {
-  width: min(480px, 100%);
+:root {
+  --bg: #070a09;
+  --bg-elevated: #0b0f0d;
+  --surface: rgba(15, 20, 18, 0.96);
+  --surface-solid: #0f1412;
+  --surface-2: #151b18;
+  --surface-3: #1b2320;
+  --surface-soft: rgba(255, 255, 255, 0.028);
+  --border: rgba(238, 247, 241, 0.085);
+  --border-strong: rgba(238, 247, 241, 0.145);
+  --text: #f0f5f2;
+  --text-soft: #c2cbc6;
+  --muted: #87938d;
+  --faint: #65716b;
+  --accent: #43df89;
+  --accent-strong: #2dca73;
+  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.36);
 }
 
-.mileage-checkpoint-modal .modal-body {
-  overflow: visible;
+html[data-theme="light"] {
+  --bg: #f1f5f2;
+  --bg-elevated: #f6f9f7;
+  --surface: rgba(255, 255, 255, 0.97);
+  --surface-solid: #ffffff;
+  --surface-2: #edf2ef;
+  --surface-3: #e2e9e5;
+  --surface-soft: rgba(20, 40, 29, 0.03);
+  --text: #152019;
+  --text-soft: #415047;
+  --muted: #68766e;
+  --faint: #8a9790;
+  --border: rgba(18, 45, 30, 0.1);
+  --border-strong: rgba(18, 45, 30, 0.17);
 }
 
-.mileage-checkpoint-form {
-  display: grid;
-  gap: 14px;
-}
-
-.mileage-checkpoint-focus {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 13px;
-  border: 1px solid var(--accent-border);
-  border-radius: 15px;
+body {
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 84%, transparent), transparent),
-    var(--surface-soft);
+    radial-gradient(circle at 76% -12%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 34%),
+    linear-gradient(180deg, var(--bg-elevated), var(--bg) 210px);
 }
 
-.mileage-checkpoint-icon {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  color: #07110b;
-  background: var(--accent);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
-.mileage-checkpoint-modal-end .mileage-checkpoint-icon {
-  color: var(--text);
-  background: var(--surface-3);
+.panel,
+.chart-panel,
+.goal-panel,
+.calendar-panel,
+.calendar-detail,
+.settings-section,
+.metric-card,
+.record-card,
+.toolbar {
   box-shadow: none;
 }
 
-.mileage-checkpoint-focus > div {
-  min-width: 0;
+/* Overview: one command card, one glance strip, then recent work. */
+.focus-overview {
+  gap: 16px;
 }
 
-.mileage-checkpoint-focus span,
-.mileage-checkpoint-focus strong {
-  display: block;
+.focus-overview-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, .72fr);
+  gap: 16px;
 }
 
-.mileage-checkpoint-focus > div > span {
-  color: var(--muted);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.mileage-checkpoint-focus strong {
-  margin-top: 2px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.mileage-checkpoint-field > label {
-  margin-bottom: 7px;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.mileage-checkpoint-input-wrap {
+.command-card {
   position: relative;
-}
-
-.mileage-checkpoint-input-wrap input {
-  width: 100%;
-  min-height: 76px;
-  padding: 12px 58px 12px 18px;
-  border: 1px solid var(--accent-border);
-  border-radius: 16px;
-  color: var(--text);
+  overflow: hidden;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
   background:
-    radial-gradient(circle at 50% -40%, color-mix(in srgb, var(--accent-soft) 80%, transparent), transparent 62%),
-    var(--surface-2);
-  font-size: clamp(28px, 7vw, 36px);
-  font-weight: 860;
-  letter-spacing: -0.035em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 68%, transparent), transparent 46%),
+    var(--surface-solid);
 }
 
-.mileage-checkpoint-input-wrap input:focus {
-  border-color: var(--accent);
-  background: var(--surface-solid);
-  box-shadow: 0 0 0 4px var(--accent-soft), 0 18px 44px rgba(0, 0, 0, 0.18);
-}
-
-.mileage-checkpoint-input-wrap > span {
+.command-card::after {
+  content: "";
   position: absolute;
-  top: 50%;
-  right: 18px;
-  transform: translateY(-50%);
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 850;
+  right: -90px;
+  bottom: -120px;
+  width: 270px;
+  height: 270px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
   pointer-events: none;
 }
 
-.mileage-checkpoint-field .field-help {
-  margin-top: 7px;
-  text-align: center;
+.command-card.is-live {
+  border-color: var(--accent-border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 92%, transparent), transparent 58%),
+    var(--surface-solid);
 }
 
-.mileage-checkpoint-secondary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  align-items: end;
+.command-card-top,
+.command-week-main,
+.command-live-main,
+.command-goal-line,
+.command-actions,
+.command-kpis {
+  position: relative;
+  z-index: 1;
 }
 
-.mileage-checkpoint-auto {
-  min-height: 64px;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-soft);
+.command-card-top,
+.command-week-main,
+.command-live-main,
+.command-goal-line,
+.command-actions {
+  display: flex;
+  align-items: center;
 }
 
-.mileage-checkpoint-auto span {
+.command-card-top {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.command-status {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.command-date {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--muted);
-  font-size: 9px;
-  font-weight: 780;
+  background: var(--surface-soft);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.command-week-main,
+.command-live-main {
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.command-earnings,
+.command-live-main > div {
+  min-width: 0;
+}
+
+.command-overline,
+.command-earnings > span,
+.command-live-net span {
+  display: block;
+}
+
+.command-overline {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .075em;
   text-transform: uppercase;
 }
 
-.mileage-checkpoint-auto strong {
+.command-earnings > strong,
+.command-timer {
+  display: block;
+  margin-top: 3px;
   color: var(--text);
-  font-size: 13px;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.mileage-checkpoint-reading {
+.command-earnings > span:last-child {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.goal-dial {
+  --goal-progress: 0%;
+  width: 92px;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
+  place-items: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) var(--goal-progress), var(--surface-3) 0);
+}
+
+.goal-dial > div {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  text-align: center;
+}
+
+.goal-dial strong,
+.goal-dial span {
+  display: block;
+}
+
+.goal-dial strong {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.goal-dial span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.command-goal-line {
+  gap: 11px;
+  margin-top: 16px;
+}
+
+.command-goal-line .progress {
+  min-width: 0;
+  flex: 1;
+}
+
+.command-goal-line > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.command-actions {
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.command-actions .button {
+  min-width: 0;
+  flex: 1;
+}
+
+.command-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 18px;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 13px;
-  background: var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
 }
 
-.mileage-checkpoint-reading > div {
+.command-kpis > div {
   min-width: 0;
-  padding: 11px 12px;
-  background: var(--surface-soft);
+  padding: 10px 12px;
 }
 
-.mileage-checkpoint-reading span,
-.mileage-checkpoint-reading strong {
+.command-kpis > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.command-kpis span,
+.command-kpis strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mileage-checkpoint-reading span {
+.command-kpis span {
   color: var(--muted);
-  font-size: 8.5px;
-  font-weight: 780;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 760;
 }
 
-.mileage-checkpoint-reading strong {
+.command-kpis strong {
   margin-top: 3px;
-  color: var(--text-soft);
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 850;
   font-variant-numeric: tabular-nums;
 }
 
-.mileage-checkpoint-reading strong.is-ready {
-  color: var(--accent);
+.command-live-main {
+  align-items: end;
 }
 
-.mileage-checkpoint-warning {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 10px 11px;
-  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
-  border-radius: 12px;
-  color: var(--amber);
-  background: var(--amber-soft);
+.command-live-net {
+  text-align: right;
 }
 
-.mileage-checkpoint-warning .icon {
-  margin-top: 1px;
-}
-
-.mileage-checkpoint-warning strong,
-.mileage-checkpoint-warning span {
-  display: block;
-}
-
-.mileage-checkpoint-warning strong {
-  color: var(--text-soft);
-  font-size: 10.5px;
-}
-
-.mileage-checkpoint-warning span {
-  margin-top: 2px;
+.command-live-net span {
   color: var(--muted);
-  font-size: 9.5px;
-  line-height: 1.4;
+  font-size: 10px;
+  font-weight: 760;
 }
 
-.mileage-checkpoint-recovery {
-  padding: 11px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-soft);
+.command-live-net strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -.035em;
 }
 
-.mileage-captured-strip {
+.home-glance-strip {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  background: var(--surface-solid);
+}
+
+.home-glance-strip > div {
+  min-width: 0;
+  padding: 19px 18px;
+}
+
+.home-glance-strip > div:nth-child(even) {
+  border-left: 1px solid var(--border);
+}
+
+.home-glance-strip > div:nth-child(n+3) {
+  border-top: 1px solid var(--border);
+}
+
+.home-glance-strip span,
+.home-glance-strip strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-glance-strip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.home-glance-strip strong {
+  margin-top: 5px;
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: -.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-recent-panel {
+  padding: 18px;
+}
+
+.home-recent-list {
+  display: grid;
+  gap: 7px;
+}
+
+.home-recent-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
-  padding: 10px 11px;
-  border: 1px solid var(--accent-border);
+  padding: 9px 11px;
+  border: 1px solid var(--border);
   border-radius: 13px;
-  background: var(--accent-soft);
+  color: var(--text);
+  background: var(--surface-soft);
+  cursor: pointer;
+  text-align: left;
 }
 
-.mileage-captured-icon {
+.home-recent-row:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.home-recent-date,
+.home-recent-value {
+  min-width: 0;
+}
+
+.home-recent-date strong,
+.home-recent-date small,
+.home-recent-value strong,
+.home-recent-value small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-recent-date strong,
+.home-recent-value strong {
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.home-recent-date small,
+.home-recent-value small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.home-recent-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-recent-row > .icon {
+  color: var(--faint);
+}
+
+.home-empty-row {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+}
+
+.home-empty-row > span {
   width: 34px;
   height: 34px;
   display: grid;
   place-items: center;
   border-radius: 10px;
   color: var(--accent);
-  background: color-mix(in srgb, var(--surface-solid) 74%, transparent);
+  background: var(--accent-soft);
 }
 
-.mileage-captured-strip > div {
+.home-empty-row strong,
+.home-empty-row small {
+  display: block;
+}
+
+.home-empty-row strong {
+  font-size: 12px;
+}
+
+.home-empty-row small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.home-desktop-extras {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, .7fr);
+  gap: 16px;
+}
+
+.home-desktop-extras .overview-chart-panel {
+  grid-row: span 2;
+}
+
+.home-lifetime-panel {
+  padding: 18px;
+}
+
+.home-lifetime-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.home-lifetime-grid > div {
+  padding: 11px;
+}
+
+.home-lifetime-grid > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.home-lifetime-grid span,
+.home-lifetime-grid strong {
+  display: block;
+}
+
+.home-lifetime-grid span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.home-lifetime-grid strong {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+/* Compact ledgers: a short recent page first, then explicit expansion. */
+.mobile-manage-toggle {
+  display: none;
+}
+
+.compact-live-banner {
+  min-height: 0;
+}
+
+.compact-live-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.compact-live-main > div {
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.compact-live-main span,
+.compact-live-main strong {
+  display: block;
+}
+
+.compact-live-main span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.compact-live-main strong {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.compact-record-shell {
+  display: block;
+}
+
+.compact-record-shell.has-select {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+
+.ledger-page-controls {
+  display: none;
+}
+
+.compact-bulk-bar {
+  min-height: 52px;
+}
+
+/* Focused analytics: one report at a time. */
+.analytics-focus {
+  max-width: 1180px;
+}
+
+.analytics-focus-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  border-color: var(--border-strong);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 74%, transparent), transparent 52%),
+    var(--surface-solid);
+}
+
+.analytics-focus-hero.is-negative {
+  border-color: color-mix(in srgb, var(--red) 30%, var(--border));
+  background:
+    linear-gradient(145deg, var(--red-soft), transparent 52%),
+    var(--surface-solid);
+}
+
+.analytics-focus-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.analytics-focus-top > div {
   min-width: 0;
 }
 
-.mileage-captured-strip > div > span,
-.mileage-captured-strip > div > strong,
-.mileage-captured-strip > div > small {
+.analytics-focus-top span,
+.analytics-focus-top strong,
+.analytics-focus-top small {
+  display: block;
+}
+
+.analytics-focus-top > div > span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.analytics-focus-top > div > strong {
+  margin-top: 4px;
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-focus-hero.is-negative .analytics-focus-top > div > strong {
+  color: var(--red);
+}
+
+.analytics-focus-top small {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.analytics-focus-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
+.analytics-focus-kpis > div {
+  min-width: 0;
+  padding: 11px 13px;
+}
+
+.analytics-focus-kpis > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.analytics-focus-kpis span,
+.analytics-focus-kpis strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mileage-captured-strip > div > span {
+.analytics-focus-kpis span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.analytics-focus-kpis strong {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.analytics-control-deck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-view-switch .segment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.analytics-view-panel {
+  min-height: 420px;
+  padding: 20px;
+}
+
+.analytics-view-panel .chart {
+  min-height: 230px;
+}
+
+.analytics-signal-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.analytics-signal-row > div {
+  min-width: 0;
+}
+
+.analytics-signal-row span,
+.analytics-signal-row strong {
+  display: block;
+}
+
+.analytics-signal-row span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.analytics-signal-row strong {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.analytics-money-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.analytics-deduction-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+
+.analytics-deduction-card > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
 }
 
-.mileage-captured-strip > div > strong {
-  margin-top: 1px;
-  color: var(--text);
+.analytics-deduction-card > strong {
+  display: block;
+  margin-top: 9px;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -.035em;
+}
+
+.analytics-deduction-card p,
+.analytics-deduction-card small {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.analytics-deduction-card small {
+  display: block;
+  color: var(--faint);
+}
+
+.analytics-compare-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, .8fr) minmax(0, 1.2fr);
+  gap: 22px;
+}
+
+.analytics-platform-block,
+.analytics-pattern-block {
+  min-width: 0;
+}
+
+.analytics-platform-block h3,
+.analytics-pattern-block h3 {
+  margin: 0 0 12px;
+  color: var(--text-soft);
   font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 
-.mileage-captured-strip > div > small {
-  margin-top: 1px;
+.analytics-compact-insights {
+  margin-top: 16px;
+}
+
+/* Calendar: month stays visible; day detail opens as a small sheet on phones. */
+.calendar-mobile-peek {
+  display: none;
+}
+
+.calendar-goal-summary {
+  display: block;
+}
+
+.calendar-day-modal {
+  max-width: 620px;
+}
+
+.calendar-day-sheet {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-sheet-list {
+  display: grid;
+  gap: 7px;
+}
+
+.calendar-sheet-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  color: var(--text);
+  background: var(--surface-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.calendar-sheet-row > span {
+  min-width: 0;
+}
+
+.calendar-sheet-row strong,
+.calendar-sheet-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-sheet-row strong {
+  font-size: 12px;
+}
+
+.calendar-sheet-row small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.calendar-sheet-row > span:nth-child(2) {
+  text-align: right;
+}
+
+.calendar-sheet-empty,
+.compact-empty-panel {
+  min-height: 170px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 22px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.calendar-sheet-empty > span,
+.compact-empty-panel > span {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
   color: var(--accent);
-  font-size: 9.5px;
-  font-weight: 750;
+  background: var(--accent-soft);
 }
 
-.mileage-captured-strip .button {
-  min-height: 34px;
-  padding-inline: 10px;
+.calendar-sheet-empty strong,
+.compact-empty-panel strong {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.calendar-sheet-empty p,
+.compact-empty-panel p {
+  max-width: 300px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Vehicle: status and history are separate views. */
+.focus-view-switch {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.focus-view-switch .period-switch {
+  width: auto;
+}
+
+.focus-view-switch .segment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vehicle-status-view,
+.vehicle-history-view {
+  display: grid;
+  gap: 14px;
+}
+
+.vehicle-command-card {
+  padding: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--blue-soft) 64%, transparent), transparent 54%),
+    var(--surface-solid);
+}
+
+.vehicle-command-head,
+.vehicle-command-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vehicle-command-head span,
+.vehicle-command-head strong {
+  display: block;
+}
+
+.vehicle-command-head span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.vehicle-command-head strong {
+  margin-top: 2px;
+  font-size: 16px;
+}
+
+.vehicle-command-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.vehicle-command-stats > div {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
+.vehicle-command-stats span,
+.vehicle-command-stats strong,
+.vehicle-command-stats small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehicle-command-stats span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.vehicle-command-stats strong {
+  margin-top: 4px;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -.035em;
+}
+
+.vehicle-command-stats small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.vehicle-command-actions {
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+
+.service-status-panel {
+  padding: 18px;
+}
+
+.service-status-list {
+  display: grid;
+  gap: 7px;
+}
+
+.service-status-row {
+  min-width: 0;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+
+.service-status-row.is-due {
+  border-color: color-mix(in srgb, var(--red) 34%, var(--border));
+  background: var(--red-soft);
+}
+
+.service-status-row.is-soon {
+  border-color: color-mix(in srgb, var(--amber) 32%, var(--border));
+  background: var(--amber-soft);
+}
+
+.service-status-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.service-status-copy {
+  min-width: 0;
+}
+
+.service-status-copy strong,
+.service-status-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-status-copy strong {
+  font-size: 12px;
+}
+
+.service-status-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.service-status-value {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-status-row.is-due .service-status-value {
+  color: var(--red);
+}
+
+.service-status-row.is-soon .service-status-value {
+  color: var(--amber);
+}
+
+/* Goals: portfolio summary plus short, expandable rows. */
+.goal-portfolio-card {
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--violet-soft) 62%, transparent), transparent 58%),
+    var(--surface-solid);
+}
+
+.goal-portfolio-head,
+.goal-portfolio-progress,
+.goal-row-top,
+.goal-row-money,
+.goal-row-actions {
+  display: flex;
+  align-items: center;
+}
+
+.goal-portfolio-head {
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.goal-portfolio-head > div {
+  min-width: 0;
+}
+
+.goal-portfolio-head span,
+.goal-portfolio-head strong,
+.goal-portfolio-head small {
+  display: block;
+}
+
+.goal-portfolio-head span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.goal-portfolio-head strong {
+  margin-top: 4px;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.goal-portfolio-head small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.goal-portfolio-progress {
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.goal-portfolio-progress .progress {
+  min-width: 0;
+  flex: 1;
+}
+
+.goal-portfolio-progress > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.goals-view-switch .period-switch {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segment-count {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 9px;
+}
+
+.goal-list-section {
+  min-width: 0;
+}
+
+.compact-goals-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.goal-row-card {
+  position: relative;
+  min-width: 0;
+  padding: 16px;
+}
+
+.goal-row-top {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.goal-row-top > div {
+  min-width: 0;
+}
+
+.goal-row-top h3,
+.goal-row-top p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-row-top h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.goal-row-top p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.goal-row-money {
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.goal-row-money strong {
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -.035em;
+}
+
+.goal-row-money span,
+.goal-row-money small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.goal-row-money small {
+  margin-left: auto;
+}
+
+.goal-row-card > .progress {
+  margin-top: 9px;
+}
+
+.goal-row-actions {
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.goal-row-actions > .button {
+  min-width: 0;
+  flex: 1;
+}
+
+.goal-row-more {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.goal-row-more > summary {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.goal-row-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 7px);
+  z-index: 8;
+  width: min(260px, calc(100vw - 40px));
+  padding: 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md);
+}
+
+.goal-row-more:not([open]) .goal-row-more-menu {
+  display: none;
+}
+
+.goal-row-more-menu p,
+.goal-row-more-menu span {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.goal-row-more-menu span {
+  margin-top: 6px;
+}
+
+.goal-row-more-menu .button {
+  width: 100%;
+  margin-top: 9px;
+}
+
+@media (max-width: 1024px) {
+  .focus-overview-top {
+    grid-template-columns: minmax(0, 1.2fr) minmax(310px, .8fr);
+  }
+
+  .home-desktop-extras {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-desktop-extras .overview-chart-panel {
+    grid-row: auto;
+  }
+
+  .analytics-money-layout,
+  .analytics-compare-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
-  .mileage-checkpoint-modal {
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+  :root {
+    --topbar-height: 58px;
   }
 
-  .mileage-checkpoint-modal .modal-body {
-    padding: 12px 14px 14px;
+  body {
+    font-size: 14px;
+    background: var(--bg);
   }
 
-  .mileage-checkpoint-form {
-    gap: 11px;
+  .topbar {
+    min-height: var(--topbar-height);
+    padding: calc(6px + env(safe-area-inset-top)) 10px 6px;
+    border-bottom-color: var(--border);
+    background: color-mix(in srgb, var(--surface-solid) 96%, transparent);
+    backdrop-filter: blur(18px);
   }
 
-  .mileage-checkpoint-focus {
-    padding: 10px 11px;
+  .mobile-brand-mark,
+  .mobile-brand-mark svg {
+    width: 30px;
+    height: 30px;
   }
 
-  .mileage-checkpoint-icon {
-    width: 38px;
-    height: 38px;
+  .page-heading h1 {
+    font-size: 17px;
+    letter-spacing: -.025em;
+  }
+
+  #themeToggle {
+    display: none;
+  }
+
+  .topbar .topbar-add {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  .main-content {
+    padding: 9px 9px calc(69px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-nav {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    transform: none;
+    gap: 0;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid var(--border-strong);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--surface-solid) 97%, transparent);
+    box-shadow: 0 -12px 34px rgba(0, 0, 0, .24);
+    backdrop-filter: blur(20px);
+  }
+
+  .mobile-nav-item {
+    min-height: 48px;
+    border-radius: 10px;
+    font-size: 9px;
+  }
+
+  .mobile-nav-item .icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mobile-nav-item.is-active {
+    background: transparent;
+  }
+
+  .mobile-nav-item.is-active::before {
+    content: "";
+    width: 22px;
+    height: 3px;
+    position: absolute;
+    top: 1px;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  .mobile-nav-item {
+    position: relative;
+  }
+
+  .overview-stack,
+  .page-stack,
+  .focus-overview,
+  .vehicle-status-view,
+  .vehicle-history-view {
+    gap: 9px;
+  }
+
+  .focus-overview-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .command-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .command-card::after {
+    display: none;
+  }
+
+  .command-status {
+    font-size: 10.5px;
+  }
+
+  .command-date {
+    padding: 4px 7px;
+    font-size: 9px;
+  }
+
+  .command-week-main,
+  .command-live-main {
+    gap: 14px;
+    margin-top: 12px;
+  }
+
+  .command-overline {
+    font-size: 9px;
+  }
+
+  .command-earnings > strong,
+  .command-timer {
+    font-size: 37px;
+  }
+
+  .command-earnings > span:last-child {
+    margin-top: 5px;
+    font-size: 10px;
+  }
+
+  .goal-dial {
+    width: 70px;
+    padding: 6px;
+  }
+
+  .goal-dial strong {
+    font-size: 17px;
+  }
+
+  .goal-dial span {
+    font-size: 8px;
+  }
+
+  .command-goal-line {
+    margin-top: 10px;
+  }
+
+  .command-goal-line .progress {
+    height: 7px;
+  }
+
+  .command-actions {
+    gap: 7px;
+    margin-top: 12px;
+  }
+
+  .command-actions .button {
+    min-height: 41px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .command-kpis {
+    margin-top: 11px;
     border-radius: 11px;
   }
 
-  .mileage-checkpoint-input-wrap input {
-    min-height: 72px;
-    padding-right: 52px;
-    font-size: 31px;
+  .command-kpis > div {
+    padding: 8px 7px;
   }
 
-  .mileage-checkpoint-input-wrap > span {
-    right: 16px;
+  .command-kpis span {
+    font-size: 8px;
   }
 
-  .mileage-checkpoint-secondary {
-    grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
-    gap: 8px;
+  .command-kpis strong {
+    font-size: 11px;
   }
 
-  .mileage-checkpoint-secondary .field select,
-  .mileage-checkpoint-recovery input {
-    min-height: 44px;
-    font-size: 16px;
+  .command-live-net strong {
+    font-size: 20px;
   }
 
-  .mileage-checkpoint-auto {
-    min-height: 62px;
+  .home-glance-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-radius: 15px;
+  }
+
+  .home-glance-strip > div {
+    padding: 10px 7px;
+    border-top: 0 !important;
+  }
+
+  .home-glance-strip > div + div {
+    border-left: 1px solid var(--border);
+  }
+
+  .home-glance-strip span {
+    font-size: 7.5px;
+  }
+
+  .home-glance-strip strong {
+    margin-top: 3px;
+    font-size: 12.5px;
+  }
+
+  .home-recent-panel {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .home-recent-panel .panel-header {
+    margin-bottom: 9px;
+  }
+
+  .home-recent-panel .panel-subtitle {
+    display: none;
+  }
+
+  .home-recent-panel .home-recent-row:nth-child(n+3) {
+    display: none;
+  }
+
+  .home-recent-list {
+    gap: 6px;
+  }
+
+  .home-recent-row {
+    min-height: 52px;
+    padding: 7px 9px;
+    border-radius: 11px;
+  }
+
+  .home-recent-date strong,
+  .home-recent-value strong {
+    font-size: 11px;
+  }
+
+  .home-recent-date small,
+  .home-recent-value small {
+    font-size: 8.5px;
+  }
+
+  .home-desktop-extras {
+    display: none;
+  }
+
+  .home-empty-row {
+    min-height: 66px;
+    padding: 9px;
+  }
+
+  .ledger-toolbar {
+    padding: 11px;
+  }
+
+  .desktop-ledger-export {
+    display: none;
+  }
+
+  .mobile-manage-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-manage-toggle.is-active {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+
+  .compact-live-banner {
+    padding: 13px;
+  }
+
+  .compact-live-banner .hero-main {
+    display: none;
+  }
+
+  .compact-live-main {
+    margin-top: 10px;
+  }
+
+  .compact-live-main > div {
+    padding: 8px 9px;
+  }
+
+  .compact-live-banner .hero-actions {
+    margin-top: 9px;
+  }
+
+  .compact-live-banner .hero-actions .button {
+    min-height: 38px;
+  }
+
+  #shiftSummary .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  #shiftSummary .summary-stat {
+    min-width: 0;
+    padding: 8px 9px;
+  }
+
+  #shiftSummary .summary-stat:nth-child(n+4) {
+    display: none;
+  }
+
+  .compact-record-shell,
+  .compact-record-shell.has-select {
+    min-width: 0;
+  }
+
+  .compact-record-shell {
+    display: block;
+  }
+
+  .compact-record-shell.has-select {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .record-card-disclosure > summary,
+  .maintenance-record-card .record-card-disclosure > summary {
+    min-height: 58px;
+    padding: 8px 9px;
+  }
+
+  .compact-record-date {
+    font-size: 11.5px;
+  }
+
+  .compact-record-net {
+    font-size: 12.5px;
+  }
+
+  .compact-record-meta,
+  .compact-record-efficiency {
+    font-size: 8.5px;
+  }
+
+  .compact-record-select {
+    padding-top: 14px;
+  }
+
+  .ledger-page-controls {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .ledger-page-controls .button {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    justify-content: space-between;
+    padding-inline: 14px;
+  }
+
+  .ledger-page-controls .button > span {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .compact-bulk-bar {
+    min-height: 46px;
     padding: 8px 10px;
   }
 
-  .mileage-checkpoint-reading > div {
-    padding: 9px 10px;
+  .compact-bulk-bar .bulk-actions .button {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 9px;
   }
 
-  .mileage-captured-strip {
+  .analytics-focus-hero {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .analytics-focus-top > div > span {
+    font-size: 9px;
+  }
+
+  .analytics-focus-top > div > strong {
+    font-size: 37px;
+  }
+
+  .analytics-focus-top small {
+    margin-top: 5px;
+    font-size: 9.5px;
+  }
+
+  .analytics-focus-top > .trend-badge,
+  .analytics-focus-top > .pill {
+    margin-top: 2px;
+  }
+
+  .analytics-focus-kpis {
+    margin-top: 12px;
+    border-radius: 11px;
+  }
+
+  .analytics-focus-kpis > div {
+    padding: 8px 6px;
+  }
+
+  .analytics-focus-kpis span {
+    font-size: 7.5px;
+  }
+
+  .analytics-focus-kpis strong {
+    font-size: 10.5px;
+  }
+
+  .analytics-control-deck {
+    display: grid;
+    gap: 7px;
+  }
+
+  .analytics-control-deck .period-switch {
+    width: 100%;
+    grid-auto-flow: initial;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .analytics-view-switch {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .analytics-control-deck .segment-button {
+    min-width: 0;
+    min-height: 36px;
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .analytics-view-panel {
+    min-height: 0;
+    padding: 13px;
+    border-radius: 16px;
+  }
+
+  .analytics-view-panel .panel-header {
+    margin-bottom: 8px;
+  }
+
+  .analytics-view-panel .chart {
+    min-height: 164px;
+    max-height: 184px;
+  }
+
+  .analytics-signal-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 7px;
+    padding-top: 8px;
+  }
+
+  .analytics-signal-row .button {
+    grid-column: 1 / -1;
+    min-height: 36px;
+  }
+
+  .analytics-money-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .analytics-money-view .donut-layout {
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .analytics-money-view .donut {
+    width: 112px;
+  }
+
+  .analytics-money-view .donut::before {
+    inset: 17px;
+  }
+
+  .analytics-money-view .legend-item {
+    min-height: 28px;
+    padding: 5px 0;
+    font-size: 9px;
+  }
+
+  .analytics-deduction-card {
+    padding: 11px;
+  }
+
+  .analytics-deduction-card > strong {
+    margin-top: 5px;
+    font-size: 24px;
+  }
+
+  .analytics-deduction-card p,
+  .analytics-deduction-card small {
+    font-size: 9px;
+  }
+
+  .analytics-compare-layout {
+    gap: 10px;
+  }
+
+  .analytics-pattern-block .chart {
+    min-height: 145px;
+    max-height: 160px;
+  }
+
+  .analytics-compact-insights {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .analytics-compact-insights .compact-insight {
+    padding: 7px 5px;
+  }
+
+  .analytics-compact-insights .compact-insight span {
+    font-size: 7px;
+  }
+
+  .analytics-compact-insights .compact-insight strong {
+    font-size: 9.5px;
+  }
+
+  .calendar-layout {
+    display: block;
+  }
+
+  .calendar-panel {
+    padding: 11px;
+    border-radius: 17px;
+  }
+
+  .calendar-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .calendar-summary-item,
+  .calendar-summary-item:last-child {
+    display: block;
+    padding: 6px 4px;
+  }
+
+  .calendar-summary-item span {
+    font-size: 7px;
+  }
+
+  .calendar-summary-item strong {
+    font-size: 10px;
+  }
+
+  .calendar-grid {
+    gap: 3px;
+  }
+
+  .calendar-day {
+    min-height: 42px;
+    padding: 3px;
+    border-radius: 8px;
+  }
+
+  .calendar-day-number {
+    font-size: 10px;
+  }
+
+  .calendar-day-net {
+    font-size: 7px;
+  }
+
+  .calendar-desktop-detail {
+    display: none;
+  }
+
+  .calendar-mobile-peek {
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 18px;
+    align-items: center;
+    gap: 9px;
+    margin-top: 9px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    background: var(--surface-soft);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .calendar-peek-date,
+  .calendar-peek-value {
+    min-width: 0;
+  }
+
+  .calendar-peek-date strong,
+  .calendar-peek-date small,
+  .calendar-peek-value strong,
+  .calendar-peek-value small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calendar-peek-date strong,
+  .calendar-peek-value strong {
+    font-size: 11px;
+  }
+
+  .calendar-peek-date small,
+  .calendar-peek-value small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 8.5px;
+  }
+
+  .calendar-peek-value {
+    text-align: right;
+  }
+
+  .calendar-day-modal .modal-body {
+    padding-top: 9px;
+  }
+
+  .calendar-day-modal .detail-summary-grid {
+    margin-top: 0;
+  }
+
+  .focus-view-switch .period-switch {
+    width: 100%;
+    grid-auto-flow: initial;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focus-view-switch .segment-button {
+    min-width: 0;
+  }
+
+  .vehicle-command-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .vehicle-command-head strong {
+    font-size: 14px;
+  }
+
+  .vehicle-command-stats {
+    gap: 7px;
+    margin-top: 11px;
+  }
+
+  .vehicle-command-stats > div {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .vehicle-command-stats strong {
+    font-size: 22px;
+  }
+
+  .vehicle-command-stats small {
+    font-size: 8px;
+  }
+
+  .vehicle-command-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .vehicle-command-actions .button {
+    min-height: 39px;
+    padding: 7px 8px;
+    font-size: 10.5px;
+  }
+
+  .service-status-panel {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .service-status-panel .panel-header {
+    margin-bottom: 8px;
+  }
+
+  .service-status-list {
+    gap: 6px;
+  }
+
+  .service-status-row {
+    min-height: 54px;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     gap: 8px;
-    padding: 9px 10px;
+    padding: 7px 8px;
+    border-radius: 11px;
+  }
+
+  .service-status-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .service-status-copy strong {
+    font-size: 11px;
+  }
+
+  .service-status-copy small {
+    font-size: 8px;
+  }
+
+  .service-status-value {
+    max-width: 106px;
+    font-size: 9.5px;
+  }
+
+  .maintenance-toolbar {
+    padding: 11px;
+  }
+
+  .goal-portfolio-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .goal-portfolio-head strong {
+    font-size: 27px;
+  }
+
+  .goal-portfolio-head small {
+    margin-top: 4px;
+    font-size: 9px;
+  }
+
+  .goal-portfolio-progress {
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .goal-portfolio-progress > span {
+    font-size: 8px;
+  }
+
+  .compact-goals-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .goal-list-section .section-header {
+    margin-bottom: 7px;
+  }
+
+  .goal-row-card {
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .goal-row-top h3 {
+    font-size: 12.5px;
+  }
+
+  .goal-row-top p {
+    font-size: 8.5px;
+  }
+
+  .goal-row-money {
+    margin-top: 8px;
+  }
+
+  .goal-row-money strong {
+    font-size: 20px;
+  }
+
+  .goal-row-card > .progress {
+    height: 7px;
+    margin-top: 7px;
+  }
+
+  .goal-row-actions {
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .goal-row-actions > .button {
+    min-height: 35px;
+    padding: 6px 8px;
+    font-size: 9.5px;
+  }
+
+  .goal-row-more > summary {
+    width: 35px;
+    height: 35px;
+  }
+
+  .goal-row-more-menu {
+    right: -1px;
+  }
+
+  .compact-empty-panel {
+    min-height: 150px;
+  }
+
+  .settings-disclosure > summary,
+  .page-disclosure > summary {
+    min-height: 56px;
+  }
+
+  .page-disclosure > summary .panel-title {
+    font-size: 13px;
+  }
+
+  .page-disclosure > summary .panel-subtitle {
+    font-size: 9px;
+  }
+
+  .modal-header h2 {
+    font-size: 20px;
+    letter-spacing: -.025em;
+  }
+
+  .modal-header p {
+    font-size: 10px;
+  }
+
+  .modal-footer {
+    background: color-mix(in srgb, var(--surface-solid) 98%, transparent);
   }
 }
 
-@media (max-width: 380px) {
-  .mileage-checkpoint-focus > div > span {
+@media (max-width: 360px) {
+  .command-earnings > strong,
+  .command-timer,
+  .analytics-focus-top > div > strong {
+    font-size: 33px;
+  }
+
+  .goal-dial {
+    width: 64px;
+  }
+
+  .home-glance-strip strong {
+    font-size: 11px;
+  }
+
+  .service-status-value {
+    max-width: 92px;
+  }
+
+  .goal-portfolio-head .button span,
+  .goal-portfolio-head .button .button-label {
     display: none;
   }
-
-  .mileage-checkpoint-secondary {
-    grid-template-columns: 1fr;
-  }
-
-  .mileage-checkpoint-auto {
-    min-height: 50px;
-  }
-
-  .mileage-captured-icon {
-    display: none;
-  }
-
-  .mileage-captured-strip {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
 }
 
-.mileage-checkpoint-input-wrap input {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
+/* ========================================================================== 
+   Driver Command 3.3 — Readability pass
+   Keep the compact layout, but never make important information feel tiny.
+   ========================================================================== */
+@media (max-width: 760px) {
+  .mobile-nav-item {
+    font-size: 10px;
+  }
 
-.mileage-checkpoint-input-wrap input::-webkit-outer-spin-button,
-.mileage-checkpoint-input-wrap input::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
+  .command-status {
+    font-size: 11.5px;
+  }
+
+  .command-date,
+  .command-overline {
+    font-size: 9.5px;
+  }
+
+  .command-earnings > span:last-child,
+  .command-goal-line > span {
+    font-size: 10.5px;
+  }
+
+  .goal-dial span {
+    font-size: 9px;
+  }
+
+  .command-kpis span,
+  .home-glance-strip span {
+    font-size: 9px;
+  }
+
+  .command-kpis strong {
+    font-size: 12.5px;
+  }
+
+  .home-glance-strip strong {
+    font-size: 13.5px;
+  }
+
+  .home-recent-date strong,
+  .home-recent-value strong {
+    font-size: 12px;
+  }
+
+  .home-recent-date small,
+  .home-recent-value small,
+  .compact-record-meta,
+  .compact-record-efficiency,
+  .calendar-peek-date small,
+  .calendar-peek-value small {
+    font-size: 9.5px;
+  }
+
+  .compact-record-date {
+    font-size: 12.5px;
+  }
+
+  .compact-record-net {
+    font-size: 13.5px;
+  }
+
+  .analytics-focus-top small {
+    font-size: 10.5px;
+  }
+
+  .analytics-focus-kpis span {
+    font-size: 8.5px;
+  }
+
+  .analytics-focus-kpis strong {
+    font-size: 11.5px;
+  }
+
+  .analytics-control-deck .segment-button {
+    font-size: 10.5px;
+  }
+
+  .calendar-summary-item span {
+    font-size: 8px;
+  }
+
+  .calendar-summary-item strong,
+  .calendar-day-number {
+    font-size: 10.5px;
+  }
+
+  .calendar-day-net {
+    font-size: clamp(7px, 2vw, 8px);
+  }
+
+  .vehicle-command-stats span,
+  .vehicle-command-stats small,
+  .service-status-copy small {
+    font-size: 9px;
+  }
+
+  .service-status-copy strong {
+    font-size: 11.5px;
+  }
+
+  .service-status-value {
+    font-size: 10px;
+  }
+
+  .goal-portfolio-head small,
+  .goal-row-top p,
+  .goal-row-money span,
+  .goal-row-money small {
+    font-size: 9.5px;
+  }
+
+  .goal-row-actions > .button {
+    font-size: 10px;
+  }
+
+  .page-disclosure > summary .panel-subtitle,
+  .settings-disclosure > summary .panel-subtitle {
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
 }

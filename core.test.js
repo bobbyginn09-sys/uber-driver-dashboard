@@ -14,7 +14,11 @@ assert.equal(Core.parseISODate("2025-02-29"), null);
 assert.equal(Core.parseISODate("2026-02-31"), null);
 assert.equal(Core.parseISODate("2026-13-01"), null);
 assert.equal(Core.getMileageRate("2026-06-30", Core.DEFAULT_TAX_RATES).rate, 0.725);
-assert.equal(Core.getMileageRate("2026-07-01", Core.DEFAULT_TAX_RATES).rate, 0.76);
+assert.equal(Core.getMileageRate("2026-07-01", Core.DEFAULT_TAX_RATES).rate, 0.725);
+assert.deepEqual(Core.normalizeSettings({ taxRates: [
+  { id: "rate-2026-h1", effective: "2026-01-01", rate: 0.725, label: "2026 Jan–Jun" },
+  { id: "rate-2026-h2", effective: "2026-07-01", rate: 0.76, label: "2026 Jul–Dec" }
+] }).taxRates, [{ id: "rate-2026", effective: "2026-01-01", rate: 0.725, label: "2026" }]);
 
 const settings = Core.normalizeSettings({
   allocations: { investment: 10, savings: 10, vehicle: 5 }
@@ -51,7 +55,7 @@ assert.equal(calculated.savings, 18);
 assert.equal(calculated.vehicleFund, 9);
 assert.equal(calculated.spendable, 135);
 assert.equal(calculated.hourly, 45);
-assert.equal(calculated.taxDeduction, 76);
+assert.equal(calculated.taxDeduction, 72.5);
 
 const summary = Core.summarizeShifts([
   legacy,

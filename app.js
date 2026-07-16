@@ -154,6 +154,7 @@
     themeToggle: document.getElementById("themeToggle"),
     versionLabel: document.getElementById("versionLabel"),
     topbarAddIcon: document.getElementById("topbarAddIcon"),
+    topbarAddButton: document.querySelector(".topbar-add"),
     connectionPill: document.getElementById("connectionPill"),
     importFileInput: document.getElementById("importFileInput")
   };
@@ -162,6 +163,9 @@
   const ui = {
     route: initialRoute(),
     analyticsPeriod: "month",
+    analyticsView: "trend",
+    shiftVisibleCount: 5,
+    shiftManageMode: false,
     shiftFilters: {
       search: "",
       range: "30",
@@ -169,10 +173,14 @@
       sort: "dateDesc"
     },
     selectedShiftIds: new Set(),
+    vehicleView: "status",
+    maintenanceVisibleCount: 5,
     vehicleFilters: {
       search: "",
       type: "all"
     },
+    goalView: "active",
+    goalVisibleCount: 3,
     calendarCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     calendarSelected: Core.localISODate(),
     modal: null,
@@ -225,6 +233,11 @@
     }).format(Core.safeNumber(value));
   }
 
+  function formatMileage(value) {
+    const number = Core.safeNumber(value);
+    return `${formatNumber(number, Number.isInteger(number) ? 0 : 1)} mi`;
+  }
+
   function formatDate(value, options) {
     const date = Core.parseISODate(value);
     if (!date) return "—";
@@ -273,6 +286,10 @@
     return Math.max(0, (Date.now() - start.getTime()) / 3600000);
   }
 
+  function isCompactViewport() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches;
+  }
+
   function sortedShifts(list) {
     return (list || state.shifts).slice().sort((a, b) => {
       const dateCompare = String(b.date).localeCompare(String(a.date));
@@ -302,6 +319,11 @@
     }
   }
 
+  function storedNumber(key, fallback) {
+    const raw = localStorage.getItem(key);
+    return raw == null || String(raw).trim() === "" ? fallback : Core.safeNumber(raw, fallback);
+  }
+
   function loadState() {
     const stored = parseStored(STORAGE_KEY, null);
     if (stored && typeof stored === "object") {
@@ -324,11 +346,11 @@
     const settings = Core.normalizeSettings({
       theme: localStorage.getItem("dashboardTheme") || "dark",
       allocations: {
-        investment: Core.safeNumber(localStorage.getItem("investmentPct"), 10),
-        savings: Core.safeNumber(localStorage.getItem("savingsPct"), 10),
-        vehicle: Core.safeNumber(localStorage.getItem("vehiclePct"), 5)
+        investment: storedNumber("investmentPct", 10),
+        savings: storedNumber("savingsPct", 10),
+        vehicle: storedNumber("vehiclePct", 5)
       },
-      monthlyNetGoal: Core.safeNumber(localStorage.getItem("monthlyNetGoal"), 0)
+      monthlyNetGoal: storedNumber("monthlyNetGoal", 0)
     });
 
     let activeShift = null;
@@ -468,6 +490,19 @@
     dom.pageTitle.textContent = meta.title;
     dom.pageSubtitle.textContent = meta.subtitle;
     document.title = `${meta.title} · Driver Command`;
+
+    if (dom.topbarAddButton) {
+      const routeAction = ui.route === "vehicle"
+        ? { action: "open-maintenance", label: "Log service" }
+        : ui.route === "goals"
+          ? { action: "open-goal", label: "New goal" }
+          : { action: "open-add-shift", label: "Add shift" };
+      dom.topbarAddButton.dataset.action = routeAction.action;
+      dom.topbarAddButton.setAttribute("aria-label", routeAction.label);
+      dom.topbarAddButton.title = routeAction.label;
+      const label = dom.topbarAddButton.querySelector("span:last-child");
+      if (label) label.textContent = routeAction.label;
+    }
   }
 
   function setRoute(route, options) {
@@ -761,102 +796,73 @@
       manualHours: activeDurationHours()
     }, state.settings) : null;
     const lastShift = recent.length ? Core.calculateShift(recent[0], state.settings) : null;
+    const setAside = week.investment + week.savings + week.vehicleFund;
+    const goalCopy = weeklyGoal > 0
+      ? (weeklyProgress >= 100
+        ? `${formatMoney(Math.max(0, week.net - weeklyGoal), { noCents: true })} above goal`
+        : `${formatMoney(weeklyRemaining, { noCents: true })} left of ${formatMoney(weeklyGoal, { noCents: true })}`)
+      : "Set a weekly target in Settings";
 
-    const hero = active ? `<section class="shift-hero is-active">
-      <div class="hero-topline">
-        <div class="hero-status"><span class="live-dot is-live"></span>On duty · ${escapeHtml(active.platform)}</div>
-        <span class="pill pill-success">Started ${escapeHtml(formatTime(active.startTime))}</span>
+    const commandCard = active ? `<section class="command-card is-live">
+      <div class="command-card-top">
+        <div class="command-status"><span class="live-dot is-live"></span><span>On duty · ${escapeHtml(active.platform)}</span></div>
+        <span class="command-date">Started ${escapeHtml(formatTime(active.startTime))}</span>
       </div>
-      <div class="hero-main">
-        <h2>Shift in progress</h2>
-        <span class="hero-live-time" data-live-duration>${formatDuration(activeDurationHours(), true)}</span>
-        <p>Your draft is continuously preserved in this browser. Update earnings anytime or finish when you are ready.</p>
+      <div class="command-live-main">
+        <div><span class="command-overline">Live duration</span><strong class="command-timer" data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>
+        <div class="command-live-net"><span>Live net</span><strong>${formatMoney(activeMetrics.net)}</strong></div>
       </div>
-      <div class="hero-actions">
+      <div class="command-actions">
         <button class="button button-primary" type="button" data-action="end-active-shift">${icon("stop", "icon icon-sm")}End shift</button>
-        <button class="button button-secondary" type="button" data-action="update-active-shift">${icon("edit", "icon icon-sm")}Update shift</button>
+        <button class="button button-secondary" type="button" data-action="update-active-shift">${icon("edit", "icon icon-sm")}Update</button>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat"><span>Gross</span><strong>${formatMoney(activeMetrics.gross)}</strong></div>
-        <div class="hero-stat"><span>Live net</span><strong>${formatMoney(activeMetrics.net)}</strong></div>
-        <div class="hero-stat"><span>Miles</span><strong>${formatNumber(activeMetrics.miles, 1)}</strong></div>
-        <div class="hero-stat"><span>Live hourly</span><strong>${formatMoney(activeMetrics.hourly)}/hr</strong></div>
+      <div class="command-kpis" aria-label="Live shift summary">
+        <div><span>Gross</span><strong>${formatMoney(activeMetrics.gross)}</strong></div>
+        <div><span>Start mileage</span><strong>${formatNumber(active.startOdometer, 0)}</strong></div>
+        <div><span>Hourly</span><strong>${formatMoney(activeMetrics.hourly)}/hr</strong></div>
       </div>
-    </section>` : `<section class="shift-hero">
-      <div class="hero-topline">
-        <div class="hero-status"><span class="live-dot"></span>Off duty</div>
-        <span class="pill">${escapeHtml(formatDate(Core.localISODate(), { weekday: "long", month: "short", day: "numeric" }))}</span>
+    </section>` : `<section class="command-card">
+      <div class="command-card-top">
+        <div class="command-status"><span class="live-dot"></span><span>Off duty</span></div>
+        <span class="command-date">${escapeHtml(formatDate(Core.localISODate(), { weekday: "short", month: "short", day: "numeric" }))}</span>
       </div>
-      <div class="hero-main">
-        <h2>Ready when you are.</h2>
-        <p>Start a live shift for automatic timing, or add a completed shift from the past.</p>
+      <div class="command-week-main">
+        <div class="command-earnings">
+          <span class="command-overline">Net this week</span>
+          <strong>${formatMoney(week.net, { noCents: true })}</strong>
+          <span>${escapeHtml(goalCopy)}</span>
+        </div>
+        <div class="goal-dial" style="--goal-progress:${weeklyProgress.toFixed(2)}%" aria-label="${weeklyProgress.toFixed(0)} percent of weekly goal">
+          <div><strong>${weeklyGoal > 0 ? `${weeklyProgress.toFixed(0)}%` : "—"}</strong><span>${weeklyGoal > 0 ? "goal" : "target"}</span></div>
+        </div>
       </div>
-      <div class="hero-actions">
+      <div class="command-goal-line"><div class="progress"><div class="progress-fill" style="width:${weeklyProgress.toFixed(2)}%"></div></div><span>${week.count} shift${week.count === 1 ? "" : "s"}</span></div>
+      <div class="command-actions">
         <button class="button button-primary" type="button" data-action="start-shift">${icon("play", "icon icon-sm")}Start shift</button>
-        <button class="button button-secondary" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add past shift</button>
+        <button class="button button-secondary" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add past</button>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat"><span>Last shift</span><strong>${lastShift ? formatMoney(lastShift.net) : "—"}</strong></div>
-        <div class="hero-stat"><span>This month</span><strong>${formatMoney(month.net)}</strong></div>
-        <div class="hero-stat"><span>All-time miles</span><strong>${formatNumber(all.miles, 0)}</strong></div>
-        <div class="hero-stat"><span>Avg hourly</span><strong>${formatMoney(all.hourly)}/hr</strong></div>
+      <div class="command-kpis" aria-label="Weekly efficiency">
+        <div><span>Hourly</span><strong>${formatMoney(week.hourly)}/hr</strong></div>
+        <div><span>Hours</span><strong>${formatNumber(week.hours, 1)}</strong></div>
+        <div><span>Miles</span><strong>${formatNumber(week.miles, 0)}</strong></div>
       </div>
     </section>`;
 
-    const goalPanel = `<aside class="goal-panel compact-goal-panel">
-      <div class="panel-header">
-        <div><div class="eyebrow">Weekly target</div><h2 class="panel-title">Net earnings goal</h2></div>
-        ${weeklyGoal > 0 ? `<span class="pill ${weeklyProgress >= 100 ? "pill-success" : "pill-info"}">${weeklyProgress.toFixed(0)}%</span>` : ""}
-      </div>
-      <div class="goal-total">
-        <strong>${formatMoney(week.net, { noCents: true })}</strong>
-        <span>${weeklyGoal > 0 ? `of ${formatMoney(weeklyGoal, { noCents: true })} this week` : "No weekly goal has been set yet."}</span>
-      </div>
-      <div class="goal-progress-block">
-        <div class="progress progress-lg"><div class="progress-fill" style="width:${weeklyProgress.toFixed(2)}%"></div></div>
-        <div class="progress-meta">
-          <span>${weeklyGoal > 0 ? `${formatMoney(weeklyRemaining, { noCents: true })} remaining` : "Set a goal to track pace"}</span>
-          <span>${week.count} shift${week.count === 1 ? "" : "s"}</span>
-        </div>
-      </div>
-      <div class="goal-action-row">
-        <button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}${weeklyGoal > 0 ? "Adjust goal" : "Set weekly goal"}</button>
-      </div>
-    </aside>`;
+    const glance = `<section class="home-glance-strip" aria-label="At a glance">
+      <div><span>This month</span><strong>${formatMoney(month.net, { noCents: true, compact: true })}</strong></div>
+      <div><span>Spendable</span><strong>${formatMoney(week.spendable, { noCents: true, compact: true })}</strong></div>
+      <div><span>Set aside</span><strong>${formatMoney(setAside, { noCents: true, compact: true })}</strong></div>
+      <div><span>Last shift</span><strong>${lastShift ? formatMoney(lastShift.net, { noCents: true, compact: true }) : "—"}</strong></div>
+    </section>`;
 
-    const metricCards = [
-      metricCard({
-        icon: "dollar",
-        label: "Net this week",
-        value: formatMoney(week.net),
-        badge: trendBadge(week.net, prev.net),
-        meta: `${formatMoney(week.gross)} gross · ${formatMoney(week.expenses)} expenses`
-      }),
-      metricCard({
-        icon: "clock",
-        iconClass: "is-blue",
-        label: "Average hourly",
-        value: `${formatMoney(week.hourly)}/hr`,
-        badge: trendBadge(week.hourly, prev.hourly),
-        meta: `${formatNumber(week.hours, 1)} hours this week`
-      }),
-      metricCard({
-        icon: "route",
-        iconClass: "is-violet",
-        label: "Business miles",
-        value: formatNumber(week.miles, 1),
-        badge: trendBadge(week.miles, prev.miles),
-        meta: `${formatMoney(week.netPerMile)} net per mile`
-      }),
-      metricCard({
-        icon: "wallet",
-        iconClass: "is-amber",
-        label: "Spendable cash",
-        value: formatMoney(week.spendable),
-        badge: trendBadge(week.spendable, prev.spendable),
-        meta: `${formatMoney(week.investment + week.savings + week.vehicleFund)} set aside`
-      })
-    ].join("");
+    const recentMarkup = recent.length ? `<div class="home-recent-list">${recent.map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return `<button class="home-recent-row" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Open ${escapeAttribute(formatDate(shift.date))} shift">
+        <span class="home-recent-date"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))}</strong><small>${escapeHtml(shift.platform)} · ${formatNumber(shift.miles, 0)} mi</small></span>
+        <span class="home-recent-value"><strong class="${shift.net < 0 ? "text-red" : ""}">${formatMoney(shift.net)}</strong><small>${formatMoney(shift.hourly)}/hr</small></span>
+        ${icon("chevronRight", "icon icon-sm")}
+      </button>`;
+    }).join("")}</div>` : `<div class="home-empty-row"><span>${icon("shifts", "icon icon-sm")}</span><div><strong>No completed shifts yet</strong><small>Your first saved shift will appear here.</small></div><button class="button button-primary button-small" type="button" data-action="open-add-shift">Add shift</button></div>`;
 
     const insightMarkup = [
       `<article class="insight-card"><div class="insight-card-head"><div class="insight-card-icon">${icon("trend", "icon icon-sm")}</div><div><strong>Month projection</strong><p>${projection.current > 0 ? `${formatMoney(projection.projected, { noCents: true })} projected from ${formatMoney(projection.current, { noCents: true })} earned so far.` : "Save shifts this month to build a projection."}</p></div></div></article>`,
@@ -864,35 +870,20 @@
       `<article class="insight-card"><div class="insight-card-head"><div class="insight-card-icon">${icon("vehicle", "icon icon-sm")}</div><div><strong>Vehicle fund</strong><p>${formatMoney(vehicle.balance)} remains after ${formatMoney(vehicle.spent)} in logged maintenance.</p></div></div></article>`
     ].join("");
 
-    const recentMarkup = recent.length ? `<div class="recent-list">${recent.map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      return `<div class="recent-item">
-        <div class="recent-main"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))} · ${escapeHtml(shift.platform)}</strong><span>${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))} · ${formatNumber(shift.miles, 1)} mi</span></div>
-        <div class="recent-metric"><strong>${formatMoney(shift.net)}</strong><span>${formatMoney(shift.hourly)}/hr</span></div>
-        <button class="icon-button" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Edit shift on ${escapeAttribute(shift.date)}">${icon("edit", "icon icon-sm")}</button>
-      </div>`;
-    }).join("")}</div>` : emptyState({
-      icon: "shifts",
-      title: "Your ledger is ready",
-      body: "Save your first shift and this overview will start surfacing trends automatically.",
-      action: "open-add-shift",
-      actionLabel: "Add first shift"
-    });
-
-    return `<div class="overview-stack">
-      <div class="overview-grid">${hero}${goalPanel}</div>
-      <section class="metric-grid" aria-label="Weekly performance metrics">${metricCards}</section>
-      <div class="dashboard-lower-grid">
+    return `<div class="overview-stack focus-overview">
+      <div class="focus-overview-top">${commandCard}${glance}</div>
+      <section class="panel home-recent-panel">
+        <div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Tap a shift to review or edit it</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">View all${icon("chevronRight", "icon icon-sm")}</button></div>
+        ${recentMarkup}
+      </section>
+      <div class="home-desktop-extras">
         <section class="chart-panel overview-chart-panel">
-          <div class="panel-header"><div><h2 class="panel-title">Last 7 days</h2><p class="panel-subtitle">Net earnings by day</p></div><button class="button button-ghost button-small" type="button" data-route="analytics">Full analytics${icon("chevronRight", "icon icon-sm")}</button></div>
+          <div class="panel-header"><div><h2 class="panel-title">Last 7 days</h2><p class="panel-subtitle">Net earnings by day</p></div><div class="desktop-trend-badge">${trendBadge(week.net, prev.net)}</div></div>
           ${renderAreaChart(dailySeries, { label: "Net earnings over the last seven days" })}
         </section>
         <aside class="insight-stack overview-insights">${insightMarkup}</aside>
+        <section class="panel home-lifetime-panel"><div class="panel-header"><div><h2 class="panel-title">Lifetime snapshot</h2><p class="panel-subtitle">All saved driving history</p></div></div><div class="home-lifetime-grid"><div><span>Net</span><strong>${formatMoney(all.net, { noCents: true })}</strong></div><div><span>Miles</span><strong>${formatNumber(all.miles, 0)}</strong></div><div><span>Hourly</span><strong>${formatMoney(all.hourly)}/hr</strong></div><div><span>Shifts</span><strong>${formatNumber(all.count)}</strong></div></div></section>
       </div>
-      <section class="panel overview-recent-panel">
-        <div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Your latest completed driving sessions</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">Manage all${icon("chevronRight", "icon icon-sm")}</button></div>
-        ${recentMarkup}
-      </section>
     </div>`;
   }
 
@@ -950,26 +941,27 @@
 
   function renderShiftsPage() {
     const platforms = Array.from(new Set([...PLATFORM_OPTIONS, ...state.shifts.map((shift) => shift.platform)])).filter(Boolean);
-    const activeBanner = state.activeShift ? `<section class="shift-hero is-active">
+    const activeBanner = state.activeShift ? `<section class="shift-hero compact-live-banner is-active">
       <div class="hero-topline">
         <div class="hero-status"><span class="live-dot is-live"></span>Live shift · ${escapeHtml(state.activeShift.platform)}</div>
         <span class="pill pill-success" data-live-duration>${formatDuration(activeDurationHours(), true)}</span>
       </div>
-      <div class="hero-main"><h2>${formatMoney(Core.calculateShift({ ...state.activeShift, endTime: currentTimeValue(), manualHours: activeDurationHours() }, state.settings).gross)} gross so far</h2><p>Keep the live draft current, then finish it into the ledger when your driving session ends.</p></div>
+      <div class="compact-live-main"><div><span>Started mileage</span><strong>${formatNumber(state.activeShift.startOdometer, 0)} mi</strong></div><div><span>Gross so far</span><strong>${formatMoney(Core.calculateShift({ ...state.activeShift, endTime: currentTimeValue(), manualHours: activeDurationHours() }, state.settings).gross)}</strong></div></div>
       <div class="hero-actions"><button class="button button-primary" type="button" data-action="end-active-shift">${icon("stop", "icon icon-sm")}End shift</button><button class="button button-secondary" type="button" data-action="update-active-shift">${icon("edit", "icon icon-sm")}Update</button></div>
     </section>` : "";
 
-    return `<div class="page-stack">
+    return `<div class="page-stack shifts-page${ui.shiftManageMode ? " is-manage-mode" : ""}">
       ${activeBanner}
-      <section class="toolbar" aria-label="Shift ledger controls">
+      <section class="toolbar ledger-toolbar" aria-label="Shift ledger controls">
         <div class="toolbar-row">
           <div><h2 class="panel-title">Completed shifts</h2><p class="panel-subtitle" id="shiftResultsMeta">Loading your ledger…</p></div>
           <div class="bulk-actions">
-            <button class="button button-ghost button-small" type="button" data-action="export-csv">${icon("download", "icon icon-sm")}Export</button>
+            <button class="button button-ghost button-small desktop-ledger-export" type="button" data-action="export-csv">${icon("download", "icon icon-sm")}Export</button>
+            <button class="button button-ghost button-small mobile-manage-toggle${ui.shiftManageMode ? " is-active" : ""}" type="button" data-action="toggle-shift-manage">${icon(ui.shiftManageMode ? "check" : "more", "icon icon-sm")}${ui.shiftManageMode ? "Done" : "Manage"}</button>
             <button class="button button-primary button-small" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add shift</button>
           </div>
         </div>
-        <div class="shift-search-row"><div class="field"><label for="shiftSearch">Search ledger</label><div class="input-wrap">${icon("search", "input-icon")}<input id="shiftSearch" type="search" autocomplete="off" placeholder="Date, platform, notes…" value="${escapeAttribute(ui.shiftFilters.search)}" data-filter="shift-search"></div></div></div>
+        <div class="shift-search-row"><div class="field"><label for="shiftSearch">Search shifts</label><div class="input-wrap">${icon("search", "input-icon")}<input id="shiftSearch" type="search" autocomplete="off" placeholder="Date, platform, notes…" value="${escapeAttribute(ui.shiftFilters.search)}" data-filter="shift-search"></div></div></div>
         <details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Filters & sorting</span><span class="filter-disclosure-value">${ui.shiftFilters.range === "30" && ui.shiftFilters.platform === "all" && ui.shiftFilters.sort === "dateDesc" ? "Default" : "Customized"}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary">
           <div class="field"><label for="shiftRange">Date range</label><select id="shiftRange" data-filter="shift-range">
             <option value="all"${ui.shiftFilters.range === "all" ? " selected" : ""}>All time</option>
@@ -1005,6 +997,8 @@
     const summary = Core.summarizeShifts(list, state.settings);
     const selectedCount = Array.from(ui.selectedShiftIds).filter((id) => visibleIds.has(String(id))).length;
     const allVisibleSelected = list.length > 0 && list.every((shift) => ui.selectedShiftIds.has(String(shift.id)));
+    const mobileLimit = Math.max(5, Core.safeNumber(ui.shiftVisibleCount, 5));
+    const mobileList = list.slice(0, mobileLimit);
 
     const meta = document.getElementById("shiftResultsMeta");
     const summaryRoot = document.getElementById("shiftSummary");
@@ -1013,9 +1007,13 @@
     const mobileRoot = document.getElementById("shiftMobileList");
     if (!meta || !summaryRoot || !bulkRoot || !tableRoot || !mobileRoot) return;
 
-    meta.textContent = `${list.length} of ${state.shifts.length} shift${state.shifts.length === 1 ? "" : "s"} shown`;
+    meta.textContent = list.length > mobileLimit
+      ? `Showing ${mobileList.length} of ${list.length} matching shifts`
+      : `${list.length} of ${state.shifts.length} shift${state.shifts.length === 1 ? "" : "s"}`;
     summaryRoot.innerHTML = summaryStrip(summary);
-    bulkRoot.innerHTML = selectedCount ? `<div class="bulk-bar"><div><strong>${selectedCount}</strong> selected in this view</div><div class="bulk-actions"><button class="button button-ghost button-small" type="button" data-action="clear-shift-selection">Clear</button><button class="button button-secondary button-small" type="button" data-action="export-selected-shifts">${icon("download", "icon icon-sm")}Export</button><button class="button button-danger button-small" type="button" data-action="delete-selected-shifts">${icon("trash", "icon icon-sm")}Delete</button></div></div>` : "";
+    bulkRoot.innerHTML = ui.shiftManageMode
+      ? `<div class="bulk-bar compact-bulk-bar"><div><strong>${selectedCount}</strong> selected</div><div class="bulk-actions"><button class="button button-ghost button-small" type="button" data-action="clear-shift-selection">Clear</button><button class="button button-secondary button-small" type="button" data-action="${selectedCount ? "export-selected-shifts" : "export-csv"}">${icon("download", "icon icon-sm")}${selectedCount ? "Export" : "Export all"}</button>${selectedCount ? `<button class="button button-danger button-small" type="button" data-action="delete-selected-shifts">${icon("trash", "icon icon-sm")}Delete</button>` : ""}</div></div>`
+      : "";
 
     if (!list.length) {
       tableRoot.innerHTML = emptyState({
@@ -1050,15 +1048,18 @@
       </tr>`;
     }).join("")}</tbody></table></div>`;
 
-    mobileRoot.innerHTML = list.map((raw) => {
+    const rows = mobileList.map((raw) => {
       const shift = Core.calculateShift(raw, state.settings);
       const selected = ui.selectedShiftIds.has(String(shift.id));
       const timeLabel = shift.startTime || shift.endTime
         ? `${formatTime(shift.startTime)}–${formatTime(shift.endTime)}`
         : formatDuration(shift.hours);
+      const selectMarkup = ui.shiftManageMode
+        ? `<label class="compact-record-select"><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift on ${escapeAttribute(formatDate(shift.date))}"${selected ? " checked" : ""}></label>`
+        : "";
       return `<article class="record-card compact-record-card${selected ? " is-selected" : ""}">
-        <div class="compact-record-shell">
-          <label class="compact-record-select"><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift on ${escapeAttribute(formatDate(shift.date))}"${selected ? " checked" : ""}></label>
+        <div class="compact-record-shell${ui.shiftManageMode ? " has-select" : ""}">
+          ${selectMarkup}
           <details class="record-card-disclosure">
             <summary>
               <span class="compact-record-summary">
@@ -1078,6 +1079,11 @@
         </div>
       </article>`;
     }).join("");
+    const moreCount = Math.max(0, list.length - mobileList.length);
+    const listControls = list.length > 5 ? `<div class="ledger-page-controls">${moreCount
+      ? `<button class="button button-secondary" type="button" data-action="show-more-shifts">Show ${Math.min(5, moreCount)} more<span>${mobileList.length} of ${list.length}</span></button>`
+      : `<button class="button button-ghost" type="button" data-action="show-fewer-shifts">Show recent 5<span>Back to the top</span></button>`}</div>` : "";
+    mobileRoot.innerHTML = `${rows}${listControls}`;
   }
 
   function analyticsPeriodLabel(period) {
@@ -1149,6 +1155,7 @@
 
   function renderAnalyticsPage() {
     const period = ui.analyticsPeriod;
+    const view = ui.analyticsView || "trend";
     const list = periodList(period);
     const previous = previousPeriodList(period);
     const summary = Core.summarizeShifts(list, state.settings);
@@ -1172,59 +1179,47 @@
     const bestDay = bestWeekdayInsight(list);
     const bestShift = sortedShifts(list).map((item) => Core.calculateShift(item, state.settings)).sort((a, b) => b.net - a.net)[0];
     const deductionRate = summary.miles ? summary.taxDeduction / summary.miles : Core.getMileageRate(Core.localISODate(), state.settings.taxRates).rate;
-    const moneyFlowPanel = pageDisclosure({
-      title: "Money flow",
-      subtitle: "Where positive net earnings went",
-      value: formatMoney(summary.spendable, { noCents: true }),
-      content: `<div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div><div class="legend-list"><div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div><div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div><div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div></div></div>`,
-      className: "analytics-disclosure"
-    });
-    const mileagePanel = pageDisclosure({
-      title: "Mileage deduction",
-      subtitle: "Planning estimate from your rate schedule",
-      value: formatMoney(summary.taxDeduction, { noCents: true }),
-      content: `<div class="goal-total compact-goal-total"><strong>${formatMoney(summary.taxDeduction)}</strong><span>${formatNumber(summary.miles, 1)} miles at an average ${formatMoney(deductionRate)}/mile</span></div><p class="field-help">This is an organizational estimate, not tax advice. Confirm eligibility and records with a tax professional.</p>`,
-      className: "analytics-disclosure"
-    });
-    const weekdayPanel = pageDisclosure({
-      title: "Weekday contribution",
-      subtitle: "Total net by day of week",
-      value: bestDay ? escapeHtml(bestDay.label) : "—",
-      content: renderBarChart(weekdaySeries, { label: "Net earnings by weekday" }),
-      surfaceClass: "chart-panel",
-      className: "analytics-disclosure"
-    });
-    const platformPanel = pageDisclosure({
-      title: "Platform mix",
-      subtitle: "Net contribution by platform",
-      value: `${platforms.length} platform${platforms.length === 1 ? "" : "s"}`,
-      content: platforms.length ? `<div class="bar-list">${platforms.map((row, index) => `<div class="bar-row"><div class="bar-row-head"><span>${escapeHtml(row.label)} · ${row.count} shift${row.count === 1 ? "" : "s"}</span><strong>${formatMoney(row.net)}</strong></div><div class="bar-track"><div class="bar-fill ${row.net < 0 ? "is-negative" : index % 3 === 1 ? "is-blue" : index % 3 === 2 ? "is-violet" : ""}" style="width:${Math.max(2, Math.abs(row.net) / maxPlatform * 100)}%"></div></div></div>`).join("")}</div>` : emptyState({ icon: "analytics", title: "No platform data", body: "Save shifts to compare your platforms." }),
-      className: "analytics-disclosure"
-    });
-    const signalPanel = pageDisclosure({
-      title: "Performance signals",
-      subtitle: "Useful context from the selected period",
-      value: bestShift ? formatMoney(bestShift.net, { noCents: true }) : "—",
-      content: `<div class="insight-grid"><div class="compact-insight"><span>Best weekday</span><strong>${bestDay ? escapeHtml(bestDay.label) : "—"}</strong></div><div class="compact-insight"><span>Best shift</span><strong>${bestShift ? formatMoney(bestShift.net) : "—"}</strong></div><div class="compact-insight"><span>Expense ratio</span><strong>${summary.gross ? `${(summary.expenses / summary.gross * 100).toFixed(1)}%` : "—"}</strong></div><div class="compact-insight"><span>Net per trip</span><strong>${summary.trips ? formatMoney(summary.net / summary.trips) : "—"}</strong></div></div>`,
-      className: "analytics-disclosure analytics-signals"
-    });
+    const expenseRatio = summary.gross ? summary.expenses / summary.gross * 100 : 0;
 
-    return `<div class="page-stack">
-      <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">${escapeHtml(analyticsPeriodLabel(period))}</h2><p class="panel-subtitle">Compared with the preceding equivalent period where available.</p></div><div class="period-switch" aria-label="Analytics period">${[
-        ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All time"]
-      ].map(([value, label]) => `<button class="segment-button${period === value ? " is-active" : ""}" type="button" data-action="analytics-period" data-period="${value}">${label}</button>`).join("")}</div></div></section>
-      <section class="metric-grid">
-        ${metricCard({ icon: "dollar", label: "Net earnings", value: formatMoney(summary.net), badge: period === "all" ? "" : trendBadge(summary.net, prev.net), meta: `${formatMoney(summary.gross)} gross · ${formatMoney(summary.expenses)} expenses` })}
-        ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Net hourly", value: `${formatMoney(summary.hourly)}/hr`, badge: period === "all" ? "" : trendBadge(summary.hourly, prev.hourly), meta: `${formatNumber(summary.hours, 1)} logged hours` })}
-        ${metricCard({ icon: "route", iconClass: "is-violet", label: "Net per mile", value: `${formatMoney(summary.netPerMile)}/mi`, badge: period === "all" ? "" : trendBadge(summary.netPerMile, prev.netPerMile), meta: `${formatNumber(summary.miles, 1)} business miles` })}
-        ${metricCard({ icon: "shifts", iconClass: "is-amber", label: "Average shift", value: formatMoney(summary.averageShift), badge: period === "all" ? "" : trendBadge(summary.averageShift, prev.averageShift), meta: `${summary.count} shift${summary.count === 1 ? "" : "s"} · ${formatNumber(summary.trips)} trips` })}
-      </section>
-      <div class="analytics-grid">
-        <section class="chart-panel analytics-trend-panel"><div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">Performance across ${escapeHtml(analyticsPeriodLabel(period).toLowerCase())}</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>${renderAreaChart(series, { height: 285, label: `Net earnings for ${analyticsPeriodLabel(period)}` })}</section>
-        <aside class="analytics-side">${moneyFlowPanel}${mileagePanel}</aside>
+    const trendView = `<section class="panel analytics-view-panel analytics-trend-view">
+      <div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">${escapeHtml(analyticsPeriodLabel(period))} at a glance</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>
+      ${renderAreaChart(series, { height: 230, label: `Net earnings for ${analyticsPeriodLabel(period)}` })}
+      <div class="analytics-signal-row"><div><span>Best weekday</span><strong>${bestDay ? escapeHtml(bestDay.label) : "—"}</strong></div><div><span>Best shift</span><strong>${bestShift ? formatMoney(bestShift.net) : "—"}</strong></div><button class="button button-ghost button-small" type="button" data-action="analytics-view" data-view="compare">See patterns${icon("chevronRight", "icon icon-sm")}</button></div>
+    </section>`;
+
+    const moneyView = `<section class="panel analytics-view-panel analytics-money-view">
+      <div class="panel-header"><div><h2 class="panel-title">Money flow</h2><p class="panel-subtitle">Where positive net earnings went</p></div><span class="pill">${formatMoney(summary.spendable, { noCents: true })} spendable</span></div>
+      <div class="analytics-money-layout">
+        <div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div><div class="legend-list"><div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div><div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div><div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div></div></div>
+        <div class="analytics-deduction-card"><span>${icon("route", "icon icon-sm")}Mileage estimate</span><strong>${formatMoney(summary.taxDeduction)}</strong><p>${formatNumber(summary.miles, 1)} miles · average ${formatMoney(deductionRate)}/mile</p><small>Recordkeeping estimate only.</small></div>
       </div>
-      <div class="analytics-grid analytics-breakdown-grid">${weekdayPanel}${platformPanel}</div>
-      ${signalPanel}
+    </section>`;
+
+    const compareView = `<section class="panel analytics-view-panel analytics-compare-view">
+      <div class="panel-header"><div><h2 class="panel-title">Performance patterns</h2><p class="panel-subtitle">Platforms, weekdays, and efficiency signals</p></div></div>
+      <div class="analytics-compare-layout">
+        <div class="analytics-platform-block"><h3>Platform mix</h3>${platforms.length ? `<div class="bar-list">${platforms.map((row, index) => `<div class="bar-row"><div class="bar-row-head"><span>${escapeHtml(row.label)} · ${row.count}</span><strong>${formatMoney(row.net)}</strong></div><div class="bar-track"><div class="bar-fill ${row.net < 0 ? "is-negative" : index % 3 === 1 ? "is-blue" : index % 3 === 2 ? "is-violet" : ""}" style="width:${Math.max(2, Math.abs(row.net) / maxPlatform * 100)}%"></div></div></div>`).join("")}</div>` : `<p class="panel-subtitle">Save shifts to compare platforms.</p>`}</div>
+        <div class="analytics-pattern-block"><h3>Weekday contribution</h3>${renderBarChart(weekdaySeries, { height: 210, label: "Net earnings by weekday" })}</div>
+      </div>
+      <div class="insight-grid analytics-compact-insights"><div class="compact-insight"><span>Expense ratio</span><strong>${summary.gross ? `${expenseRatio.toFixed(1)}%` : "—"}</strong></div><div class="compact-insight"><span>Net per trip</span><strong>${summary.trips ? formatMoney(summary.net / summary.trips) : "—"}</strong></div><div class="compact-insight"><span>Average shift</span><strong>${formatMoney(summary.averageShift)}</strong></div><div class="compact-insight"><span>Total trips</span><strong>${formatNumber(summary.trips)}</strong></div></div>
+    </section>`;
+
+    const currentView = view === "money" ? moneyView : view === "compare" ? compareView : trendView;
+
+    return `<div class="page-stack analytics-focus">
+      <section class="analytics-focus-hero panel${summary.net < 0 ? " is-negative" : ""}">
+        <div class="analytics-focus-top"><div><span>${escapeHtml(analyticsPeriodLabel(period))}</span><strong>${formatMoney(summary.net)}</strong><small>${formatMoney(summary.gross)} gross · ${formatMoney(summary.expenses)} expenses</small></div>${period === "all" ? `<span class="pill">All history</span>` : trendBadge(summary.net, prev.net)}</div>
+        <div class="analytics-focus-kpis"><div><span>Hourly</span><strong>${formatMoney(summary.hourly)}/hr</strong></div><div><span>Per mile</span><strong>${formatMoney(summary.netPerMile)}/mi</strong></div><div><span>Shifts</span><strong>${formatNumber(summary.count)}</strong></div><div><span>Hours</span><strong>${formatNumber(summary.hours, 1)}</strong></div></div>
+      </section>
+      <section class="analytics-control-deck" aria-label="Analytics controls">
+        <div class="period-switch analytics-period-switch" aria-label="Analytics period">${[
+          ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]
+        ].map(([value, label]) => `<button class="segment-button${period === value ? " is-active" : ""}" type="button" data-action="analytics-period" data-period="${value}">${label}</button>`).join("")}</div>
+        <div class="period-switch analytics-view-switch" aria-label="Analytics view">${[
+          ["trend", "Trend", "trend"], ["money", "Money", "wallet"], ["compare", "Patterns", "analytics"]
+        ].map(([value, label, iconName]) => `<button class="segment-button${view === value ? " is-active" : ""}" type="button" data-action="analytics-view" data-view="${value}">${icon(iconName, "icon icon-sm")}<span>${label}</span></button>`).join("")}</div>
+      </section>
+      ${currentView}
     </div>`;
   }
 
@@ -1253,6 +1248,26 @@
     return { year, month, monthStart, monthEnd, monthShifts, summary: Core.summarizeShifts(monthShifts, state.settings), days };
   }
 
+  function openCalendarDayModal(dateValue) {
+    const iso = Core.parseISODate(dateValue || "") ? dateValue : ui.calendarSelected;
+    const selectedDate = Core.parseISODate(iso);
+    const selectedList = state.shifts.filter((shift) => shift.date === iso);
+    const summary = Core.summarizeShifts(selectedList, state.settings);
+    const rows = selectedList.length ? `<div class="calendar-sheet-list">${sortedShifts(selectedList).map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return `<button class="calendar-sheet-row" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}"><span><strong>${escapeHtml(shift.platform)}</strong><small>${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))} · ${formatNumber(shift.miles, 1)} mi</small></span><span><strong class="${shift.net < 0 ? "text-red" : "text-accent"}">${formatMoney(shift.net)}</strong><small>${formatMoney(shift.hourly)}/hr</small></span>${icon("chevronRight", "icon icon-sm")}</button>`;
+    }).join("")}</div>` : `<div class="calendar-sheet-empty"><span>${icon("calendarAdd", "icon icon-lg")}</span><strong>No shift saved</strong><p>Add a completed shift for this date when you are ready.</p></div>`;
+    const body = `<div class="calendar-day-sheet"><div class="detail-summary-grid"><div class="detail-summary-item"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div><div class="detail-summary-item"><span>Gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="detail-summary-item"><span>Hours</span><strong>${formatNumber(summary.hours, 1)}</strong></div><div class="detail-summary-item"><span>Miles</span><strong>${formatNumber(summary.miles, 1)}</strong></div></div>${rows}</div>`;
+    openModal({
+      title: selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate) : "Selected day",
+      subtitle: selectedList.length ? `${selectedList.length} shift${selectedList.length === 1 ? "" : "s"} recorded` : "No driving recorded yet",
+      body,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Close</button><button class="button button-primary" type="button" data-action="add-shift-on-date" data-date="${escapeAttribute(iso)}">${icon("plus", "icon icon-sm")}Add shift</button>`,
+      className: "calendar-day-modal",
+      meta: { type: "calendar-day", date: iso }
+    });
+  }
+
   function renderCalendarPage() {
     const data = calendarMonthData(ui.calendarCursor);
     const selectedList = state.shifts.filter((shift) => shift.date === ui.calendarSelected);
@@ -1265,15 +1280,17 @@
     const monthlyGoal = Core.safeNumber(state.settings.monthlyNetGoal);
     const progress = monthlyGoal > 0 ? Math.min(100, Math.max(0, data.summary.net / monthlyGoal * 100)) : 0;
     const selectedDate = Core.parseISODate(ui.calendarSelected);
+    const selectedLabel = selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(selectedDate) : "Choose a day";
 
-    return `<div class="page-stack">
+    return `<div class="page-stack calendar-focus-page">
       <div class="calendar-layout">
         <section class="calendar-panel panel">
           <div class="calendar-toolbar"><div class="calendar-nav-actions"><button class="icon-button" type="button" data-action="calendar-prev" aria-label="Previous month">${icon("chevronLeft", "icon icon-sm")}</button><button class="button button-ghost button-small" type="button" data-action="calendar-today">Today</button></div><div class="calendar-title"><strong>${new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(data.monthStart)}</strong><span>${data.summary.count} shift${data.summary.count === 1 ? "" : "s"} recorded</span></div><div class="calendar-nav-actions"><button class="icon-button" type="button" data-action="calendar-next" aria-label="Next month">${icon("chevronRight", "icon icon-sm")}</button></div></div>
-          <div class="calendar-summary"><div class="calendar-summary-item"><span>Net</span><strong>${formatMoney(data.summary.net)}</strong></div><div class="calendar-summary-item"><span>Hours</span><strong>${formatNumber(data.summary.hours, 1)}</strong></div><div class="calendar-summary-item"><span>Miles</span><strong>${formatNumber(data.summary.miles, 1)}</strong></div></div>
-          <div class="calendar-grid">${weekDays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}" aria-label="${escapeAttribute(formatDate(day.iso, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${day.summary.count} shifts, ${formatMoney(day.summary.net)} net"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span><span class="calendar-day-count">${day.summary.count} shift${day.summary.count === 1 ? "" : "s"}</span>` : ""}</button>`).join("")}</div>
+          <div class="calendar-summary"><div class="calendar-summary-item"><span>Net</span><strong>${formatMoney(data.summary.net, { noCents: true })}</strong></div><div class="calendar-summary-item"><span>Hours</span><strong>${formatNumber(data.summary.hours, 1)}</strong></div><div class="calendar-summary-item"><span>Miles</span><strong>${formatNumber(data.summary.miles, 0)}</strong></div><div class="calendar-summary-item calendar-goal-summary"><span>Goal</span><strong>${monthlyGoal ? `${progress.toFixed(0)}%` : "—"}</strong></div></div>
+          <div class="calendar-grid">${weekDays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}" aria-label="${escapeAttribute(formatDate(day.iso, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${day.summary.count} shifts, ${formatMoney(day.summary.net)} net"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span>` : ""}</button>`).join("")}</div>
+          <button class="calendar-mobile-peek" type="button" data-action="open-calendar-day" data-date="${escapeAttribute(ui.calendarSelected)}"><span class="calendar-peek-date"><strong>${escapeHtml(selectedLabel)}</strong><small>${selectedList.length ? `${selectedList.length} shift${selectedList.length === 1 ? "" : "s"} · ${formatNumber(selectedSummary.hours, 1)} hr` : "No shift recorded"}</small></span><span class="calendar-peek-value"><strong class="${selectedSummary.net < 0 ? "text-red" : "text-accent"}">${formatMoney(selectedSummary.net)}</strong><small>${formatNumber(selectedSummary.miles, 1)} mi</small></span>${icon("chevronRight", "icon icon-sm")}</button>
         </section>
-        <aside class="calendar-detail panel">
+        <aside class="calendar-detail calendar-desktop-detail panel">
           <div class="eyebrow">Selected day</div><h2 class="detail-date">${selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate) : "Choose a date"}</h2>
           <div class="detail-summary-grid"><div class="detail-summary-item"><span>Net</span><strong>${formatMoney(selectedSummary.net)}</strong></div><div class="detail-summary-item"><span>Gross</span><strong>${formatMoney(selectedSummary.gross)}</strong></div><div class="detail-summary-item"><span>Hours</span><strong>${formatNumber(selectedSummary.hours, 1)}</strong></div><div class="detail-summary-item"><span>Miles</span><strong>${formatNumber(selectedSummary.miles, 1)}</strong></div></div>
           ${selectedList.length ? `<div class="detail-shift-list">${sortedShifts(selectedList).map((raw) => { const shift = Core.calculateShift(raw, state.settings); return `<button class="detail-shift" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}"><div class="detail-shift-top"><strong>${escapeHtml(shift.platform)}</strong><strong class="text-accent">${formatMoney(shift.net)}</strong></div><div class="detail-shift-meta">${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))} · ${formatDuration(shift.hours)} · ${formatNumber(shift.miles, 1)} mi</div></button>`; }).join("")}</div>` : `<p class="panel-subtitle" style="margin:18px 0">No shifts recorded on this date.</p><button class="button button-primary button-wide" type="button" data-action="add-shift-on-date" data-date="${escapeAttribute(ui.calendarSelected)}">${icon("calendarAdd", "icon icon-sm")}Add shift on this date</button>`}
@@ -1351,23 +1368,41 @@
       label: explicitUpcoming.item.type,
       status: explicitUpcoming.remaining <= 0 ? `${formatNumber(Math.abs(explicitUpcoming.remaining), 0)} mi overdue` : `${formatNumber(explicitUpcoming.remaining, 0)} mi remaining`,
       detail: `Due at ${formatNumber(explicitUpcoming.item.nextDueOdometer, 0)} mi${explicitUpcoming.item.note ? ` · ${explicitUpcoming.item.note}` : ""}`,
-      className: explicitUpcoming.remaining <= 0 ? "is-due" : explicitUpcoming.remaining <= 750 ? "is-soon" : ""
+      className: explicitUpcoming.remaining <= 0 ? "is-due" : explicitUpcoming.remaining <= 750 ? "is-soon" : "",
+      dueAt: Core.safeNumber(explicitUpcoming.item.nextDueOdometer)
     } : {
       label: "Next custom service",
       status: "Nothing scheduled",
-      detail: "Set a next-due odometer when logging maintenance.",
-      className: ""
+      detail: "Add a next-due mileage when logging maintenance.",
+      className: "",
+      dueAt: 0
     };
     const types = Array.from(new Set([...MAINTENANCE_TYPES, ...state.maintenance.map((item) => item.type)])).filter(Boolean);
+    const reminders = [[oil, "fuel"], [tires, "route"]];
+    const nextReminderKey = `${String(nextReminder.label).toLowerCase()}|${Core.safeNumber(nextReminder.dueAt) || String(nextReminder.detail).toLowerCase()}`;
+    const trackedKeys = new Set(reminders.map(([reminder]) => `${String(reminder.label).toLowerCase()}|${Core.safeNumber(reminder.dueAt) || String(reminder.detail).toLowerCase()}`));
+    if (!trackedKeys.has(nextReminderKey)) reminders.push([nextReminder, "wrench"]);
+    const reminderRows = reminders
+      .map(([reminder, iconName]) => `<div class="service-status-row ${reminder.className}"><span class="service-status-icon">${icon(iconName, "icon icon-sm")}</span><span class="service-status-copy"><strong>${escapeHtml(reminder.label)}</strong><small>${escapeHtml(reminder.detail)}</small></span><span class="service-status-value">${escapeHtml(reminder.status)}</span></div>`)
+      .join("");
 
-    return `<div class="page-stack">
-      <div class="vehicle-hero-grid">
-        <section class="vehicle-fund-card"><div class="panel-header"><div><div class="eyebrow">Available reserve</div><h2>Vehicle fund balance</h2></div>${icon("wallet", "icon icon-lg text-accent")}</div><strong class="vehicle-fund-balance ${fund.balance < 0 ? "text-red" : ""}">${formatMoney(fund.balance)}</strong><div class="vehicle-fund-meta"><span>${formatMoney(fund.contributions)} contributed</span><span>${formatMoney(fund.spent)} maintenance logged</span></div><div class="vehicle-card-action"><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Log maintenance</button></div></section>
-        <section class="odometer-card"><div class="panel-header"><div><div class="eyebrow">${escapeHtml(state.settings.vehicle.name)}</div><h2 class="panel-title">Current odometer</h2></div>${icon("car", "icon icon-lg text-blue")}</div><strong class="odometer-value">${formatNumber(odometer, 0)} <span class="muted odometer-unit">mi</span></strong><p class="panel-subtitle odometer-copy">Updated from your highest saved shift, maintenance record, or vehicle setting.</p><div class="vehicle-card-action"><button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}Vehicle settings</button></div></section>
-      </div>
-      <section><div class="section-header"><div><h2 class="section-title">Service reminders</h2><p class="section-subtitle">Mileage-based planning from your maintenance history</p></div></div><div class="reminder-grid">${renderReminderCard(oil, "fuel")}${renderReminderCard(tires, "route")}${renderReminderCard(nextReminder, "wrench")}</div></section>
-      <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Maintenance ledger</h2><p class="panel-subtitle" id="maintenanceResultsMeta">Loading service history…</p></div><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Add record</button></div><div class="shift-search-row"><div class="field"><label for="maintenanceSearch">Search service history</label><div class="input-wrap">${icon("search", "input-icon")}<input id="maintenanceSearch" type="search" placeholder="Type, note, date…" value="${escapeAttribute(ui.vehicleFilters.search)}" data-filter="maintenance-search"></div></div></div><details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Service filter</span><span class="filter-disclosure-value">${ui.vehicleFilters.type === "all" ? "All types" : escapeHtml(ui.vehicleFilters.type)}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary filter-grid-single"><div class="field"><label for="maintenanceType">Service type</label><select id="maintenanceType" data-filter="maintenance-type"><option value="all">All service types</option>${types.map((type) => `<option value="${escapeAttribute(type)}"${ui.vehicleFilters.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div></div></details></section>
+    const statusView = `<div class="vehicle-status-view">
+      <section class="vehicle-command-card">
+        <div class="vehicle-command-head"><div><span>${escapeHtml(state.settings.vehicle.name)}</span><strong>Vehicle status</strong></div><button class="icon-button" type="button" data-route="settings" aria-label="Open vehicle settings">${icon("settings", "icon icon-sm")}</button></div>
+        <div class="vehicle-command-stats"><div><span>Reserve</span><strong class="${fund.balance < 0 ? "text-red" : "text-accent"}">${formatMoney(fund.balance, { noCents: true })}</strong><small>${formatMoney(fund.contributions, { noCents: true })} in · ${formatMoney(fund.spent, { noCents: true })} out</small></div><div><span>Odometer</span><strong>${formatNumber(odometer, 0)}</strong><small>miles on record</small></div></div>
+        <div class="vehicle-command-actions"><button class="button button-primary" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Log service</button><button class="button button-secondary" type="button" data-action="vehicle-view" data-view="history">View history</button></div>
+      </section>
+      <section class="panel service-status-panel"><div class="panel-header"><div><h2 class="panel-title">Service reminders</h2><p class="panel-subtitle">Mileage-based status from your records</p></div></div><div class="service-status-list">${reminderRows}</div></section>
+    </div>`;
+
+    const historyView = `<div class="vehicle-history-view">
+      <section class="toolbar maintenance-toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Maintenance history</h2><p class="panel-subtitle" id="maintenanceResultsMeta">Loading service history…</p></div><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Add record</button></div><div class="shift-search-row"><div class="field"><label for="maintenanceSearch">Search history</label><div class="input-wrap">${icon("search", "input-icon")}<input id="maintenanceSearch" type="search" placeholder="Service, note, date…" value="${escapeAttribute(ui.vehicleFilters.search)}" data-filter="maintenance-search"></div></div></div><details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Service filter</span><span class="filter-disclosure-value">${ui.vehicleFilters.type === "all" ? "All types" : escapeHtml(ui.vehicleFilters.type)}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary filter-grid-single"><div class="field"><label for="maintenanceType">Service type</label><select id="maintenanceType" data-filter="maintenance-type"><option value="all">All service types</option>${types.map((type) => `<option value="${escapeAttribute(type)}"${ui.vehicleFilters.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div></div></details></section>
       <div id="maintenanceResults"></div>
+    </div>`;
+
+    return `<div class="page-stack vehicle-focus-page">
+      <section class="focus-view-switch"><div class="period-switch" aria-label="Vehicle view"><button class="segment-button${ui.vehicleView === "status" ? " is-active" : ""}" type="button" data-action="vehicle-view" data-view="status">${icon("vehicle", "icon icon-sm")}<span>Status</span></button><button class="segment-button${ui.vehicleView === "history" ? " is-active" : ""}" type="button" data-action="vehicle-view" data-view="history">${icon("wrench", "icon icon-sm")}<span>History</span></button></div></section>
+      ${ui.vehicleView === "history" ? historyView : statusView}
     </div>`;
   }
 
@@ -1377,7 +1412,11 @@
     if (!root || !meta) return;
     const list = filteredMaintenance();
     const total = list.reduce((sum, item) => sum + Core.safeNumber(item.amount), 0);
-    meta.textContent = `${list.length} of ${state.maintenance.length} record${state.maintenance.length === 1 ? "" : "s"} · ${formatMoney(total)} shown`;
+    const limit = Math.max(5, Core.safeNumber(ui.maintenanceVisibleCount, 5));
+    const mobileList = list.slice(0, limit);
+    meta.textContent = list.length > limit
+      ? `Showing ${mobileList.length} of ${list.length} · ${formatMoney(total)} total`
+      : `${list.length} of ${state.maintenance.length} record${state.maintenance.length === 1 ? "" : "s"} · ${formatMoney(total)}`;
     if (!list.length) {
       root.innerHTML = emptyState({
         icon: "wrench",
@@ -1389,8 +1428,11 @@
       });
       return;
     }
-    root.innerHTML = `<div class="data-table-wrap"><table class="data-table" style="min-width:760px"><thead><tr><th>Date</th><th>Service</th><th>Cost</th><th>Odometer</th><th>Next due</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${list.map((item) => `<tr><td><span class="table-primary">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span></td><td><span class="platform-pill">${escapeHtml(item.type)}</span></td><td class="table-number">${formatMoney(item.amount)}</td><td class="table-number">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</td><td class="table-number">${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</td><td><span class="table-secondary" style="margin:0;max-width:260px;white-space:normal">${escapeHtml(item.note || "—")}</span></td><td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Edit maintenance record">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Delete maintenance record">${icon("trash", "icon icon-sm")}</button></div></td></tr>`).join("")}</tbody></table></div>
-      <div class="mobile-record-list maintenance-mobile-list">${list.map((item) => `<article class="record-card compact-record-card maintenance-record-card"><details class="record-card-disclosure"><summary><span class="maintenance-record-icon">${icon("wrench", "icon icon-sm")}</span><span class="compact-record-summary maintenance-record-summary"><strong class="compact-record-date">${escapeHtml(item.type)}</strong><strong class="compact-record-net">${formatMoney(item.amount)}</strong><span class="compact-record-meta">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="compact-record-efficiency">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "No mileage"}</span></span>${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}</summary><div class="record-card-disclosure-content"><div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Odometer</span><strong>${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</strong></div><div class="record-mini-stat"><span>Next due</span><strong>${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</strong></div></div>${item.note ? `<p class="compact-record-note">${escapeHtml(item.note)}</p>` : ""}<div class="record-card-actions"><button class="button button-secondary button-small" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></div></details></article>`).join("")}</div>`;
+    const desktop = `<div class="data-table-wrap"><table class="data-table" style="min-width:760px"><thead><tr><th>Date</th><th>Service</th><th>Cost</th><th>Odometer</th><th>Next due</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${list.map((item) => `<tr><td><span class="table-primary">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span></td><td><span class="platform-pill">${escapeHtml(item.type)}</span></td><td class="table-number">${formatMoney(item.amount)}</td><td class="table-number">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</td><td class="table-number">${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</td><td><span class="table-secondary" style="margin:0;max-width:260px;white-space:normal">${escapeHtml(item.note || "—")}</span></td><td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Edit maintenance record">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Delete maintenance record">${icon("trash", "icon icon-sm")}</button></div></td></tr>`).join("")}</tbody></table></div>`;
+    const mobile = `<div class="mobile-record-list maintenance-mobile-list">${mobileList.map((item) => `<article class="record-card compact-record-card maintenance-record-card"><details class="record-card-disclosure"><summary><span class="maintenance-record-icon">${icon("wrench", "icon icon-sm")}</span><span class="compact-record-summary maintenance-record-summary"><strong class="compact-record-date">${escapeHtml(item.type)}</strong><strong class="compact-record-net">${formatMoney(item.amount)}</strong><span class="compact-record-meta">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="compact-record-efficiency">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "No mileage"}</span></span>${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}</summary><div class="record-card-disclosure-content"><div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Odometer</span><strong>${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</strong></div><div class="record-mini-stat"><span>Next due</span><strong>${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</strong></div></div>${item.note ? `<p class="compact-record-note">${escapeHtml(item.note)}</p>` : ""}<div class="record-card-actions"><button class="button button-secondary button-small" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></div></details></article>`).join("")}</div>`;
+    const remaining = Math.max(0, list.length - mobileList.length);
+    const controls = list.length > 5 ? `<div class="ledger-page-controls">${remaining ? `<button class="button button-secondary" type="button" data-action="show-more-maintenance">Show ${Math.min(5, remaining)} more<span>${mobileList.length} of ${list.length}</span></button>` : `<button class="button button-ghost" type="button" data-action="show-fewer-maintenance">Show recent 5<span>Back to the top</span></button>`}</div>` : "";
+    root.innerHTML = `${desktop}${mobile}${controls}`;
   }
 
   function goalTiming(goal) {
@@ -1410,7 +1452,15 @@
     const complete = goal.target > 0 && saved >= goal.target;
     const remaining = Math.max(0, goal.target - saved);
     const latest = goal.contributions.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
-    return `<article class="goal-card-item panel${complete ? " is-complete" : ""}"><div class="goal-card-top"><div><h3>${escapeHtml(goal.name)}</h3><p>${escapeHtml(goal.archived ? "Archived" : goalTiming(goal))}</p></div><span class="goal-percent">${percent.toFixed(0)}%</span></div><div class="goal-money-row"><strong>${formatMoney(saved, { noCents: true })}</strong><span>of ${formatMoney(goal.target, { noCents: true })}</span></div><div style="margin-top:13px"><div class="progress"><div class="progress-fill" style="width:${percent.toFixed(2)}%"></div></div><div class="progress-meta"><span>${complete ? "Target funded" : `${formatMoney(remaining, { noCents: true })} to go`}</span><span>${goal.contributions.length} deposit${goal.contributions.length === 1 ? "" : "s"}</span></div></div>${goal.note ? `<p class="panel-subtitle" style="margin-top:14px">${escapeHtml(goal.note)}</p>` : ""}${latest ? `<p class="field-help">Latest: ${formatMoney(latest.amount)} on ${formatShortDate(latest.date)}${latest.note ? ` · ${escapeHtml(latest.note)}` : ""}</p>` : ""}<div class="goal-card-actions"><button class="button button-primary button-small" type="button" data-action="add-contribution" data-id="${escapeAttribute(goal.id)}">${icon("contribution", "icon icon-sm")}Add funds</button><button class="button button-secondary button-small" type="button" data-action="edit-goal" data-id="${escapeAttribute(goal.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="archive-goal" data-id="${escapeAttribute(goal.id)}" aria-label="${goal.archived ? "Restore" : "Archive"} goal">${icon(goal.archived ? "refresh" : "archive", "icon icon-sm")}</button></div></article>`;
+    const primaryAction = goal.archived
+      ? `<button class="button button-primary button-small" type="button" data-action="archive-goal" data-id="${escapeAttribute(goal.id)}">${icon("refresh", "icon icon-sm")}Restore</button>`
+      : `<button class="button button-primary button-small" type="button" data-action="add-contribution" data-id="${escapeAttribute(goal.id)}">${icon("contribution", "icon icon-sm")}Add funds</button>`;
+    return `<article class="goal-row-card panel${complete ? " is-complete" : ""}">
+      <div class="goal-row-top"><div><h3>${escapeHtml(goal.name)}</h3><p>${escapeHtml(goal.archived ? "Archived goal" : goalTiming(goal))}</p></div><span class="goal-percent">${percent.toFixed(0)}%</span></div>
+      <div class="goal-row-money"><strong>${formatMoney(saved, { noCents: true })}</strong><span>of ${formatMoney(goal.target, { noCents: true })}</span><small>${complete ? "Funded" : `${formatMoney(remaining, { noCents: true })} to go`}</small></div>
+      <div class="progress"><div class="progress-fill" style="width:${percent.toFixed(2)}%"></div></div>
+      <div class="goal-row-actions">${primaryAction}<button class="button button-secondary button-small" type="button" data-action="edit-goal" data-id="${escapeAttribute(goal.id)}">${icon("edit", "icon icon-sm")}Edit</button><details class="goal-row-more"><summary aria-label="More goal options">${icon("more", "icon icon-sm")}</summary><div class="goal-row-more-menu">${goal.note ? `<p>${escapeHtml(goal.note)}</p>` : ""}${latest ? `<span>Latest: ${formatMoney(latest.amount)} · ${formatShortDate(latest.date)}</span>` : `<span>No contributions yet</span>`}${goal.archived ? "" : `<button class="button button-ghost button-small" type="button" data-action="archive-goal" data-id="${escapeAttribute(goal.id)}">${icon("archive", "icon icon-sm")}Archive</button>`}</div></details></div>
+    </article>`;
   }
 
   function renderGoalsPage() {
@@ -1420,15 +1470,23 @@
     const target = active.reduce((sum, goal) => sum + goal.target, 0);
     const saved = active.reduce((sum, goal) => sum + Core.goalSaved(goal), 0);
     const completed = active.filter((goal) => goal.target > 0 && Core.goalSaved(goal) >= goal.target).length;
-    return `<div class="page-stack">
-      <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Goal portfolio</h2><p class="panel-subtitle">Fund personal targets with deliberate contributions from your spendable cash.</p></div><button class="button button-primary button-small" type="button" data-action="open-goal">${icon("plus", "icon icon-sm")}New goal</button></div></section>
-      <section class="goals-summary-grid">
-        ${metricCard({ icon: "goal", label: "Active targets", value: formatMoney(target, { noCents: true }), meta: `${active.length} active goal${active.length === 1 ? "" : "s"}` })}
-        ${metricCard({ icon: "wallet", iconClass: "is-blue", label: "Total funded", value: formatMoney(saved, { noCents: true }), meta: target ? `${Math.min(100, saved / target * 100).toFixed(0)}% across active goals` : "Create a goal to begin" })}
-        ${metricCard({ icon: "check", iconClass: "is-violet", label: "Completed", value: formatNumber(completed), meta: `${formatMoney(Math.max(0, target - saved), { noCents: true })} remaining across active goals` })}
+    const portfolioPercent = target > 0 ? Math.min(100, Math.max(0, saved / target * 100)) : 0;
+    const selected = ui.goalView === "archived" ? archived : active;
+    const limit = Math.max(3, Core.safeNumber(ui.goalVisibleCount, 3));
+    const visible = selected.slice(0, limit);
+    const remaining = Math.max(0, selected.length - visible.length);
+    const empty = ui.goalView === "archived"
+      ? `<div class="compact-empty-panel"><span>${icon("archive", "icon icon-lg")}</span><strong>No archived goals</strong><p>Goals you archive will stay available here.</p></div>`
+      : emptyState({ icon: "goal", title: "Give your earnings a destination", body: "Create a goal, set a target, and add contributions without changing your shift history.", action: "open-goal", actionLabel: "Create first goal" });
+    const controls = selected.length > 3 ? `<div class="ledger-page-controls">${remaining ? `<button class="button button-secondary" type="button" data-action="show-more-goals">Show ${Math.min(3, remaining)} more<span>${visible.length} of ${selected.length}</span></button>` : `<button class="button button-ghost" type="button" data-action="show-fewer-goals">Show first 3<span>Back to the top</span></button>`}</div>` : "";
+
+    return `<div class="page-stack goals-focus-page">
+      <section class="goal-portfolio-card">
+        <div class="goal-portfolio-head"><div><span>Goal portfolio</span><strong>${formatMoney(saved, { noCents: true })}</strong><small>of ${formatMoney(target, { noCents: true })} across ${active.length} active goal${active.length === 1 ? "" : "s"}</small></div><button class="button button-primary button-small" type="button" data-action="open-goal">${icon("plus", "icon icon-sm")}New goal</button></div>
+        <div class="goal-portfolio-progress"><div class="progress"><div class="progress-fill" style="width:${portfolioPercent.toFixed(2)}%"></div></div><span>${portfolioPercent.toFixed(0)}% funded</span><span>${completed} complete</span></div>
       </section>
-      ${active.length ? `<section><div class="section-header"><div><h2 class="section-title">Active goals</h2><p class="section-subtitle">Your current funding priorities</p></div></div><div class="goals-grid">${active.map(renderGoalCard).join("")}</div></section>` : emptyState({ icon: "goal", title: "Give your earnings a destination", body: "Create a goal, set a target, and add contributions without changing your shift history.", action: "open-goal", actionLabel: "Create first goal" })}
-      ${archived.length ? `<section><div class="section-header"><div><h2 class="section-title">Archived goals</h2><p class="section-subtitle">Past targets kept for your records</p></div></div><div class="goals-grid">${archived.map(renderGoalCard).join("")}</div></section>` : ""}
+      <section class="focus-view-switch goals-view-switch"><div class="period-switch" aria-label="Goal view"><button class="segment-button${ui.goalView === "active" ? " is-active" : ""}" type="button" data-action="goal-view" data-view="active">Active <span class="segment-count">${active.length}</span></button><button class="segment-button${ui.goalView === "archived" ? " is-active" : ""}" type="button" data-action="goal-view" data-view="archived">Archived <span class="segment-count">${archived.length}</span></button></div></section>
+      <section class="goal-list-section"><div class="section-header"><div><h2 class="section-title">${ui.goalView === "archived" ? "Archived goals" : "Active goals"}</h2><p class="section-subtitle">${selected.length ? `${selected.length} goal${selected.length === 1 ? "" : "s"}` : "Nothing here yet"}</p></div></div>${selected.length ? `<div class="goals-grid compact-goals-grid">${visible.map(renderGoalCard).join("")}</div>${controls}` : empty}</section>
     </div>`;
   }
 
@@ -1522,19 +1580,24 @@
 
   function openModal(config) {
     if (!ui.modal) modalReturnFocus = document.activeElement || null;
+    if (dom.toastRoot && typeof dom.toastRoot.querySelectorAll === "function") {
+      dom.toastRoot.querySelectorAll(".toast").forEach((toast) => toast.remove());
+    }
     ui.modal = config.meta || { type: "custom" };
     dom.modalRoot.innerHTML = modalShell(config);
     document.body.style.overflow = "hidden";
     window.setTimeout(() => {
-      const target = dom.modalRoot.querySelector("[autofocus], input:not([type=hidden]), select, textarea, button");
+      const target = dom.modalRoot.querySelector("[autofocus]")
+        || dom.modalRoot.querySelector("input:not([type=hidden]), select, textarea")
+        || dom.modalRoot.querySelector("button");
       if (target) {
         target.focus();
-        if (target.matches && target.matches(".mileage-checkpoint-input-wrap input") && typeof target.select === "function") target.select();
+        if (typeof target.select === "function" && target.matches && target.matches("input[type=number], input[type=text]")) target.select();
       }
       const form = dom.modalRoot.querySelector('[data-form="shift"]');
       if (form) updateShiftPreview(form);
-      const checkpoint = dom.modalRoot.querySelector('[data-form="mileage-checkpoint"]');
-      if (checkpoint) updateMileageCheckpoint(checkpoint);
+      const mileageForm = dom.modalRoot.querySelector('[data-form="shift-mileage"]');
+      if (mileageForm) updateMileagePrompt(mileageForm);
     }, 0);
   }
 
@@ -1606,166 +1669,166 @@
     return `<details class="${config.surfaceClass || "panel"} page-disclosure ${config.className || ""}"${config.open ? " open" : ""}><summary><div><h2 class="panel-title">${escapeHtml(config.title)}</h2>${config.subtitle ? `<p class="panel-subtitle">${escapeHtml(config.subtitle)}</p>` : ""}</div>${value}${icon("chevronRight", "page-disclosure-chevron icon icon-sm")}</summary><div class="page-disclosure-content">${config.content}</div></details>`;
   }
 
-  function mileageCheckpointValue(form, name) {
-    const field = form && form.elements ? form.elements.namedItem(name) : null;
-    return field ? field.value : "";
-  }
-
-  function updateMileageCheckpoint(form) {
-    if (!form || form.dataset.mode !== "end") return;
-    const distance = form.querySelector("[data-mileage-distance]");
-    if (!distance) return;
-    const fallbackStart = Core.safeNumber(form.dataset.startOdometer);
-    const enteredStart = Core.safeNumber(mileageCheckpointValue(form, "startOdometer"));
-    const start = enteredStart || fallbackStart;
-    const end = Core.safeNumber(mileageCheckpointValue(form, "odometer"));
-    if (start > 0 && end >= start) {
-      const miles = end - start;
-      distance.textContent = `${formatNumber(miles, 1)} mile${Math.abs(miles - 1) < 0.0001 ? "" : "s"} this shift`;
-      distance.classList.add("is-ready");
-    } else {
-      distance.textContent = start > 0 ? "Enter the ending mileage" : "Starting mileage is also required";
-      distance.classList.remove("is-ready");
-    }
-  }
-
-  function openMileageCheckpoint(mode, supplied) {
-    const isEnd = mode === "end";
-    if (isEnd && !state.activeShift) {
+  function openMileagePrompt(kind, supplied) {
+    const isStart = kind === "start";
+    const activeSource = supplied || (!isStart ? state.activeShift : null);
+    if (!isStart && !activeSource) {
       showToast("There is no active shift to finish.", "warning");
       return;
     }
-    if (!isEnd && state.activeShift) {
-      openShiftModal("update", state.activeShift);
-      return;
-    }
 
-    const active = isEnd ? state.activeShift : null;
-    const resumeDraft = isEnd && supplied && supplied.draft ? Core.clone(supplied.draft) : null;
-    const latestOdometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
-    const suppliedStart = Core.safeNumber(supplied && supplied.startOdometer);
-    const recordedStart = suppliedStart || Core.safeNumber(resumeDraft && resumeDraft.startOdometer) || Core.safeNumber(active && active.startOdometer);
-    const suppliedEnd = Core.safeNumber(supplied && supplied.endOdometer);
-    const recordedEnd = suppliedEnd || Core.safeNumber(resumeDraft && resumeDraft.endOdometer) || Core.safeNumber(active && active.endOdometer);
-    const inputValue = isEnd ? (recordedEnd > 0 ? recordedEnd : "") : (latestOdometer > 0 ? latestOdometer : "");
-    const platform = active && active.platform ? active.platform : state.settings.defaultPlatform;
-    const checkpointId = "shiftMileageCheckpointForm";
-    const missingStartField = isEnd && recordedStart <= 0
-      ? `<div class="mileage-checkpoint-warning">${icon("warning", "icon icon-sm")}<div><strong>Starting mileage was not recorded</strong><span>Add it below so this shift's distance stays accurate.</span></div></div>${numberField({ id: "mileageCheckpointStartInput", name: "startOdometer", label: "Starting mileage", value: "", suffix: "mi", step: "0.1", blankZero: true, className: "mileage-checkpoint-recovery" })}`
-      : hiddenField("startOdometer", recordedStart);
-    const startContext = isEnd && recordedStart > 0
-      ? `<div class="mileage-checkpoint-reading"><div><span>Starting mileage</span><strong>${formatNumber(recordedStart, 1)} mi</strong></div><div><span>Distance</span><strong data-mileage-distance>Enter the ending mileage</strong></div></div>`
-      : "";
-    const helper = isEnd
-      ? "Use the number currently shown on your dashboard."
-      : latestOdometer > 0
-        ? `Pre-filled from your latest saved reading of ${formatNumber(latestOdometer, 1)} mi.`
-        : "Use the number currently shown on your dashboard.";
-    const secondary = isEnd
-      ? `${startContext}${missingStartField}`
-      : `<div class="mileage-checkpoint-secondary"><div class="field"><label for="mileageCheckpointPlatform">Platform</label><select id="mileageCheckpointPlatform" name="platform">${platformOptionMarkup(platform)}</select></div><div class="mileage-checkpoint-auto"><span>${icon("clock", "icon icon-sm")}Starts automatically</span><strong>${escapeHtml(formatTime(currentTimeValue()))}</strong></div></div>`;
-    const body = `<form id="${checkpointId}" class="mileage-checkpoint-form mileage-checkpoint-${escapeAttribute(mode)}" data-form="mileage-checkpoint" data-mode="${escapeAttribute(mode)}" data-start-odometer="${escapeAttribute(recordedStart)}" novalidate>
-      <div class="mileage-checkpoint-focus"><span class="mileage-checkpoint-icon">${icon(isEnd ? "stop" : "route", "icon icon-lg")}</span><div><span>${isEnd ? "Before the shift is saved" : "Before the timer begins"}</span><strong>${isEnd ? "Capture your final odometer reading." : "Capture your odometer reading."}</strong></div></div>
-      <div class="field mileage-checkpoint-field"><label for="mileageCheckpointInput">${isEnd ? "Ending mileage" : "Starting mileage"}</label><div class="mileage-checkpoint-input-wrap"><input id="mileageCheckpointInput" type="number" inputmode="decimal" name="odometer" value="${escapeAttribute(inputValue)}" min="0" step="0.1" placeholder="0" required autofocus aria-describedby="mileageCheckpointHelp"><span>mi</span></div><p id="mileageCheckpointHelp" class="field-help">${escapeHtml(helper)}</p></div>
-      ${secondary}
+    const source = Core.clone(activeSource || {});
+    if (!isStart && !source.endTime) source.endTime = currentTimeValue();
+    const currentOdometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
+    const startingMileage = isStart
+      ? Math.max(0, Core.safeNumber(source.startOdometer) || currentOdometer)
+      : Math.max(0, Core.safeNumber(source.startOdometer) || currentOdometer);
+    const savedEndingMileage = Math.max(0, Core.safeNumber(source.endOdometer));
+    const inputValue = isStart
+      ? (startingMileage > 0 ? startingMileage : "")
+      : (savedEndingMileage > 0 ? savedEndingMileage : "");
+    const platform = source.platform || state.settings.defaultPlatform;
+    const inputLabel = isStart ? "Starting mileage" : "Ending mileage";
+    const inputHelp = isStart
+      ? "Enter the number currently shown on your vehicle's odometer."
+      : "Enter the odometer reading from the moment you stopped driving.";
+    const startContext = `<div class="mileage-start-context">
+      <div class="mileage-context-item"><span class="mileage-context-icon">${icon("clock", "icon icon-sm")}</span><div><span>Timing</span><strong>Starts immediately</strong></div></div>
+      <div class="field mileage-platform-field"><label for="mileagePlatform">Driving on</label><select id="mileagePlatform" name="platform">${platformOptionMarkup(platform)}</select></div>
+    </div>`;
+    const endContext = `<div class="mileage-journey-card">
+      <div class="mileage-journey-point"><span>Started at</span><strong>${startingMileage > 0 ? escapeHtml(formatMileage(startingMileage)) : "Not recorded"}</strong></div>
+      <span class="mileage-journey-arrow">${icon("chevronRight", "icon icon-sm")}</span>
+      <div class="mileage-journey-point is-ending"><span>Ending at</span><strong data-ending-mileage-preview>${savedEndingMileage > 0 ? escapeHtml(formatMileage(savedEndingMileage)) : "—"}</strong></div>
+      <div class="mileage-distance-row"><span>Business miles</span><strong data-mileage-distance>${startingMileage > 0 && savedEndingMileage >= startingMileage ? escapeHtml(formatMileage(savedEndingMileage - startingMileage)) : "Enter ending mileage"}</strong></div>
+    </div>`;
+    const body = `<form id="shiftMileageForm" class="mileage-prompt-form" data-form="shift-mileage" data-kind="${escapeAttribute(kind)}" data-start-odometer="${escapeAttribute(startingMileage)}" novalidate>
+      <section class="mileage-focus-card">
+        <div class="mileage-focus-heading"><span class="mileage-focus-icon">${icon("route", "icon icon-md")}</span><div><span>${escapeHtml(inputLabel)}</span><strong>${isStart ? "Before you go online" : "Before final totals"}</strong></div></div>
+        <label class="visually-hidden" for="shiftMileageInput">${escapeHtml(inputLabel)}</label>
+        <div class="mileage-input-shell"><input id="shiftMileageInput" class="mileage-focus-input" type="number" inputmode="decimal" name="odometer" value="${escapeAttribute(inputValue)}" min="0.1" max="9999999.9" step="0.1" placeholder="0" aria-describedby="mileagePromptHelp" required autofocus><span>mi</span></div>
+        <p id="mileagePromptHelp">${escapeHtml(inputHelp)}</p>
+      </section>
+      ${isStart ? startContext : endContext}
     </form>`;
     openModal({
-      title: isEnd ? "Ending mileage" : "Starting mileage",
-      subtitle: isEnd ? "This is the first step when ending a shift." : "This is the first step every time you start a shift.",
+      title: isStart ? "Start shift" : "End shift",
+      subtitle: isStart ? "Starting mileage comes first. The timer begins when you confirm." : "Ending mileage comes first so your business miles are captured accurately.",
       body,
-      footer: `<button class="button button-ghost" type="button" data-action="close-modal">${isEnd ? (resumeDraft ? "Back" : "Keep driving") : "Cancel"}</button><button class="button button-primary" type="submit" form="${checkpointId}" data-action="submit-mileage-checkpoint">${isEnd ? icon("chevronRight", "icon icon-sm") + "Continue" : icon("play", "icon icon-sm") + "Start shift"}</button>`,
-      className: `modal-small mileage-checkpoint-modal mileage-checkpoint-modal-${escapeAttribute(mode)}`,
-      meta: {
-        type: "mileage-checkpoint",
-        mode,
-        supplied: supplied || null,
-        resumeDraft,
-        onCancel: resumeDraft ? () => openShiftModal("end", resumeDraft) : null
-      }
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="submit" form="shiftMileageForm">${isStart ? icon("play", "icon icon-sm") : icon("chevronRight", "icon icon-sm")}${isStart ? "Start shift" : "Continue"}</button>`,
+      className: `modal-small mileage-prompt mileage-prompt-${escapeAttribute(kind)}`,
+      meta: { type: "shift-mileage", kind, draft: source }
     });
   }
 
-  function submitMileageCheckpoint(form) {
-    const mode = form && form.dataset.mode;
-    const odometer = Core.safeNumber(mileageCheckpointValue(form, "odometer"));
-    if (odometer <= 0) {
-      showToast(`Enter the ${mode === "end" ? "ending" : "starting"} mileage.`, "error");
-      const input = form && form.elements ? form.elements.namedItem("odometer") : null;
-      if (input) input.focus();
+  function updateMileagePrompt(form) {
+    if (!form) return;
+    const input = form.elements.namedItem("odometer");
+    if (!input) return;
+    const raw = String(input.value || "").trim();
+    const value = Number(raw);
+    const kind = form.dataset.kind;
+    const start = Math.max(0, Core.safeNumber(form.dataset.startOdometer));
+    const endingPreview = form.querySelector("[data-ending-mileage-preview]");
+    const distancePreview = form.querySelector("[data-mileage-distance]");
+    input.removeAttribute("aria-invalid");
+    if (kind !== "end" || !endingPreview || !distancePreview) return;
+
+    endingPreview.textContent = raw && Number.isFinite(value) && value > 0 ? formatMileage(value) : "—";
+    distancePreview.classList.remove("is-error");
+    if (!raw) {
+      distancePreview.textContent = "Enter ending mileage";
+      return;
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      distancePreview.textContent = "Check mileage";
+      distancePreview.classList.add("is-error");
+      input.setAttribute("aria-invalid", "true");
+      return;
+    }
+    if (start > 0 && value < start) {
+      distancePreview.textContent = "Below starting mileage";
+      distancePreview.classList.add("is-error");
+      input.setAttribute("aria-invalid", "true");
+      return;
+    }
+    distancePreview.textContent = start > 0 ? formatMileage(value - start) : "Starting mileage unavailable";
+  }
+
+  function submitMileagePrompt(form) {
+    const input = form.elements.namedItem("odometer");
+    const raw = input ? String(input.value || "").trim() : "";
+    const mileage = Number(raw);
+    const kind = form.dataset.kind;
+    if (!raw || !Number.isFinite(mileage) || mileage <= 0) {
+      if (input) input.setAttribute("aria-invalid", "true");
+      showToast(`Enter a valid ${kind === "start" ? "starting" : "ending"} mileage.`, "error");
       return;
     }
 
-    if (mode === "start") {
+    if (kind === "start") {
       if (state.activeShift) {
         showToast("Finish the current live shift before starting another.", "warning");
         return;
       }
-      const now = new Date().toISOString();
+      const platform = shiftFormValue(form, "platform") || state.settings.defaultPlatform;
       const record = Core.normalizeShift({
         date: Core.localISODate(),
-        platform: mileageCheckpointValue(form, "platform") || state.settings.defaultPlatform,
+        platform,
         startTime: currentTimeValue(),
         endTime: "",
-        startOdometer: odometer,
+        gross: 0,
+        fuel: 0,
+        tolls: 0,
+        otherExpenses: 0,
+        startOdometer: mileage,
+        endOdometer: 0,
+        manualMiles: 0,
+        manualHours: 0,
+        trips: 0,
+        notes: "",
         allocationRates: state.settings.allocations,
-        createdAt: now,
-        updatedAt: now
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }, state.settings);
       state.activeShift = record;
-      state.settings.vehicle.currentOdometer = Math.max(Core.safeNumber(state.settings.vehicle.currentOdometer), odometer);
       saveState();
       closeModal(false);
       setRoute("overview", { focus: false });
-      showToast(`Shift started at ${formatNumber(odometer, 1)} mi.`, "success");
+      showToast(`Shift started at ${formatMileage(mileage)}.`, "success");
       return;
     }
 
-    if (mode === "end") {
-      if (!state.activeShift) {
-        closeModal(false);
-        showToast("There is no active shift to finish.", "warning");
-        return;
-      }
-      const enteredStart = Core.safeNumber(mileageCheckpointValue(form, "startOdometer"));
-      const startOdometer = enteredStart || Core.safeNumber(state.activeShift.startOdometer);
-      if (startOdometer <= 0) {
-        showToast("Enter the starting mileage for this shift.", "error");
-        const input = form.elements.namedItem("startOdometer");
-        if (input) input.focus();
-        return;
-      }
-      if (odometer < startOdometer) {
-        showToast("Ending mileage cannot be lower than starting mileage.", "error");
-        const input = form.elements.namedItem("odometer");
-        if (input) input.focus();
-        return;
-      }
-      const resumeDraft = ui.modal && ui.modal.resumeDraft ? Core.clone(ui.modal.resumeDraft) : null;
-      const draft = {
-        ...Core.clone(resumeDraft || state.activeShift),
-        startOdometer,
-        endOdometer: odometer,
-        endTime: resumeDraft && resumeDraft.endTime ? resumeDraft.endTime : currentTimeValue(),
-        updatedAt: new Date().toISOString()
-      };
-      openShiftModal("end", draft);
+    const draft = Core.clone((ui.modal && ui.modal.draft) || state.activeShift || {});
+    const fallbackStartingMileage = Math.max(0, Core.safeNumber(form.dataset.startOdometer));
+    const startingMileage = Math.max(0, Core.safeNumber(draft.startOdometer) || fallbackStartingMileage);
+    if (startingMileage > 0 && mileage < startingMileage) {
+      if (input) input.setAttribute("aria-invalid", "true");
+      showToast("Ending mileage cannot be lower than starting mileage.", "error");
+      return;
     }
+    draft.startOdometer = startingMileage;
+    draft.endOdometer = mileage;
+    draft.endTime = draft.endTime || currentTimeValue();
+    draft.updatedAt = new Date().toISOString();
+    closeModal(false);
+    openShiftModal("end", draft);
   }
 
   function shiftModalCopy(mode) {
     const map = {
       add: ["Add completed shift", "Save the essentials first. Mileage, allocations, and notes stay neatly tucked away until needed.", "Save shift"],
       edit: ["Edit shift", "Update this ledger entry without disturbing the rest of your history.", "Save changes"],
-      start: ["Start live shift", "Choose the basics now. Add earnings, mileage, and costs while the timer runs.", "Start shift"],
+      start: ["Start shift", "Enter the starting mileage shown on your odometer.", "Start shift"],
       update: ["Update live shift", "Refresh the important numbers without stopping the timer.", "Save live draft"],
-      end: ["Finish live shift", "Enter the final numbers, review the result, and save it to your ledger.", "Finish & save"]
+      end: ["Finish shift", "Mileage is captured. Add the final totals and save this shift to your ledger.", "Finish & save"]
     };
     return map[mode] || map.add;
   }
 
   function openShiftModal(mode, supplied) {
     if (mode === "start") {
-      openMileageCheckpoint("start", supplied);
+      openMileagePrompt("start", supplied);
       return;
     }
     const source = supplied || (mode === "edit" ? getShift(ui.modal && ui.modal.id) : null) || ((mode === "update" || mode === "end") ? state.activeShift : null) || {};
@@ -1794,6 +1857,15 @@
     const allocationFields = `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftInvestment", name: "allocationInvestment", label: "Investment", value: allocation.investment, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftSavings", name: "allocationSavings", label: "Savings", value: allocation.savings, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftVehicle", name: "allocationVehicle", label: "Vehicle fund", value: allocation.vehicle, suffix: "%", step: "0.1", max: "100" })}</div><p class="field-help">Saved with this shift, so future settings changes never rewrite its history.</p>`;
     const notesField = `<div class="field"><label for="shiftNotes">Optional context</label><textarea id="shiftNotes" name="notes" maxlength="1000" placeholder="Airport queue, surge window, route notes, unusual costs…">${escapeHtml(defaults.notes)}</textarea></div>`;
     const preview = mode === "start" ? "" : `<div class="form-summary shift-form-summary" data-shift-preview></div>`;
+    const capturedMiles = defaults.endOdometer >= defaults.startOdometer && defaults.endOdometer > 0
+      ? defaults.endOdometer - defaults.startOdometer
+      : 0;
+    const mileageCapturedCard = `<div class="captured-mileage-card">
+      <div><span>Starting</span><strong>${escapeHtml(formatMileage(defaults.startOdometer))}</strong></div>
+      <span class="captured-mileage-arrow">${icon("chevronRight", "icon icon-sm")}</span>
+      <div><span>Ending</span><strong>${escapeHtml(formatMileage(defaults.endOdometer))}</strong></div>
+      <div class="captured-mileage-total"><span>Driven</span><strong>${escapeHtml(formatMileage(capturedMiles))}</strong></div>
+    </div>`;
     let content = "";
 
     if (mode === "start") {
@@ -1812,24 +1884,22 @@
           ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}
           ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
           ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
-          ${numberField({ id: "shiftEndOdometer", name: "endOdometer", label: "Current odometer", value: defaults.endOdometer, suffix: "mi", step: "0.1", blankZero: true })}
+          ${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}
         </div></section>
-        ${formDisclosure({ title: "Shift details", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
-        ${formDisclosure({ title: "Extra costs & mileage", icon: "route", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Shift setup", icon: "calendar", meta: `Started ${formatMileage(defaults.startOdometer)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div>${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Starting mileage", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Other costs", icon: "receipt", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true, help: "Only used if ending mileage is unavailable." })}</div>` })}
         ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
-        ${hiddenField("endTime", "")}${hiddenField("manualHours", 0)}`;
+        ${hiddenField("endTime", "")}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualHours", 0)}`;
     } else if (mode === "end") {
-      const capturedMiles = Math.max(0, defaults.endOdometer - defaults.startOdometer);
-      const mileageSummary = `<div class="mileage-captured-strip"><span class="mileage-captured-icon">${icon("route", "icon icon-sm")}</span><div><span>Mileage captured</span><strong>${formatNumber(defaults.startOdometer, 1)} → ${formatNumber(defaults.endOdometer, 1)} mi</strong><small>${formatNumber(capturedMiles, 1)} mile${Math.abs(capturedMiles - 1) < 0.0001 ? "" : "s"} driven</small></div><button class="button button-ghost button-small" type="button" data-action="change-ending-mileage">Edit</button></div>`;
-      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · ready to finish</span></div><strong data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>${mileageSummary}${preview}
-        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("dollar", "icon icon-sm")}Final totals</h3><div class="form-grid shift-pair-grid">
-          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}
+      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · ready to finish</span></div><strong>${formatDuration(Core.durationHours(defaults.startTime, endTimeValue, 0), true)}</strong></div>${mileageCapturedCard}${preview}
+        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("stop", "icon icon-sm")}Final numbers</h3><div class="form-grid shift-pair-grid">
+          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true, className: "shift-gross-focus" })}
           ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
           ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
           <div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div>
         </div></section>
-        ${formDisclosure({ title: "Shift details", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
-        ${formDisclosure({ title: "Extra costs", icon: "receipt", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Extra costs", icon: "receipt", meta: defaults.tolls || defaults.otherExpenses ? "Added" : "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Timing & platform", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
         ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
         ${hiddenField("startOdometer", defaults.startOdometer)}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualMiles", defaults.manualMiles)}${hiddenField("manualHours", 0)}`;
     } else {
@@ -1842,11 +1912,14 @@
     }
 
     const body = `<form class="shift-form mode-${escapeAttribute(mode)}" data-form="shift" data-mode="${escapeAttribute(mode)}" data-id="${escapeAttribute(defaults.id || "")}" novalidate>${content}</form>`;
+    const footer = mode === "end"
+      ? `<button class="button button-ghost shift-cancel-button" type="button" data-action="edit-end-mileage">${icon("edit", "icon icon-sm")}Edit mileage</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${icon("stop", "icon icon-sm")}${escapeHtml(copy[2])}</button>`
+      : `<button class="button button-ghost shift-cancel-button" type="button" data-action="close-modal">Cancel</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${mode === "start" ? icon("play", "icon icon-sm") : icon("check", "icon icon-sm")}${escapeHtml(copy[2])}</button>`;
     openModal({
       title: copy[0],
       subtitle: copy[1],
       body,
-      footer: `<button class="button button-ghost shift-cancel-button" type="button" data-action="close-modal">Cancel</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${mode === "start" ? icon("play", "icon icon-sm") : mode === "end" ? icon("stop", "icon icon-sm") : icon("check", "icon icon-sm")}${escapeHtml(copy[2])}</button>`,
+      footer,
       className: `modal-wide shift-modal shift-modal-${escapeAttribute(mode)}`,
       meta: { type: "shift", mode, id: defaults.id || "", supplied: supplied || null }
     });
@@ -1907,7 +1980,6 @@
     if (!date) return "Choose a shift date.";
     if ((mode === "start" || mode === "update" || mode === "end") && !start) return "Enter the shift start time.";
     if (mode !== "start" && mode !== "update" && !(start && end) && manualHours <= 0) return "Enter start and end times, or provide manual hours.";
-    if (mode === "end" && endOdometer <= 0) return "Enter the ending mileage.";
     if (startOdometer > 0 && endOdometer > 0 && endOdometer < startOdometer) return "End odometer cannot be lower than start odometer.";
     if (allocationTotal > 100.0001) return "This shift's allocations exceed 100%.";
     return "";
@@ -2484,29 +2556,21 @@
         break;
       case "start-shift":
         if (state.activeShift) openShiftModal("update", state.activeShift);
-        else openMileageCheckpoint("start");
+        else openShiftModal("start");
         break;
       case "update-active-shift":
         if (state.activeShift) openShiftModal("update", state.activeShift);
         else showToast("There is no active shift to update.", "warning");
         break;
       case "end-active-shift":
-        if (state.activeShift) openMileageCheckpoint("end");
+        if (state.activeShift) openMileagePrompt("end", state.activeShift);
         else showToast("There is no active shift to finish.", "warning");
         break;
-      case "change-ending-mileage": {
-        const form = dom.modalRoot.querySelector('[data-form="shift"]');
-        const draft = form ? shiftFromForm(form, false) : Core.clone(state.activeShift);
-        openMileageCheckpoint("end", {
-          draft,
-          startOdometer: draft && draft.startOdometer,
-          endOdometer: draft && draft.endOdometer
-        });
-        break;
-      }
-      case "submit-mileage-checkpoint": {
-        const form = dom.modalRoot.querySelector('[data-form="mileage-checkpoint"]');
-        if (form) submitMileageCheckpoint(form);
+      case "edit-end-mileage": {
+        const form = dom.modalRoot.querySelector('[data-form="shift"][data-mode="end"]');
+        const draft = form ? shiftFromForm(form, false) : (ui.modal && ui.modal.supplied) || state.activeShift;
+        closeModal(false);
+        openMileagePrompt("end", draft);
         break;
       }
       case "submit-shift-form":
@@ -2524,6 +2588,21 @@
       }
       case "delete-shift":
         deleteShiftById(id);
+        break;
+      case "toggle-shift-manage":
+        ui.shiftManageMode = !ui.shiftManageMode;
+        if (!ui.shiftManageMode) ui.selectedShiftIds.clear();
+        dom.main.innerHTML = renderShiftsPage();
+        updateShiftResults();
+        break;
+      case "show-more-shifts":
+        ui.shiftVisibleCount += 5;
+        updateShiftResults();
+        break;
+      case "show-fewer-shifts":
+        ui.shiftVisibleCount = 5;
+        updateShiftResults();
+        window.scrollTo({ top: 0, behavior: "smooth" });
         break;
       case "toggle-shift-select":
         if (element.checked) ui.selectedShiftIds.add(String(id));
@@ -2566,6 +2645,7 @@
       }
       case "clear-shift-filters":
         ui.shiftFilters = { search: "", range: "all", platform: "all", sort: "dateDesc" };
+        ui.shiftVisibleCount = 5;
         ui.selectedShiftIds.clear();
         dom.main.innerHTML = renderShiftsPage();
         updateShiftResults();
@@ -2576,6 +2656,10 @@
         break;
       case "analytics-period":
         ui.analyticsPeriod = element.dataset.period || "month";
+        dom.main.innerHTML = renderAnalyticsPage();
+        break;
+      case "analytics-view":
+        ui.analyticsView = element.dataset.view || "trend";
         dom.main.innerHTML = renderAnalyticsPage();
         break;
       case "calendar-prev":
@@ -2601,9 +2685,27 @@
             ui.calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
           }
           dom.main.innerHTML = renderCalendarPage();
+          if (isCompactViewport()) openCalendarDayModal(ui.calendarSelected);
         }
         break;
       }
+      case "open-calendar-day":
+        openCalendarDayModal(element.dataset.date || ui.calendarSelected);
+        break;
+      case "vehicle-view":
+        ui.vehicleView = element.dataset.view || "status";
+        dom.main.innerHTML = renderVehiclePage();
+        updateVehicleResults();
+        break;
+      case "show-more-maintenance":
+        ui.maintenanceVisibleCount += 5;
+        updateVehicleResults();
+        break;
+      case "show-fewer-maintenance":
+        ui.maintenanceVisibleCount = 5;
+        updateVehicleResults();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        break;
       case "open-maintenance":
         openMaintenanceModal(null);
         break;
@@ -2618,8 +2720,23 @@
         break;
       case "clear-maintenance-filters":
         ui.vehicleFilters = { search: "", type: "all" };
+        ui.maintenanceVisibleCount = 5;
         dom.main.innerHTML = renderVehiclePage();
         updateVehicleResults();
+        break;
+      case "goal-view":
+        ui.goalView = element.dataset.view || "active";
+        ui.goalVisibleCount = 3;
+        dom.main.innerHTML = renderGoalsPage();
+        break;
+      case "show-more-goals":
+        ui.goalVisibleCount += 3;
+        dom.main.innerHTML = renderGoalsPage();
+        break;
+      case "show-fewer-goals":
+        ui.goalVisibleCount = 3;
+        dom.main.innerHTML = renderGoalsPage();
+        window.scrollTo({ top: 0, behavior: "smooth" });
         break;
       case "open-goal":
         openGoalModal(null);
@@ -2748,28 +2865,33 @@
     const actionElement = event.target.closest("[data-action]");
     if (!actionElement) return;
     const action = actionElement.dataset.action;
+    // The backdrop is an action only when the backdrop itself is tapped. Treating it
+    // as the action for every descendant would cancel native form submission.
+    if (action === "modal-backdrop" && event.target !== actionElement) return;
     if (action !== "toggle-shift-select" && action !== "select-all-shifts") event.preventDefault();
     handleAction(action, actionElement, event);
   }
 
   function handleInput(event) {
     const target = event.target;
+    if (target.matches('[data-form="shift-mileage"] input')) {
+      updateMileagePrompt(target.closest('[data-form="shift-mileage"]'));
+    }
     if (target.matches('[data-form="shift"] input, [data-form="shift"] select, [data-form="shift"] textarea')) {
       updateShiftPreview(target.closest('[data-form="shift"]'));
-    }
-    if (target.matches('[data-form="mileage-checkpoint"] input')) {
-      updateMileageCheckpoint(target.closest('[data-form="mileage-checkpoint"]'));
     }
     if (target.matches("[data-allocation]")) updateAllocationTotal();
     const filter = target.dataset.filter;
     if (filter === "shift-search") {
       ui.shiftFilters.search = target.value;
+      ui.shiftVisibleCount = 5;
       ui.selectedShiftIds.clear();
       window.clearTimeout(filterInputTimer);
       filterInputTimer = window.setTimeout(updateShiftResults, 90);
     }
     if (filter === "maintenance-search") {
       ui.vehicleFilters.search = target.value;
+      ui.maintenanceVisibleCount = 5;
       window.clearTimeout(filterInputTimer);
       filterInputTimer = window.setTimeout(updateVehicleResults, 90);
     }
@@ -2780,17 +2902,21 @@
     const filter = target.dataset.filter;
     if (filter === "shift-range") {
       ui.shiftFilters.range = target.value;
+      ui.shiftVisibleCount = 5;
       ui.selectedShiftIds.clear();
       updateShiftResults();
     } else if (filter === "shift-platform") {
       ui.shiftFilters.platform = target.value;
+      ui.shiftVisibleCount = 5;
       ui.selectedShiftIds.clear();
       updateShiftResults();
     } else if (filter === "shift-sort") {
       ui.shiftFilters.sort = target.value;
+      ui.shiftVisibleCount = 5;
       updateShiftResults();
     } else if (filter === "maintenance-type") {
       ui.vehicleFilters.type = target.value;
+      ui.maintenanceVisibleCount = 5;
       updateVehicleResults();
     }
   }
@@ -2802,7 +2928,7 @@
     const type = form.dataset.form;
     if (type === "settings") submitSettingsForm(form);
     else if (type === "shift") submitShiftForm();
-    else if (type === "mileage-checkpoint") submitMileageCheckpoint(form);
+    else if (type === "shift-mileage") submitMileagePrompt(form);
     else if (type === "maintenance") submitMaintenanceForm();
     else if (type === "goal") submitGoalForm();
     else if (type === "contribution") submitContributionForm();

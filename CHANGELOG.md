@@ -1,19 +1,41 @@
 # Changelog
 
-## 3.2.0 — Mileage-first live shifts
+## 3.3.0 — Glance mode and readability
 
 ### Added
-- Dedicated starting-mileage checkpoint that appears before every new live shift
-- Dedicated ending-mileage checkpoint that appears before final shift totals
-- Live distance preview from the captured start and end odometer readings
-- Recovery input for older active shifts that do not contain a starting odometer
+- One-screen mobile command center with weekly goal pacing, compact money snapshots, and two recent shifts
+- Trend, Money, and Patterns analytics tabs so only one report is visible at a time
+- Calendar day sheets, Vehicle Status/History tabs, Active/Archived goal tabs, and context-aware quick-add behavior
+- Explicit load-more controls for shifts, maintenance, and goals
 
 ### Changed
-- Date and start time are now captured automatically after the starting-mileage confirmation
-- The end-shift review now shows a compact captured-mileage summary instead of repeating odometer fields in the main form
-- Editing ending mileage preserves unsaved earnings, trips, fuel, time, notes, and allocation changes
-- Advanced final-shift details remain collapsed to keep the end flow short on phones
-- Advanced the offline cache version so installed dashboards receive the new workflow
+- Reduced the initial mobile shift ledger to five recent records and the goal list to three active targets
+- Reworked mobile type scale, contrast, spacing, touch targets, and fixed navigation for easier scanning
+- Replaced stacked vehicle cards with one reserve/odometer status card and deduplicated matching service reminders
+- Preserved the mileage-first start and end flow while keeping secondary fields behind progressive disclosure
+- Corrected the built-in 2026 business-mile schedule to one 72.5-cent rate for the full year
+- Added a narrow migration that replaces only the exact unedited 3.0–3.2 split-rate defaults; custom mileage schedules remain untouched
+- Fixed the modal backdrop event path so mileage and other native form submit buttons work reliably
+- Advanced the offline cache version for installed copies
+
+## 3.2.0 — Mileage-first shift workflow
+
+### Added
+- Dedicated starting-mileage prompt that appears immediately after **Start shift**
+- Dedicated ending-mileage prompt that appears immediately after **End shift**
+- Live business-mile calculation while entering the ending odometer
+- Compact captured-mileage summary in the final shift sheet
+- Editable ending-mileage step that preserves final earnings and cost inputs
+
+### Changed
+- Shift date and start time are now captured automatically when the starting mileage is confirmed
+- Final earnings and costs appear only after ending mileage is captured
+- Live-shift update no longer asks for a current odometer; ending mileage is reserved for the finish flow
+- Active-shift summaries show the recorded starting mileage
+- Modal focus now lands on the primary input instead of the close button
+- Opening a modal clears stale toasts so they do not cover the focused workflow
+- Fresh installs now retain the intended 10% investment, 10% savings, and 5% vehicle-fund defaults
+- Advanced the offline cache version for installed copies
 
 ## 3.1.0 — Compact mobile management
 
