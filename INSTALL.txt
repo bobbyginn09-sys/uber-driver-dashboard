@@ -1,4 +1,4 @@
-DRIVER COMMAND 3.3.0 — INSTALL
+DRIVER COMMAND 3.4.0 — INSTALL
 
 1. Extract the complete folder.
 2. In the extracted folder, run:  python3 -m http.server 8080
@@ -16,3 +16,10 @@ UPDATING AN EXISTING COPY
 - Home, Analytics, Calendar, Vehicle status, and Settings are designed to fit in about one phone screen.
 - Shifts, maintenance, and goals begin with a short recent list and expand only when requested.
 - Starting mileage still appears first when starting a shift; ending mileage still appears first when ending one.
+
+
+3.4 DAILY MONEY PLAN
+- Analytics now includes a Day period.
+- Open Analytics → Money → Day to see the combined amount to move out.
+- Take out today = recorded gas + 25% of positive net earnings for investments.
+- The same card shows what remains available after recorded costs.

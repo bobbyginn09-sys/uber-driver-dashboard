@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.4.0 — Daily money plan
+
+### Added
+- Day period in Analytics for a focused view of today's completed shifts
+- Prominent **Take out today** total in Money view
+- Compact gas, 25% investment, and remaining-available breakdown
+- Shared transfer-plan calculation with automated tests
+
+### Changed
+- Fresh installations now default to a 25% investment allocation
+- Existing copies using the exact former 10% investment, 10% savings, and 5% vehicle defaults migrate to 25% / 10% / 5%
+- Custom allocation settings and historical per-shift rates remain preserved
+- Mobile analytics period controls now fit Day, Week, Month, Year, and All in one row
+- Advanced the offline cache version for installed copies
+
 ## 3.3.0 — Glance mode and readability
 
 ### Added

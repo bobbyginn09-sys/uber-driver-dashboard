@@ -88,6 +88,7 @@
   ];
 
   const PLATFORM_OPTIONS = ["Uber", "Lyft", "Uber + Lyft", "DoorDash", "Other"];
+  const DAILY_INVESTMENT_RATE = 25;
 
   const ICONS = {
     overview: '<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
@@ -324,10 +325,23 @@
     return raw == null || String(raw).trim() === "" ? fallback : Core.safeNumber(raw, fallback);
   }
 
+  function migrateSettingsForVersion(rawSettings, storedVersion) {
+    const candidate = Core.clone(rawSettings || {});
+    const allocations = candidate && candidate.allocations;
+    const isLegacyDefault = allocations
+      && Math.abs(Core.safeNumber(allocations.investment) - 10) < 0.0001
+      && Math.abs(Core.safeNumber(allocations.savings) - 10) < 0.0001
+      && Math.abs(Core.safeNumber(allocations.vehicle) - 5) < 0.0001;
+    if (isLegacyDefault && String(storedVersion || "") !== Core.APP_VERSION) {
+      candidate.allocations.investment = DAILY_INVESTMENT_RATE;
+    }
+    return candidate;
+  }
+
   function loadState() {
     const stored = parseStored(STORAGE_KEY, null);
     if (stored && typeof stored === "object") {
-      const settings = Core.normalizeSettings(stored.settings);
+      const settings = Core.normalizeSettings(migrateSettingsForVersion(stored.settings, stored.version));
       return {
         version: Core.APP_VERSION,
         shifts: Array.isArray(stored.shifts) ? stored.shifts.map((item) => Core.normalizeShift(item, settings)) : [],
@@ -343,15 +357,15 @@
     const legacyGoals = parseStored(LEGACY_KEYS.goals, []);
     const legacyDraft = parseStored(LEGACY_KEYS.activeDraft, null);
 
-    const settings = Core.normalizeSettings({
+    const settings = Core.normalizeSettings(migrateSettingsForVersion({
       theme: localStorage.getItem("dashboardTheme") || "dark",
       allocations: {
-        investment: storedNumber("investmentPct", 10),
+        investment: storedNumber("investmentPct", DAILY_INVESTMENT_RATE),
         savings: storedNumber("savingsPct", 10),
         vehicle: storedNumber("vehiclePct", 5)
       },
       monthlyNetGoal: storedNumber("monthlyNetGoal", 0)
-    });
+    }, "legacy"));
 
     let activeShift = null;
     const legacyClockIn = localStorage.getItem(LEGACY_KEYS.clockIn) || (legacyDraft && (legacyDraft.clockInTime || legacyDraft.manualClockIn));
@@ -1087,12 +1101,23 @@
   }
 
   function analyticsPeriodLabel(period) {
-    return ({ week: "This week", month: "This month", year: "This year", all: "All time" })[period] || "This month";
+    return ({ day: "Today", week: "This week", month: "This month", year: "This year", all: "All time" })[period] || "This month";
   }
 
   function seriesForAnalytics(list, period) {
     const grouped = {};
     const currentYear = new Date().getFullYear();
+    if (period === "day") {
+      const calculated = sortedShifts(list).reverse().map((item) => Core.calculateShift(item, state.settings));
+      if (!calculated.length) {
+        return [{ key: Core.localISODate(), label: "Today", value: 0 }];
+      }
+      return calculated.map((shift, index) => ({
+        key: shift.id,
+        label: shift.startTime ? formatTime(shift.startTime) : `Shift ${index + 1}`,
+        value: shift.net
+      }));
+    }
     if (period === "week" || period === "month") {
       const range = Core.rangeForPeriod(period, new Date(), state.settings.weekStartsOn);
       const cursor = new Date(range.start);
@@ -1180,6 +1205,11 @@
     const bestShift = sortedShifts(list).map((item) => Core.calculateShift(item, state.settings)).sort((a, b) => b.net - a.net)[0];
     const deductionRate = summary.miles ? summary.taxDeduction / summary.miles : Core.getMileageRate(Core.localISODate(), state.settings.taxRates).rate;
     const expenseRatio = summary.gross ? summary.expenses / summary.gross * 100 : 0;
+    const transferPlan = Core.calculateTransferPlan(list, state.settings, DAILY_INVESTMENT_RATE);
+    const dailyTakeOutCard = period === "day" ? `<div class="daily-takeout-card">
+      <div class="daily-takeout-main"><span>${icon("wallet", "icon icon-sm")}Take out today</span><strong>${formatMoney(transferPlan.takeOut)}</strong><small>Gas + ${formatNumber(transferPlan.rate)}% of positive net earnings</small></div>
+      <div class="daily-takeout-breakdown"><div><span>Gas</span><strong>${formatMoney(transferPlan.fuel)}</strong></div><div><span>Invest ${formatNumber(transferPlan.rate)}%</span><strong>${formatMoney(transferPlan.investment)}</strong></div><div class="is-remaining"><span>Keep available</span><strong>${formatMoney(transferPlan.remaining)}</strong></div></div>
+    </div>` : "";
 
     const trendView = `<section class="panel analytics-view-panel analytics-trend-view">
       <div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">${escapeHtml(analyticsPeriodLabel(period))} at a glance</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>
@@ -1188,7 +1218,8 @@
     </section>`;
 
     const moneyView = `<section class="panel analytics-view-panel analytics-money-view">
-      <div class="panel-header"><div><h2 class="panel-title">Money flow</h2><p class="panel-subtitle">Where positive net earnings went</p></div><span class="pill">${formatMoney(summary.spendable, { noCents: true })} spendable</span></div>
+      <div class="panel-header"><div><h2 class="panel-title">Money flow</h2><p class="panel-subtitle">${period === "day" ? "Today's transfer and allocation breakdown" : "Where positive net earnings went"}</p></div><span class="pill">${formatMoney(summary.spendable, { noCents: true })} spendable</span></div>
+      ${dailyTakeOutCard}
       <div class="analytics-money-layout">
         <div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div><div class="legend-list"><div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div><div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div><div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div></div></div>
         <div class="analytics-deduction-card"><span>${icon("route", "icon icon-sm")}Mileage estimate</span><strong>${formatMoney(summary.taxDeduction)}</strong><p>${formatNumber(summary.miles, 1)} miles · average ${formatMoney(deductionRate)}/mile</p><small>Recordkeeping estimate only.</small></div>
@@ -1213,7 +1244,7 @@
       </section>
       <section class="analytics-control-deck" aria-label="Analytics controls">
         <div class="period-switch analytics-period-switch" aria-label="Analytics period">${[
-          ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]
+          ["day", "Day"], ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]
         ].map(([value, label]) => `<button class="segment-button${period === value ? " is-active" : ""}" type="button" data-action="analytics-period" data-period="${value}">${label}</button>`).join("")}</div>
         <div class="period-switch analytics-view-switch" aria-label="Analytics view">${[
           ["trend", "Trend", "trend"], ["money", "Money", "wallet"], ["compare", "Patterns", "analytics"]

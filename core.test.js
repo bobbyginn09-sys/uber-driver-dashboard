@@ -81,6 +81,22 @@ assert.equal(summary.hourly, 45);
 const mondayStart = Core.startOfWeek(new Date(2026, 6, 15), 1);
 assert.equal(Core.localISODate(mondayStart), "2026-07-13");
 
+const dayRange = Core.rangeForPeriod("day", new Date(2026, 6, 15, 18, 30), 1);
+assert.equal(Core.localISODate(dayRange.start), "2026-07-15");
+assert.equal(Core.localISODate(dayRange.end), "2026-07-15");
+assert.equal(dayRange.start.getHours(), 0);
+assert.equal(dayRange.end.getHours(), 23);
+
+const transferPlan = Core.calculateTransferPlan([
+  { date: "2026-07-15", gross: 200, fuel: 20, tolls: 5, manualHours: 4 },
+  { date: "2026-07-15", gross: 100, fuel: 10, manualHours: 2 }
+], settings, 25);
+assert.equal(transferPlan.rate, 25);
+assert.equal(transferPlan.fuel, 30);
+assert.equal(transferPlan.investment, 66.25);
+assert.equal(transferPlan.takeOut, 96.25);
+assert.equal(transferPlan.remaining, 198.75);
+
 const normalizedGoal = Core.normalizeGoal({ name: "Trip", amount: 1000, saved: 250 });
 assert.equal(normalizedGoal.target, 1000);
 assert.equal(Core.goalSaved(normalizedGoal), 250);

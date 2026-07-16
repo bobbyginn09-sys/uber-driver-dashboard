@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.3.0";
+  const APP_VERSION = "3.4.0";
 
   const DEFAULT_TAX_RATES = Object.freeze([
     { id: "rate-2024", effective: "2024-01-01", rate: 0.67, label: "2024" },
@@ -20,7 +20,7 @@
     weeklyNetGoal: 0,
     monthlyNetGoal: 0,
     allocations: {
-      investment: 10,
+      investment: 25,
       savings: 10,
       vehicle: 5
     },
@@ -401,6 +401,20 @@
     return summary;
   }
 
+  function calculateTransferPlan(shifts, settings, investmentRate) {
+    const summary = summarizeShifts(shifts, settings);
+    const rate = clamp(investmentRate == null ? 25 : investmentRate, 0, 100);
+    const investment = Math.max(0, summary.net) * (rate / 100);
+    const fuel = Math.max(0, summary.fuel);
+    return {
+      rate: round(rate, 2),
+      fuel: round(fuel, 2),
+      investment: round(investment, 2),
+      takeOut: round(fuel + investment, 2),
+      remaining: round(summary.net - investment, 2)
+    };
+  }
+
   function normalizeMaintenance(raw) {
     const source = raw || {};
     const date = parseISODate(source.date || "") ? source.date : localISODate();
@@ -471,6 +485,8 @@
   function rangeForPeriod(period, anchor, weekStartsOn) {
     const base = anchor instanceof Date ? new Date(anchor) : parseISODate(anchor) || new Date(anchor || Date.now());
     switch (period) {
+      case "day":
+        return { start: startOfDay(base), end: endOfDay(base) };
       case "week":
         return { start: startOfWeek(base, weekStartsOn), end: endOfWeek(base, weekStartsOn) };
       case "month":
@@ -643,6 +659,7 @@
     normalizeShift,
     calculateShift,
     summarizeShifts,
+    calculateTransferPlan,
     normalizeMaintenance,
     normalizeGoal,
     goalSaved,
