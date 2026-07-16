@@ -749,7 +749,7 @@
     const projection = Core.monthlyProjection(state.shifts, state.settings, new Date());
     const bestDay = bestWeekdayInsight(state.shifts);
     const vehicle = vehicleFundSummary();
-    const recent = sortedShifts().slice(0, 5);
+    const recent = sortedShifts().slice(0, 4);
     const weeklyGoal = Core.safeNumber(state.settings.weeklyNetGoal);
     const weeklyProgress = weeklyGoal > 0 ? Math.min(100, Math.max(0, week.net / weeklyGoal * 100)) : 0;
     const weeklyRemaining = Math.max(0, weeklyGoal - week.net);
@@ -803,7 +803,7 @@
       </div>
     </section>`;
 
-    const goalPanel = `<aside class="goal-panel">
+    const goalPanel = `<aside class="goal-panel compact-goal-panel">
       <div class="panel-header">
         <div><div class="eyebrow">Weekly target</div><h2 class="panel-title">Net earnings goal</h2></div>
         ${weeklyGoal > 0 ? `<span class="pill ${weeklyProgress >= 100 ? "pill-success" : "pill-info"}">${weeklyProgress.toFixed(0)}%</span>` : ""}
@@ -812,14 +812,14 @@
         <strong>${formatMoney(week.net, { noCents: true })}</strong>
         <span>${weeklyGoal > 0 ? `of ${formatMoney(weeklyGoal, { noCents: true })} this week` : "No weekly goal has been set yet."}</span>
       </div>
-      <div style="margin-top:20px">
+      <div class="goal-progress-block">
         <div class="progress progress-lg"><div class="progress-fill" style="width:${weeklyProgress.toFixed(2)}%"></div></div>
         <div class="progress-meta">
           <span>${weeklyGoal > 0 ? `${formatMoney(weeklyRemaining, { noCents: true })} remaining` : "Set a goal to track pace"}</span>
           <span>${week.count} shift${week.count === 1 ? "" : "s"}</span>
         </div>
       </div>
-      <div style="margin-top:22px">
+      <div class="goal-action-row">
         <button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}${weeklyGoal > 0 ? "Adjust goal" : "Set weekly goal"}</button>
       </div>
     </aside>`;
@@ -883,13 +883,13 @@
       <div class="overview-grid">${hero}${goalPanel}</div>
       <section class="metric-grid" aria-label="Weekly performance metrics">${metricCards}</section>
       <div class="dashboard-lower-grid">
-        <section class="chart-panel">
+        <section class="chart-panel overview-chart-panel">
           <div class="panel-header"><div><h2 class="panel-title">Last 7 days</h2><p class="panel-subtitle">Net earnings by day</p></div><button class="button button-ghost button-small" type="button" data-route="analytics">Full analytics${icon("chevronRight", "icon icon-sm")}</button></div>
           ${renderAreaChart(dailySeries, { label: "Net earnings over the last seven days" })}
         </section>
-        <aside class="insight-stack">${insightMarkup}</aside>
+        <aside class="insight-stack overview-insights">${insightMarkup}</aside>
       </div>
-      <section class="panel">
+      <section class="panel overview-recent-panel">
         <div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Your latest completed driving sessions</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">Manage all${icon("chevronRight", "icon icon-sm")}</button></div>
         ${recentMarkup}
       </section>
@@ -969,8 +969,8 @@
             <button class="button button-primary button-small" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add shift</button>
           </div>
         </div>
-        <div class="filter-grid">
-          <div class="field"><label for="shiftSearch">Search</label><div class="input-wrap">${icon("search", "input-icon")}<input id="shiftSearch" type="search" autocomplete="off" placeholder="Date, platform, notes…" value="${escapeAttribute(ui.shiftFilters.search)}" data-filter="shift-search"></div></div>
+        <div class="shift-search-row"><div class="field"><label for="shiftSearch">Search ledger</label><div class="input-wrap">${icon("search", "input-icon")}<input id="shiftSearch" type="search" autocomplete="off" placeholder="Date, platform, notes…" value="${escapeAttribute(ui.shiftFilters.search)}" data-filter="shift-search"></div></div></div>
+        <details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Filters & sorting</span><span class="filter-disclosure-value">${ui.shiftFilters.range === "30" && ui.shiftFilters.platform === "all" && ui.shiftFilters.sort === "dateDesc" ? "Default" : "Customized"}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary">
           <div class="field"><label for="shiftRange">Date range</label><select id="shiftRange" data-filter="shift-range">
             <option value="all"${ui.shiftFilters.range === "all" ? " selected" : ""}>All time</option>
             <option value="7"${ui.shiftFilters.range === "7" ? " selected" : ""}>Last 7 days</option>
@@ -987,7 +987,7 @@
             <option value="hourlyDesc"${ui.shiftFilters.sort === "hourlyDesc" ? " selected" : ""}>Best hourly</option>
             <option value="milesDesc"${ui.shiftFilters.sort === "milesDesc" ? " selected" : ""}>Most miles</option>
           </select></div>
-        </div>
+        </div></details>
       </section>
       <div id="shiftSummary"></div>
       <div id="shiftBulkBar"></div>
@@ -1053,10 +1053,29 @@
     mobileRoot.innerHTML = list.map((raw) => {
       const shift = Core.calculateShift(raw, state.settings);
       const selected = ui.selectedShiftIds.has(String(shift.id));
-      return `<article class="record-card${selected ? " is-selected" : ""}">
-        <div class="record-card-head"><div class="record-card-title"><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift"${selected ? " checked" : ""}><div><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))}</strong><span>${escapeHtml(shift.platform)} · ${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))}</span></div></div><div class="record-card-value text-accent">${formatMoney(shift.net)}</div></div>
-        <div class="record-card-grid"><div class="record-mini-stat"><span>Hourly</span><strong>${formatMoney(shift.hourly)}</strong></div><div class="record-mini-stat"><span>Miles</span><strong>${formatNumber(shift.miles, 1)}</strong></div><div class="record-mini-stat"><span>Spendable</span><strong>${formatMoney(shift.spendable)}</strong></div></div>
-        <div class="record-card-actions"><button class="button button-ghost button-small" type="button" data-action="duplicate-shift" data-id="${escapeAttribute(shift.id)}">${icon("copy", "icon icon-sm")}Duplicate</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete shift">${icon("trash", "icon icon-sm")}</button></div>
+      const timeLabel = shift.startTime || shift.endTime
+        ? `${formatTime(shift.startTime)}–${formatTime(shift.endTime)}`
+        : formatDuration(shift.hours);
+      return `<article class="record-card compact-record-card${selected ? " is-selected" : ""}">
+        <div class="compact-record-shell">
+          <label class="compact-record-select"><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift on ${escapeAttribute(formatDate(shift.date))}"${selected ? " checked" : ""}></label>
+          <details class="record-card-disclosure">
+            <summary>
+              <span class="compact-record-summary">
+                <strong class="compact-record-date">${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))}</strong>
+                <strong class="compact-record-net ${shift.net < 0 ? "text-red" : "text-accent"}">${formatMoney(shift.net)}</strong>
+                <span class="compact-record-meta">${escapeHtml(shift.platform)} · ${escapeHtml(timeLabel)}</span>
+                <span class="compact-record-efficiency">${formatMoney(shift.hourly)}/hr · ${formatNumber(shift.miles, 1)} mi</span>
+              </span>
+              ${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}
+            </summary>
+            <div class="record-card-disclosure-content">
+              <div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Gross</span><strong>${formatMoney(shift.gross)}</strong></div><div class="record-mini-stat"><span>Expenses</span><strong>${formatMoney(shift.expenses)}</strong></div><div class="record-mini-stat"><span>Spendable</span><strong>${formatMoney(shift.spendable)}</strong></div><div class="record-mini-stat"><span>Trips</span><strong>${formatNumber(shift.trips)}</strong></div></div>
+              ${shift.notes ? `<p class="compact-record-note">${escapeHtml(shift.notes)}</p>` : ""}
+              <div class="record-card-actions"><button class="button button-ghost button-small" type="button" data-action="duplicate-shift" data-id="${escapeAttribute(shift.id)}">${icon("copy", "icon icon-sm")}Duplicate</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete shift">${icon("trash", "icon icon-sm")}</button></div>
+            </div>
+          </details>
+        </div>
       </article>`;
     }).join("");
   }
@@ -1153,6 +1172,42 @@
     const bestDay = bestWeekdayInsight(list);
     const bestShift = sortedShifts(list).map((item) => Core.calculateShift(item, state.settings)).sort((a, b) => b.net - a.net)[0];
     const deductionRate = summary.miles ? summary.taxDeduction / summary.miles : Core.getMileageRate(Core.localISODate(), state.settings.taxRates).rate;
+    const moneyFlowPanel = pageDisclosure({
+      title: "Money flow",
+      subtitle: "Where positive net earnings went",
+      value: formatMoney(summary.spendable, { noCents: true }),
+      content: `<div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div><div class="legend-list"><div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div><div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div><div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div></div></div>`,
+      className: "analytics-disclosure"
+    });
+    const mileagePanel = pageDisclosure({
+      title: "Mileage deduction",
+      subtitle: "Planning estimate from your rate schedule",
+      value: formatMoney(summary.taxDeduction, { noCents: true }),
+      content: `<div class="goal-total compact-goal-total"><strong>${formatMoney(summary.taxDeduction)}</strong><span>${formatNumber(summary.miles, 1)} miles at an average ${formatMoney(deductionRate)}/mile</span></div><p class="field-help">This is an organizational estimate, not tax advice. Confirm eligibility and records with a tax professional.</p>`,
+      className: "analytics-disclosure"
+    });
+    const weekdayPanel = pageDisclosure({
+      title: "Weekday contribution",
+      subtitle: "Total net by day of week",
+      value: bestDay ? escapeHtml(bestDay.label) : "—",
+      content: renderBarChart(weekdaySeries, { label: "Net earnings by weekday" }),
+      surfaceClass: "chart-panel",
+      className: "analytics-disclosure"
+    });
+    const platformPanel = pageDisclosure({
+      title: "Platform mix",
+      subtitle: "Net contribution by platform",
+      value: `${platforms.length} platform${platforms.length === 1 ? "" : "s"}`,
+      content: platforms.length ? `<div class="bar-list">${platforms.map((row, index) => `<div class="bar-row"><div class="bar-row-head"><span>${escapeHtml(row.label)} · ${row.count} shift${row.count === 1 ? "" : "s"}</span><strong>${formatMoney(row.net)}</strong></div><div class="bar-track"><div class="bar-fill ${row.net < 0 ? "is-negative" : index % 3 === 1 ? "is-blue" : index % 3 === 2 ? "is-violet" : ""}" style="width:${Math.max(2, Math.abs(row.net) / maxPlatform * 100)}%"></div></div></div>`).join("")}</div>` : emptyState({ icon: "analytics", title: "No platform data", body: "Save shifts to compare your platforms." }),
+      className: "analytics-disclosure"
+    });
+    const signalPanel = pageDisclosure({
+      title: "Performance signals",
+      subtitle: "Useful context from the selected period",
+      value: bestShift ? formatMoney(bestShift.net, { noCents: true }) : "—",
+      content: `<div class="insight-grid"><div class="compact-insight"><span>Best weekday</span><strong>${bestDay ? escapeHtml(bestDay.label) : "—"}</strong></div><div class="compact-insight"><span>Best shift</span><strong>${bestShift ? formatMoney(bestShift.net) : "—"}</strong></div><div class="compact-insight"><span>Expense ratio</span><strong>${summary.gross ? `${(summary.expenses / summary.gross * 100).toFixed(1)}%` : "—"}</strong></div><div class="compact-insight"><span>Net per trip</span><strong>${summary.trips ? formatMoney(summary.net / summary.trips) : "—"}</strong></div></div>`,
+      className: "analytics-disclosure analytics-signals"
+    });
 
     return `<div class="page-stack">
       <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">${escapeHtml(analyticsPeriodLabel(period))}</h2><p class="panel-subtitle">Compared with the preceding equivalent period where available.</p></div><div class="period-switch" aria-label="Analytics period">${[
@@ -1165,30 +1220,11 @@
         ${metricCard({ icon: "shifts", iconClass: "is-amber", label: "Average shift", value: formatMoney(summary.averageShift), badge: period === "all" ? "" : trendBadge(summary.averageShift, prev.averageShift), meta: `${summary.count} shift${summary.count === 1 ? "" : "s"} · ${formatNumber(summary.trips)} trips` })}
       </section>
       <div class="analytics-grid">
-        <section class="chart-panel"><div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">Performance across ${escapeHtml(analyticsPeriodLabel(period).toLowerCase())}</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>${renderAreaChart(series, { height: 285, label: `Net earnings for ${analyticsPeriodLabel(period)}` })}</section>
-        <aside class="analytics-side">
-          <section class="panel"><div class="panel-header"><div><h2 class="panel-title">Money flow</h2><p class="panel-subtitle">Where positive net earnings went</p></div></div>
-            <div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div>
-            <div class="legend-list">
-              <div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div>
-              <div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div>
-              <div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div>
-              <div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div>
-            </div></div>
-          </section>
-          <section class="panel"><div class="panel-header"><div><h2 class="panel-title">Mileage deduction</h2><p class="panel-subtitle">Planning estimate from your rate schedule</p></div>${icon("tax", "icon icon-lg text-blue")}</div><div class="goal-total"><strong>${formatMoney(summary.taxDeduction)}</strong><span>${formatNumber(summary.miles, 1)} miles at an average ${formatMoney(deductionRate)}/mile</span></div><p class="field-help">This is an organizational estimate, not tax advice. Confirm eligibility and records with a tax professional.</p></section>
-        </aside>
+        <section class="chart-panel analytics-trend-panel"><div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">Performance across ${escapeHtml(analyticsPeriodLabel(period).toLowerCase())}</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>${renderAreaChart(series, { height: 285, label: `Net earnings for ${analyticsPeriodLabel(period)}` })}</section>
+        <aside class="analytics-side">${moneyFlowPanel}${mileagePanel}</aside>
       </div>
-      <div class="analytics-grid">
-        <section class="chart-panel"><div class="panel-header"><div><h2 class="panel-title">Weekday contribution</h2><p class="panel-subtitle">Total net by day of week</p></div></div>${renderBarChart(weekdaySeries, { label: "Net earnings by weekday" })}</section>
-        <section class="panel"><div class="panel-header"><div><h2 class="panel-title">Platform mix</h2><p class="panel-subtitle">Net contribution by platform</p></div></div>${platforms.length ? `<div class="bar-list">${platforms.map((row, index) => `<div class="bar-row"><div class="bar-row-head"><span>${escapeHtml(row.label)} · ${row.count} shift${row.count === 1 ? "" : "s"}</span><strong>${formatMoney(row.net)}</strong></div><div class="bar-track"><div class="bar-fill ${row.net < 0 ? "is-negative" : index % 3 === 1 ? "is-blue" : index % 3 === 2 ? "is-violet" : ""}" style="width:${Math.max(2, Math.abs(row.net) / maxPlatform * 100)}%"></div></div></div>`).join("")}</div>` : emptyState({ icon: "analytics", title: "No platform data", body: "Save shifts to compare your platforms." })}</section>
-      </div>
-      <section class="panel"><div class="panel-header"><div><h2 class="panel-title">Performance signals</h2><p class="panel-subtitle">Useful context from the selected period</p></div></div><div class="insight-grid">
-        <div class="compact-insight"><span>Best weekday</span><strong>${bestDay ? escapeHtml(bestDay.label) : "—"}</strong></div>
-        <div class="compact-insight"><span>Best shift</span><strong>${bestShift ? formatMoney(bestShift.net) : "—"}</strong></div>
-        <div class="compact-insight"><span>Expense ratio</span><strong>${summary.gross ? `${(summary.expenses / summary.gross * 100).toFixed(1)}%` : "—"}</strong></div>
-        <div class="compact-insight"><span>Net per trip</span><strong>${summary.trips ? formatMoney(summary.net / summary.trips) : "—"}</strong></div>
-      </div></section>
+      <div class="analytics-grid analytics-breakdown-grid">${weekdayPanel}${platformPanel}</div>
+      ${signalPanel}
     </div>`;
   }
 
@@ -1326,11 +1362,11 @@
 
     return `<div class="page-stack">
       <div class="vehicle-hero-grid">
-        <section class="vehicle-fund-card"><div class="panel-header"><div><div class="eyebrow">Available reserve</div><h2>Vehicle fund balance</h2></div>${icon("wallet", "icon icon-lg text-accent")}</div><strong class="vehicle-fund-balance ${fund.balance < 0 ? "text-red" : ""}">${formatMoney(fund.balance)}</strong><div class="vehicle-fund-meta"><span>${formatMoney(fund.contributions)} contributed</span><span>${formatMoney(fund.spent)} maintenance logged</span></div><div style="margin-top:20px"><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Log maintenance</button></div></section>
-        <section class="odometer-card"><div class="panel-header"><div><div class="eyebrow">${escapeHtml(state.settings.vehicle.name)}</div><h2 class="panel-title">Current odometer</h2></div>${icon("car", "icon icon-lg text-blue")}</div><strong class="odometer-value">${formatNumber(odometer, 0)} <span class="muted" style="font-size:.42em;letter-spacing:0">mi</span></strong><p class="panel-subtitle" style="margin-top:10px">Updated from your highest saved shift, maintenance record, or vehicle setting.</p><div style="margin-top:18px"><button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}Vehicle settings</button></div></section>
+        <section class="vehicle-fund-card"><div class="panel-header"><div><div class="eyebrow">Available reserve</div><h2>Vehicle fund balance</h2></div>${icon("wallet", "icon icon-lg text-accent")}</div><strong class="vehicle-fund-balance ${fund.balance < 0 ? "text-red" : ""}">${formatMoney(fund.balance)}</strong><div class="vehicle-fund-meta"><span>${formatMoney(fund.contributions)} contributed</span><span>${formatMoney(fund.spent)} maintenance logged</span></div><div class="vehicle-card-action"><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Log maintenance</button></div></section>
+        <section class="odometer-card"><div class="panel-header"><div><div class="eyebrow">${escapeHtml(state.settings.vehicle.name)}</div><h2 class="panel-title">Current odometer</h2></div>${icon("car", "icon icon-lg text-blue")}</div><strong class="odometer-value">${formatNumber(odometer, 0)} <span class="muted odometer-unit">mi</span></strong><p class="panel-subtitle odometer-copy">Updated from your highest saved shift, maintenance record, or vehicle setting.</p><div class="vehicle-card-action"><button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}Vehicle settings</button></div></section>
       </div>
       <section><div class="section-header"><div><h2 class="section-title">Service reminders</h2><p class="section-subtitle">Mileage-based planning from your maintenance history</p></div></div><div class="reminder-grid">${renderReminderCard(oil, "fuel")}${renderReminderCard(tires, "route")}${renderReminderCard(nextReminder, "wrench")}</div></section>
-      <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Maintenance ledger</h2><p class="panel-subtitle" id="maintenanceResultsMeta">Loading service history…</p></div><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Add record</button></div><div class="filter-grid" style="grid-template-columns:minmax(220px,1.5fr) minmax(180px,.65fr)"><div class="field"><label for="maintenanceSearch">Search</label><div class="input-wrap">${icon("search", "input-icon")}<input id="maintenanceSearch" type="search" placeholder="Type, note, date…" value="${escapeAttribute(ui.vehicleFilters.search)}" data-filter="maintenance-search"></div></div><div class="field"><label for="maintenanceType">Service type</label><select id="maintenanceType" data-filter="maintenance-type"><option value="all">All service types</option>${types.map((type) => `<option value="${escapeAttribute(type)}"${ui.vehicleFilters.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div></div></section>
+      <section class="toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Maintenance ledger</h2><p class="panel-subtitle" id="maintenanceResultsMeta">Loading service history…</p></div><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Add record</button></div><div class="shift-search-row"><div class="field"><label for="maintenanceSearch">Search service history</label><div class="input-wrap">${icon("search", "input-icon")}<input id="maintenanceSearch" type="search" placeholder="Type, note, date…" value="${escapeAttribute(ui.vehicleFilters.search)}" data-filter="maintenance-search"></div></div></div><details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Service filter</span><span class="filter-disclosure-value">${ui.vehicleFilters.type === "all" ? "All types" : escapeHtml(ui.vehicleFilters.type)}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary filter-grid-single"><div class="field"><label for="maintenanceType">Service type</label><select id="maintenanceType" data-filter="maintenance-type"><option value="all">All service types</option>${types.map((type) => `<option value="${escapeAttribute(type)}"${ui.vehicleFilters.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div></div></details></section>
       <div id="maintenanceResults"></div>
     </div>`;
   }
@@ -1353,7 +1389,8 @@
       });
       return;
     }
-    root.innerHTML = `<div class="data-table-wrap"><table class="data-table" style="min-width:760px"><thead><tr><th>Date</th><th>Service</th><th>Cost</th><th>Odometer</th><th>Next due</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${list.map((item) => `<tr><td><span class="table-primary">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span></td><td><span class="platform-pill">${escapeHtml(item.type)}</span></td><td class="table-number">${formatMoney(item.amount)}</td><td class="table-number">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</td><td class="table-number">${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</td><td><span class="table-secondary" style="margin:0;max-width:260px;white-space:normal">${escapeHtml(item.note || "—")}</span></td><td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Edit maintenance record">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Delete maintenance record">${icon("trash", "icon icon-sm")}</button></div></td></tr>`).join("")}</tbody></table></div>`;
+    root.innerHTML = `<div class="data-table-wrap"><table class="data-table" style="min-width:760px"><thead><tr><th>Date</th><th>Service</th><th>Cost</th><th>Odometer</th><th>Next due</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${list.map((item) => `<tr><td><span class="table-primary">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span></td><td><span class="platform-pill">${escapeHtml(item.type)}</span></td><td class="table-number">${formatMoney(item.amount)}</td><td class="table-number">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</td><td class="table-number">${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</td><td><span class="table-secondary" style="margin:0;max-width:260px;white-space:normal">${escapeHtml(item.note || "—")}</span></td><td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Edit maintenance record">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Delete maintenance record">${icon("trash", "icon icon-sm")}</button></div></td></tr>`).join("")}</tbody></table></div>
+      <div class="mobile-record-list maintenance-mobile-list">${list.map((item) => `<article class="record-card compact-record-card maintenance-record-card"><details class="record-card-disclosure"><summary><span class="maintenance-record-icon">${icon("wrench", "icon icon-sm")}</span><span class="compact-record-summary maintenance-record-summary"><strong class="compact-record-date">${escapeHtml(item.type)}</strong><strong class="compact-record-net">${formatMoney(item.amount)}</strong><span class="compact-record-meta">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="compact-record-efficiency">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "No mileage"}</span></span>${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}</summary><div class="record-card-disclosure-content"><div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Odometer</span><strong>${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</strong></div><div class="record-mini-stat"><span>Next due</span><strong>${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</strong></div></div>${item.note ? `<p class="compact-record-note">${escapeHtml(item.note)}</p>` : ""}<div class="record-card-actions"><button class="button button-secondary button-small" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></div></details></article>`).join("")}</div>`;
   }
 
   function goalTiming(goal) {
@@ -1409,23 +1446,58 @@
   function renderSettingsPage() {
     const settings = state.settings;
     const serializedBytes = new Blob([JSON.stringify(serializeState())]).size;
-    return `<div class="settings-layout">
-      <form data-form="settings" novalidate>
-        <section class="settings-section panel"><div class="settings-section-header"><div><h2>Dashboard preferences</h2><p>Choose how the command center opens and how weeks are grouped.</p></div>${icon("settings", "icon icon-lg text-blue")}</div><div class="settings-grid is-three"><div class="field"><label for="settingTheme">Appearance</label><select id="settingTheme" name="theme"><option value="dark"${settings.theme === "dark" ? " selected" : ""}>Dark</option><option value="light"${settings.theme === "light" ? " selected" : ""}>Light</option></select></div><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${platformOptionMarkup(settings.defaultPlatform)}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="1"${settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option><option value="0"${settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="6"${settings.weekStartsOn === 6 ? " selected" : ""}>Saturday</option></select></div></div></section>
+    const allocationTotal = settings.allocations.investment + settings.allocations.savings + settings.allocations.vehicle;
+    const preferencesSection = pageDisclosure({
+      title: "Dashboard preferences",
+      subtitle: "Appearance, default platform, and week grouping",
+      value: settings.theme === "dark" ? "Dark" : "Light",
+      open: true,
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure",
+      content: `<div class="settings-grid is-three settings-grid-compact"><div class="field"><label for="settingTheme">Appearance</label><select id="settingTheme" name="theme"><option value="dark"${settings.theme === "dark" ? " selected" : ""}>Dark</option><option value="light"${settings.theme === "light" ? " selected" : ""}>Light</option></select></div><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${platformOptionMarkup(settings.defaultPlatform)}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="1"${settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option><option value="0"${settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="6"${settings.weekStartsOn === 6 ? " selected" : ""}>Saturday</option></select></div></div>`
+    });
+    const allocationSection = pageDisclosure({
+      title: "Money allocation & targets",
+      subtitle: "Set-asides and weekly or monthly net goals",
+      value: `${formatNumber(allocationTotal, 1)}% allocated`,
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure",
+      content: `<div class="settings-content-heading"><p>Percentages apply to positive net earnings on new shifts. Historical shifts keep their saved rates.</p><span class="pill" id="allocationTotal">${formatNumber(allocationTotal, 1)}% allocated</span></div><div class="settings-grid is-three settings-grid-compact"><div class="field"><label for="investmentPct">Investment</label><div class="input-suffix-wrap"><input id="investmentPct" type="number" inputmode="decimal" name="investmentPct" value="${escapeAttribute(settings.allocations.investment)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="savingsPct">Savings</label><div class="input-suffix-wrap"><input id="savingsPct" type="number" inputmode="decimal" name="savingsPct" value="${escapeAttribute(settings.allocations.savings)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="vehiclePct">Vehicle fund</label><div class="input-suffix-wrap"><input id="vehiclePct" type="number" inputmode="decimal" name="vehiclePct" value="${escapeAttribute(settings.allocations.vehicle)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="weeklyGoal">Weekly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="weeklyGoal" type="number" inputmode="decimal" name="weeklyNetGoal" value="${settings.weeklyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label for="monthlyGoal">Monthly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="monthlyGoal" type="number" inputmode="decimal" name="monthlyNetGoal" value="${settings.monthlyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label>Unallocated / spendable</label><div class="control settings-readonly" id="spendableAllocation">${formatNumber(100 - allocationTotal, 1)}%</div></div></div><p class="field-help" id="allocationHelp">The combined allocation must not exceed 100%.</p>`
+    });
+    const ratesSection = pageDisclosure({
+      title: "Business mileage rates",
+      subtitle: "Date-based deduction schedule",
+      value: `${settings.taxRates.length} rate${settings.taxRates.length === 1 ? "" : "s"}`,
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure",
+      content: `<div class="settings-inline-actions"><p>Rates are selected by shift date. Add historical or future periods without changing saved mileage.</p><button class="button button-ghost button-small" type="button" data-action="add-tax-rate">${icon("plus", "icon icon-sm")}Add rate</button></div><div class="rate-list" id="taxRateList">${renderTaxRateRows()}</div><div class="settings-secondary-actions"><button class="button button-ghost button-small" type="button" data-action="restore-default-rates">${icon("refresh", "icon icon-sm")}Restore built-in schedule</button></div><p class="field-help">Mileage figures are recordkeeping estimates only. Confirm current rules and eligibility with a qualified tax professional.</p>`
+    });
+    const vehicleSection = pageDisclosure({
+      title: "Vehicle profile",
+      subtitle: "Odometer and service intervals",
+      value: `${formatNumber(settings.vehicle.currentOdometer, 0)} mi`,
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure",
+      content: `<div class="settings-grid settings-grid-compact"><div class="field"><label for="vehicleName">Vehicle label</label><input id="vehicleName" type="text" name="vehicleName" value="${escapeAttribute(settings.vehicle.name)}" maxlength="80"></div><div class="field"><label for="vehicleOdometer">Current odometer</label><div class="input-suffix-wrap"><input id="vehicleOdometer" type="number" inputmode="decimal" name="vehicleOdometer" value="${escapeAttribute(settings.vehicle.currentOdometer)}" min="0" step="1"><span class="input-suffix">mi</span></div></div><div class="field"><label for="oilInterval">Oil-change interval</label><div class="input-suffix-wrap"><input id="oilInterval" type="number" inputmode="numeric" name="oilInterval" value="${escapeAttribute(settings.vehicle.oilInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div><div class="field"><label for="tireInterval">Tire-rotation interval</label><div class="input-suffix-wrap"><input id="tireInterval" type="number" inputmode="numeric" name="tireInterval" value="${escapeAttribute(settings.vehicle.tireInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div></div>`
+    });
+    const dataSection = pageDisclosure({
+      title: "Data controls",
+      subtitle: "Back up, import, export, or reset local records",
+      value: formatBytes(serializedBytes),
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure data-disclosure",
+      content: `<div class="data-actions"><button class="data-action-card" type="button" data-action="export-backup"><span class="data-icon">${icon("download", "icon icon-sm")}</span><h3>Full backup</h3><p>Download shifts, settings, goals, maintenance, and any active shift as JSON.</p><span class="button button-ghost button-small">Download JSON</span></button><button class="data-action-card" type="button" data-action="import-data"><span class="data-icon">${icon("upload", "icon icon-sm")}</span><h3>Import data</h3><p>Merge or replace data from a dashboard JSON backup or a shift CSV file.</p><span class="button button-ghost button-small">Choose file</span></button><button class="data-action-card" type="button" data-action="reset-data"><span class="data-icon data-icon-danger">${icon("trash", "icon icon-sm")}</span><h3>Reset dashboard</h3><p>Erase all locally stored dashboard data and return settings to defaults.</p><span class="button button-danger button-small">Reset local data</span></button></div><div class="storage-meter"><div class="storage-item"><span>Shifts</span><strong>${state.shifts.length}</strong></div><div class="storage-item"><span>Maintenance</span><strong>${state.maintenance.length}</strong></div><div class="storage-item"><span>Goals</span><strong>${state.goals.length}</strong></div><div class="storage-item"><span>Backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div>`
+    });
+    const privacySection = pageDisclosure({
+      title: "Privacy & version",
+      subtitle: "Local-first storage with no account or tracking",
+      value: `v${Core.APP_VERSION}`,
+      surfaceClass: "settings-section panel",
+      className: "settings-disclosure privacy-disclosure",
+      content: `<p class="settings-privacy-copy">Driver Command has no account, server database, ad tracking, or cloud sync. Browser storage is the source of truth, so regular backups are recommended.</p><div class="summary-strip"><div class="summary-stat"><span>Version</span><strong>${escapeHtml(Core.APP_VERSION)}</strong></div><div class="summary-stat"><span>Storage</span><strong>Local</strong></div><div class="summary-stat"><span>Offline</span><strong>Ready</strong></div><div class="summary-stat"><span>Legacy data</span><strong>Compatible</strong></div><div class="summary-stat"><span>Build</span><strong>Premium</strong></div></div>`
+    });
 
-        <section class="settings-section panel" style="margin-top:18px"><div class="settings-section-header"><div><h2>Money allocation & targets</h2><p>Percentages apply to positive net earnings on new shifts. Saved historical shifts keep their original allocation rates.</p></div><span class="pill" id="allocationTotal">25% allocated</span></div><div class="settings-grid is-three"><div class="field"><label for="investmentPct">Investment</label><div class="input-suffix-wrap"><input id="investmentPct" type="number" name="investmentPct" value="${escapeAttribute(settings.allocations.investment)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="savingsPct">Savings</label><div class="input-suffix-wrap"><input id="savingsPct" type="number" name="savingsPct" value="${escapeAttribute(settings.allocations.savings)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="vehiclePct">Vehicle fund</label><div class="input-suffix-wrap"><input id="vehiclePct" type="number" name="vehiclePct" value="${escapeAttribute(settings.allocations.vehicle)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="weeklyGoal">Weekly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="weeklyGoal" type="number" name="weeklyNetGoal" value="${settings.weeklyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label for="monthlyGoal">Monthly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="monthlyGoal" type="number" name="monthlyNetGoal" value="${settings.monthlyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label>Unallocated / spendable</label><div class="control" id="spendableAllocation" style="display:flex;align-items:center">${formatNumber(100 - settings.allocations.investment - settings.allocations.savings - settings.allocations.vehicle, 1)}%</div></div></div><p class="field-help" id="allocationHelp">The combined allocation must not exceed 100%.</p></section>
-
-        <section class="settings-section panel" style="margin-top:18px"><div class="settings-section-header"><div><h2>Business mileage rate schedule</h2><p>Rates are selected by shift date. Add historical or future periods without changing saved mileage.</p></div><button class="button button-ghost button-small" type="button" data-action="add-tax-rate">${icon("plus", "icon icon-sm")}Add rate</button></div><div class="rate-list" id="taxRateList">${renderTaxRateRows()}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="button button-ghost button-small" type="button" data-action="restore-default-rates">${icon("refresh", "icon icon-sm")}Restore built-in schedule</button></div><p class="field-help">Mileage deduction figures are recordkeeping estimates only. Confirm current rules and eligibility with a qualified tax professional.</p></section>
-
-        <section class="settings-section panel" style="margin-top:18px"><div class="settings-section-header"><div><h2>Vehicle profile</h2><p>These defaults power the vehicle center and reminder estimates.</p></div>${icon("car", "icon icon-lg text-violet")}</div><div class="settings-grid"><div class="field"><label for="vehicleName">Vehicle label</label><input id="vehicleName" type="text" name="vehicleName" value="${escapeAttribute(settings.vehicle.name)}" maxlength="80"></div><div class="field"><label for="vehicleOdometer">Current odometer</label><div class="input-suffix-wrap"><input id="vehicleOdometer" type="number" name="vehicleOdometer" value="${escapeAttribute(settings.vehicle.currentOdometer)}" min="0" step="1"><span class="input-suffix">mi</span></div></div><div class="field"><label for="oilInterval">Oil-change interval</label><div class="input-suffix-wrap"><input id="oilInterval" type="number" name="oilInterval" value="${escapeAttribute(settings.vehicle.oilInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div><div class="field"><label for="tireInterval">Tire-rotation interval</label><div class="input-suffix-wrap"><input id="tireInterval" type="number" name="tireInterval" value="${escapeAttribute(settings.vehicle.tireInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div></div></section>
-
-        <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="button button-primary" type="submit">${icon("check", "icon icon-sm")}Save settings</button></div>
-      </form>
-
-      <section class="settings-section panel"><div class="settings-section-header"><div><h2>Data controls</h2><p>Back up, move, or reset the dashboard. Everything stays local until you export a file.</p></div>${icon("database", "icon icon-lg text-accent")}</div><div class="data-actions"><button class="data-action-card" type="button" data-action="export-backup"><span class="data-icon">${icon("download", "icon icon-sm")}</span><h3>Full backup</h3><p>Download shifts, settings, goals, maintenance, and any active shift as JSON.</p><span class="button button-ghost button-small">Download JSON</span></button><button class="data-action-card" type="button" data-action="import-data"><span class="data-icon">${icon("upload", "icon icon-sm")}</span><h3>Import data</h3><p>Merge or replace data from a dashboard JSON backup or a shift CSV file.</p><span class="button button-ghost button-small">Choose file</span></button><button class="data-action-card" type="button" data-action="reset-data"><span class="data-icon" style="color:var(--red);background:var(--red-soft)">${icon("trash", "icon icon-sm")}</span><h3>Reset dashboard</h3><p>Erase all locally stored dashboard data and return settings to defaults.</p><span class="button button-danger button-small">Reset local data</span></button></div><div class="storage-meter"><div class="storage-item"><span>Shifts</span><strong>${state.shifts.length}</strong></div><div class="storage-item"><span>Maintenance</span><strong>${state.maintenance.length}</strong></div><div class="storage-item"><span>Goals</span><strong>${state.goals.length}</strong></div><div class="storage-item"><span>Backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div></section>
-
-      <section class="settings-section panel"><div class="settings-section-header"><div><h2>Privacy & version</h2><p>Driver Command has no account, server database, ad tracking, or cloud sync. Browser storage is the source of truth, so regular backups are recommended.</p></div>${icon("lock", "icon icon-lg text-blue")}</div><div class="summary-strip"><div class="summary-stat"><span>Version</span><strong>${escapeHtml(Core.APP_VERSION)}</strong></div><div class="summary-stat"><span>Storage</span><strong>Local</strong></div><div class="summary-stat"><span>Offline</span><strong>Ready</strong></div><div class="summary-stat"><span>Legacy data</span><strong>Compatible</strong></div><div class="summary-stat"><span>Build</span><strong>Premium</strong></div></div></section>
-    </div>`;
+    return `<div class="settings-layout compact-settings-layout"><form class="settings-form" data-form="settings" novalidate>${preferencesSection}${allocationSection}${ratesSection}${vehicleSection}<div class="settings-save-bar"><span>${icon("lock", "icon icon-sm")}Changes stay on this device</span><button class="button button-primary" type="submit">${icon("check", "icon icon-sm")}Save settings</button></div></form>${dataSection}${privacySection}</div>`;
   }
 
   function updateAllocationTotal() {
@@ -1455,9 +1527,14 @@
     document.body.style.overflow = "hidden";
     window.setTimeout(() => {
       const target = dom.modalRoot.querySelector("[autofocus], input:not([type=hidden]), select, textarea, button");
-      if (target) target.focus();
+      if (target) {
+        target.focus();
+        if (target.matches && target.matches(".mileage-checkpoint-input-wrap input") && typeof target.select === "function") target.select();
+      }
       const form = dom.modalRoot.querySelector('[data-form="shift"]');
       if (form) updateShiftPreview(form);
+      const checkpoint = dom.modalRoot.querySelector('[data-form="mileage-checkpoint"]');
+      if (checkpoint) updateMileageCheckpoint(checkpoint);
     }, 0);
   }
 
@@ -1511,21 +1588,186 @@
     const prefix = config.prefix ? `<span class="input-prefix">${escapeHtml(config.prefix)}</span>` : "";
     const suffix = config.suffix ? `<span class="input-suffix">${escapeHtml(config.suffix)}</span>` : "";
     const wrap = config.prefix ? "input-prefix-wrap" : config.suffix ? "input-suffix-wrap" : "";
-    return `<div class="field ${config.className || ""}"><label for="${escapeAttribute(config.id)}">${escapeHtml(config.label)}</label><div class="${wrap}">${prefix}<input id="${escapeAttribute(config.id)}" type="number" name="${escapeAttribute(config.name)}" value="${config.value == null || config.value === 0 && config.blankZero ? "" : escapeAttribute(config.value)}" min="${config.min == null ? "0" : escapeAttribute(config.min)}" ${config.max == null ? "" : `max="${escapeAttribute(config.max)}"`} step="${escapeAttribute(config.step || "0.01")}" ${config.placeholder ? `placeholder="${escapeAttribute(config.placeholder)}"` : ""}>${suffix}</div>${config.help ? `<p class="field-help">${escapeHtml(config.help)}</p>` : ""}</div>`;
+    const inputMode = config.inputMode || ((config.step || "0.01") === "1" ? "numeric" : "decimal");
+    return `<div class="field ${config.className || ""}"><label for="${escapeAttribute(config.id)}">${escapeHtml(config.label)}</label><div class="${wrap}">${prefix}<input id="${escapeAttribute(config.id)}" type="number" inputmode="${escapeAttribute(inputMode)}" name="${escapeAttribute(config.name)}" value="${config.value == null || config.value === 0 && config.blankZero ? "" : escapeAttribute(config.value)}" min="${config.min == null ? "0" : escapeAttribute(config.min)}" ${config.max == null ? "" : `max="${escapeAttribute(config.max)}"`} step="${escapeAttribute(config.step || "0.01")}" ${config.placeholder ? `placeholder="${escapeAttribute(config.placeholder)}"` : ""}>${suffix}</div>${config.help ? `<p class="field-help">${escapeHtml(config.help)}</p>` : ""}</div>`;
+  }
+
+  function hiddenField(name, value) {
+    return `<input type="hidden" name="${escapeAttribute(name)}" value="${escapeAttribute(value == null ? "" : value)}">`;
+  }
+
+  function formDisclosure(config) {
+    const meta = config.meta ? `<span class="form-disclosure-meta">${escapeHtml(config.meta)}</span>` : "";
+    return `<details class="form-section form-disclosure ${config.className || ""}"${config.open ? " open" : ""}><summary><span class="form-section-title">${icon(config.icon || "info", "icon icon-sm")}${escapeHtml(config.title)}</span>${meta}${icon("chevronRight", "form-disclosure-chevron icon icon-sm")}</summary><div class="form-section-content">${config.content}</div></details>`;
+  }
+
+  function pageDisclosure(config) {
+    const value = config.value ? `<span class="page-disclosure-value">${config.value}</span>` : "";
+    return `<details class="${config.surfaceClass || "panel"} page-disclosure ${config.className || ""}"${config.open ? " open" : ""}><summary><div><h2 class="panel-title">${escapeHtml(config.title)}</h2>${config.subtitle ? `<p class="panel-subtitle">${escapeHtml(config.subtitle)}</p>` : ""}</div>${value}${icon("chevronRight", "page-disclosure-chevron icon icon-sm")}</summary><div class="page-disclosure-content">${config.content}</div></details>`;
+  }
+
+  function mileageCheckpointValue(form, name) {
+    const field = form && form.elements ? form.elements.namedItem(name) : null;
+    return field ? field.value : "";
+  }
+
+  function updateMileageCheckpoint(form) {
+    if (!form || form.dataset.mode !== "end") return;
+    const distance = form.querySelector("[data-mileage-distance]");
+    if (!distance) return;
+    const fallbackStart = Core.safeNumber(form.dataset.startOdometer);
+    const enteredStart = Core.safeNumber(mileageCheckpointValue(form, "startOdometer"));
+    const start = enteredStart || fallbackStart;
+    const end = Core.safeNumber(mileageCheckpointValue(form, "odometer"));
+    if (start > 0 && end >= start) {
+      const miles = end - start;
+      distance.textContent = `${formatNumber(miles, 1)} mile${Math.abs(miles - 1) < 0.0001 ? "" : "s"} this shift`;
+      distance.classList.add("is-ready");
+    } else {
+      distance.textContent = start > 0 ? "Enter the ending mileage" : "Starting mileage is also required";
+      distance.classList.remove("is-ready");
+    }
+  }
+
+  function openMileageCheckpoint(mode, supplied) {
+    const isEnd = mode === "end";
+    if (isEnd && !state.activeShift) {
+      showToast("There is no active shift to finish.", "warning");
+      return;
+    }
+    if (!isEnd && state.activeShift) {
+      openShiftModal("update", state.activeShift);
+      return;
+    }
+
+    const active = isEnd ? state.activeShift : null;
+    const resumeDraft = isEnd && supplied && supplied.draft ? Core.clone(supplied.draft) : null;
+    const latestOdometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
+    const suppliedStart = Core.safeNumber(supplied && supplied.startOdometer);
+    const recordedStart = suppliedStart || Core.safeNumber(resumeDraft && resumeDraft.startOdometer) || Core.safeNumber(active && active.startOdometer);
+    const suppliedEnd = Core.safeNumber(supplied && supplied.endOdometer);
+    const recordedEnd = suppliedEnd || Core.safeNumber(resumeDraft && resumeDraft.endOdometer) || Core.safeNumber(active && active.endOdometer);
+    const inputValue = isEnd ? (recordedEnd > 0 ? recordedEnd : "") : (latestOdometer > 0 ? latestOdometer : "");
+    const platform = active && active.platform ? active.platform : state.settings.defaultPlatform;
+    const checkpointId = "shiftMileageCheckpointForm";
+    const missingStartField = isEnd && recordedStart <= 0
+      ? `<div class="mileage-checkpoint-warning">${icon("warning", "icon icon-sm")}<div><strong>Starting mileage was not recorded</strong><span>Add it below so this shift's distance stays accurate.</span></div></div>${numberField({ id: "mileageCheckpointStartInput", name: "startOdometer", label: "Starting mileage", value: "", suffix: "mi", step: "0.1", blankZero: true, className: "mileage-checkpoint-recovery" })}`
+      : hiddenField("startOdometer", recordedStart);
+    const startContext = isEnd && recordedStart > 0
+      ? `<div class="mileage-checkpoint-reading"><div><span>Starting mileage</span><strong>${formatNumber(recordedStart, 1)} mi</strong></div><div><span>Distance</span><strong data-mileage-distance>Enter the ending mileage</strong></div></div>`
+      : "";
+    const helper = isEnd
+      ? "Use the number currently shown on your dashboard."
+      : latestOdometer > 0
+        ? `Pre-filled from your latest saved reading of ${formatNumber(latestOdometer, 1)} mi.`
+        : "Use the number currently shown on your dashboard.";
+    const secondary = isEnd
+      ? `${startContext}${missingStartField}`
+      : `<div class="mileage-checkpoint-secondary"><div class="field"><label for="mileageCheckpointPlatform">Platform</label><select id="mileageCheckpointPlatform" name="platform">${platformOptionMarkup(platform)}</select></div><div class="mileage-checkpoint-auto"><span>${icon("clock", "icon icon-sm")}Starts automatically</span><strong>${escapeHtml(formatTime(currentTimeValue()))}</strong></div></div>`;
+    const body = `<form id="${checkpointId}" class="mileage-checkpoint-form mileage-checkpoint-${escapeAttribute(mode)}" data-form="mileage-checkpoint" data-mode="${escapeAttribute(mode)}" data-start-odometer="${escapeAttribute(recordedStart)}" novalidate>
+      <div class="mileage-checkpoint-focus"><span class="mileage-checkpoint-icon">${icon(isEnd ? "stop" : "route", "icon icon-lg")}</span><div><span>${isEnd ? "Before the shift is saved" : "Before the timer begins"}</span><strong>${isEnd ? "Capture your final odometer reading." : "Capture your odometer reading."}</strong></div></div>
+      <div class="field mileage-checkpoint-field"><label for="mileageCheckpointInput">${isEnd ? "Ending mileage" : "Starting mileage"}</label><div class="mileage-checkpoint-input-wrap"><input id="mileageCheckpointInput" type="number" inputmode="decimal" name="odometer" value="${escapeAttribute(inputValue)}" min="0" step="0.1" placeholder="0" required autofocus aria-describedby="mileageCheckpointHelp"><span>mi</span></div><p id="mileageCheckpointHelp" class="field-help">${escapeHtml(helper)}</p></div>
+      ${secondary}
+    </form>`;
+    openModal({
+      title: isEnd ? "Ending mileage" : "Starting mileage",
+      subtitle: isEnd ? "This is the first step when ending a shift." : "This is the first step every time you start a shift.",
+      body,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">${isEnd ? (resumeDraft ? "Back" : "Keep driving") : "Cancel"}</button><button class="button button-primary" type="submit" form="${checkpointId}" data-action="submit-mileage-checkpoint">${isEnd ? icon("chevronRight", "icon icon-sm") + "Continue" : icon("play", "icon icon-sm") + "Start shift"}</button>`,
+      className: `modal-small mileage-checkpoint-modal mileage-checkpoint-modal-${escapeAttribute(mode)}`,
+      meta: {
+        type: "mileage-checkpoint",
+        mode,
+        supplied: supplied || null,
+        resumeDraft,
+        onCancel: resumeDraft ? () => openShiftModal("end", resumeDraft) : null
+      }
+    });
+  }
+
+  function submitMileageCheckpoint(form) {
+    const mode = form && form.dataset.mode;
+    const odometer = Core.safeNumber(mileageCheckpointValue(form, "odometer"));
+    if (odometer <= 0) {
+      showToast(`Enter the ${mode === "end" ? "ending" : "starting"} mileage.`, "error");
+      const input = form && form.elements ? form.elements.namedItem("odometer") : null;
+      if (input) input.focus();
+      return;
+    }
+
+    if (mode === "start") {
+      if (state.activeShift) {
+        showToast("Finish the current live shift before starting another.", "warning");
+        return;
+      }
+      const now = new Date().toISOString();
+      const record = Core.normalizeShift({
+        date: Core.localISODate(),
+        platform: mileageCheckpointValue(form, "platform") || state.settings.defaultPlatform,
+        startTime: currentTimeValue(),
+        endTime: "",
+        startOdometer: odometer,
+        allocationRates: state.settings.allocations,
+        createdAt: now,
+        updatedAt: now
+      }, state.settings);
+      state.activeShift = record;
+      state.settings.vehicle.currentOdometer = Math.max(Core.safeNumber(state.settings.vehicle.currentOdometer), odometer);
+      saveState();
+      closeModal(false);
+      setRoute("overview", { focus: false });
+      showToast(`Shift started at ${formatNumber(odometer, 1)} mi.`, "success");
+      return;
+    }
+
+    if (mode === "end") {
+      if (!state.activeShift) {
+        closeModal(false);
+        showToast("There is no active shift to finish.", "warning");
+        return;
+      }
+      const enteredStart = Core.safeNumber(mileageCheckpointValue(form, "startOdometer"));
+      const startOdometer = enteredStart || Core.safeNumber(state.activeShift.startOdometer);
+      if (startOdometer <= 0) {
+        showToast("Enter the starting mileage for this shift.", "error");
+        const input = form.elements.namedItem("startOdometer");
+        if (input) input.focus();
+        return;
+      }
+      if (odometer < startOdometer) {
+        showToast("Ending mileage cannot be lower than starting mileage.", "error");
+        const input = form.elements.namedItem("odometer");
+        if (input) input.focus();
+        return;
+      }
+      const resumeDraft = ui.modal && ui.modal.resumeDraft ? Core.clone(ui.modal.resumeDraft) : null;
+      const draft = {
+        ...Core.clone(resumeDraft || state.activeShift),
+        startOdometer,
+        endOdometer: odometer,
+        endTime: resumeDraft && resumeDraft.endTime ? resumeDraft.endTime : currentTimeValue(),
+        updatedAt: new Date().toISOString()
+      };
+      openShiftModal("end", draft);
+    }
   }
 
   function shiftModalCopy(mode) {
     const map = {
-      add: ["Add completed shift", "Record a past driving session with detailed costs, mileage, and allocation rules.", "Save shift"],
+      add: ["Add completed shift", "Save the essentials first. Mileage, allocations, and notes stay neatly tucked away until needed.", "Save shift"],
       edit: ["Edit shift", "Update this ledger entry without disturbing the rest of your history.", "Save changes"],
-      start: ["Start live shift", "Begin an automatically timed shift. You can update earnings and mileage while it is active.", "Start shift"],
-      update: ["Update live shift", "Save the latest earnings, expenses, mileage, and notes without ending the timer.", "Save live draft"],
-      end: ["Finish live shift", "Add the ending details and commit this live session to your completed ledger.", "Finish & save"]
+      start: ["Start live shift", "Choose the basics now. Add earnings, mileage, and costs while the timer runs.", "Start shift"],
+      update: ["Update live shift", "Refresh the important numbers without stopping the timer.", "Save live draft"],
+      end: ["Finish live shift", "Enter the final numbers, review the result, and save it to your ledger.", "Finish & save"]
     };
     return map[mode] || map.add;
   }
 
   function openShiftModal(mode, supplied) {
+    if (mode === "start") {
+      openMileageCheckpoint("start", supplied);
+      return;
+    }
     const source = supplied || (mode === "edit" ? getShift(ui.modal && ui.modal.id) : null) || ((mode === "update" || mode === "end") ? state.activeShift : null) || {};
     const defaults = Core.normalizeShift({
       date: source.date || Core.localISODate(),
@@ -1546,24 +1788,66 @@
       id: source.id,
       createdAt: source.createdAt
     }, state.settings);
-    const liveMode = mode === "start" || mode === "update";
     const copy = shiftModalCopy(mode);
     const endTimeValue = mode === "end" && !defaults.endTime ? currentTimeValue() : defaults.endTime;
     const allocation = defaults.allocationRates || state.settings.allocations;
-    const body = `<form data-form="shift" data-mode="${escapeAttribute(mode)}" data-id="${escapeAttribute(defaults.id || "")}" novalidate>
-      <section class="form-section"><h3 class="form-section-title">${icon("calendar", "icon icon-sm")}Shift timing</h3><div class="form-grid is-three"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required autofocus></div><div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div><div class="field"><label for="shiftTrips">Trips / deliveries</label><input id="shiftTrips" type="number" name="trips" value="${defaults.trips || ""}" min="0" step="1" placeholder="0"></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" ${liveMode || mode === "end" ? "required" : ""}></div>${liveMode ? `<div class="field"><label>Live duration</label><div class="control" style="display:flex;align-items:center" data-live-duration>${formatDuration(activeDurationHours(), true)}</div></div>` : `<div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div><div class="field"><label for="shiftManualHours">Manual hours</label><div class="input-suffix-wrap"><input id="shiftManualHours" type="number" name="manualHours" value="${defaults.manualHours || ""}" min="0" step="0.05" placeholder="Use when times are unknown"><span class="input-suffix">hr</span></div></div>`}</div></section>
-      <section class="form-section"><h3 class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings & direct costs</h3><div class="form-grid is-three">${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div></section>
-      <section class="form-section"><h3 class="form-section-title">${icon("route", "icon icon-sm")}Mileage</h3><div class="form-grid is-three">${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftEndOdometer", name: "endOdometer", label: "End odometer", value: defaults.endOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true, help: "Used only when an odometer difference is unavailable." })}</div></section>
-      <section class="form-section"><h3 class="form-section-title">${icon("wallet", "icon icon-sm")}Allocation for this shift</h3><div class="form-grid is-three">${numberField({ id: "shiftInvestment", name: "allocationInvestment", label: "Investment", value: allocation.investment, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftSavings", name: "allocationSavings", label: "Savings", value: allocation.savings, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftVehicle", name: "allocationVehicle", label: "Vehicle fund", value: allocation.vehicle, suffix: "%", step: "0.1", max: "100" })}</div><p class="field-help">These percentages are stored with this shift, so future settings changes will not rewrite history.</p></section>
-      <section class="form-section"><h3 class="form-section-title">${icon("receipt", "icon icon-sm")}Notes</h3><div class="field"><label for="shiftNotes">Optional context</label><textarea id="shiftNotes" name="notes" maxlength="1000" placeholder="Airport queue, surge window, route notes, unusual costs…">${escapeHtml(defaults.notes)}</textarea></div></section>
-      <div class="form-summary" data-shift-preview></div>
-    </form>`;
+    const allocationFields = `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftInvestment", name: "allocationInvestment", label: "Investment", value: allocation.investment, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftSavings", name: "allocationSavings", label: "Savings", value: allocation.savings, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftVehicle", name: "allocationVehicle", label: "Vehicle fund", value: allocation.vehicle, suffix: "%", step: "0.1", max: "100" })}</div><p class="field-help">Saved with this shift, so future settings changes never rewrite its history.</p>`;
+    const notesField = `<div class="field"><label for="shiftNotes">Optional context</label><textarea id="shiftNotes" name="notes" maxlength="1000" placeholder="Airport queue, surge window, route notes, unusual costs…">${escapeHtml(defaults.notes)}</textarea></div>`;
+    const preview = mode === "start" ? "" : `<div class="form-summary shift-form-summary" data-shift-preview></div>`;
+    let content = "";
+
+    if (mode === "start") {
+      content = `<div class="shift-quick-note"><span class="shift-quick-icon">${icon("play", "icon icon-sm")}</span><div><strong>Fast start</strong><span>The timer begins immediately. Only the four fields below are needed.</span></div></div>
+        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("calendar", "icon icon-sm")}Shift basics</h3><div class="form-grid shift-pair-grid">
+          <div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div>
+          <div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div>
+          <div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div>
+          <div class="field"><label for="shiftTrips">Trips now</label><input id="shiftTrips" type="number" inputmode="numeric" name="trips" value="${defaults.trips || ""}" min="0" step="1" placeholder="0"></div>
+        </div><div class="shift-timer-hint"><span>${icon("clock", "icon icon-sm")}Timer starts at</span><strong>${escapeHtml(formatTime(defaults.startTime))}</strong></div></section>
+        ${formDisclosure({ title: "Starting odometer & note", icon: "route", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true, className: "" })}<div class="field shift-note-field"><label for="shiftNotes">Quick note</label><input id="shiftNotes" type="text" name="notes" value="${escapeAttribute(defaults.notes)}" maxlength="1000" placeholder="Airport, event, surge…"></div></div>` })}
+        ${hiddenField("endTime", "")}${hiddenField("manualHours", 0)}${hiddenField("gross", defaults.gross)}${hiddenField("fuel", defaults.fuel)}${hiddenField("tolls", defaults.tolls)}${hiddenField("otherExpenses", defaults.otherExpenses)}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualMiles", defaults.manualMiles)}${hiddenField("allocationInvestment", allocation.investment)}${hiddenField("allocationSavings", allocation.savings)}${hiddenField("allocationVehicle", allocation.vehicle)}`;
+    } else if (mode === "update") {
+      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · live</span></div><strong data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>${preview}
+        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("dollar", "icon icon-sm")}Live totals</h3><div class="form-grid shift-pair-grid">
+          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}
+          ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
+          ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
+          ${numberField({ id: "shiftEndOdometer", name: "endOdometer", label: "Current odometer", value: defaults.endOdometer, suffix: "mi", step: "0.1", blankZero: true })}
+        </div></section>
+        ${formDisclosure({ title: "Shift details", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
+        ${formDisclosure({ title: "Extra costs & mileage", icon: "route", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
+        ${hiddenField("endTime", "")}${hiddenField("manualHours", 0)}`;
+    } else if (mode === "end") {
+      const capturedMiles = Math.max(0, defaults.endOdometer - defaults.startOdometer);
+      const mileageSummary = `<div class="mileage-captured-strip"><span class="mileage-captured-icon">${icon("route", "icon icon-sm")}</span><div><span>Mileage captured</span><strong>${formatNumber(defaults.startOdometer, 1)} → ${formatNumber(defaults.endOdometer, 1)} mi</strong><small>${formatNumber(capturedMiles, 1)} mile${Math.abs(capturedMiles - 1) < 0.0001 ? "" : "s"} driven</small></div><button class="button button-ghost button-small" type="button" data-action="change-ending-mileage">Edit</button></div>`;
+      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · ready to finish</span></div><strong data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>${mileageSummary}${preview}
+        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("dollar", "icon icon-sm")}Final totals</h3><div class="form-grid shift-pair-grid">
+          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}
+          ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
+          ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
+          <div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div>
+        </div></section>
+        ${formDisclosure({ title: "Shift details", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
+        ${formDisclosure({ title: "Extra costs", icon: "receipt", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
+        ${hiddenField("startOdometer", defaults.startOdometer)}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualMiles", defaults.manualMiles)}${hiddenField("manualHours", 0)}`;
+    } else {
+      content = `${preview}
+        ${formDisclosure({ title: "Shift timing", icon: "calendar", meta: mode === "edit" ? formatDate(defaults.date, { month: "short", day: "numeric", year: "numeric" }) : "Required", open: true, content: `<div class="form-grid is-three shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div><div class="field"><label for="shiftTrips">Trips / deliveries</label><input id="shiftTrips" type="number" inputmode="numeric" name="trips" value="${defaults.trips || ""}" min="0" step="1" placeholder="0"></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}"></div><div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div><div class="field"><label for="shiftManualHours">Manual hours</label><div class="input-suffix-wrap"><input id="shiftManualHours" type="number" inputmode="decimal" name="manualHours" value="${defaults.manualHours || ""}" min="0" step="0.05" placeholder="If times are unknown"><span class="input-suffix">hr</span></div></div></div>` })}
+        ${formDisclosure({ title: "Earnings & direct costs", icon: "dollar", meta: "Core", open: true, content: `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
+        ${formDisclosure({ title: "Mileage", icon: "route", meta: "Optional", content: `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftEndOdometer", name: "endOdometer", label: "End odometer", value: defaults.endOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true, help: "Used only when an odometer difference is unavailable." })}</div>` })}
+        ${formDisclosure({ title: "Allocation for this shift", icon: "wallet", meta: `${formatNumber(allocation.investment + allocation.savings + allocation.vehicle, 1)}% allocated`, content: allocationFields })}
+        ${formDisclosure({ title: "Notes", icon: "receipt", meta: defaults.notes ? "Added" : "Optional", content: notesField })}`;
+    }
+
+    const body = `<form class="shift-form mode-${escapeAttribute(mode)}" data-form="shift" data-mode="${escapeAttribute(mode)}" data-id="${escapeAttribute(defaults.id || "")}" novalidate>${content}</form>`;
     openModal({
       title: copy[0],
       subtitle: copy[1],
       body,
-      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-shift-form">${mode === "start" ? icon("play", "icon icon-sm") : mode === "end" ? icon("stop", "icon icon-sm") : icon("check", "icon icon-sm")}${escapeHtml(copy[2])}</button>`,
-      className: "modal-wide",
+      footer: `<button class="button button-ghost shift-cancel-button" type="button" data-action="close-modal">Cancel</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${mode === "start" ? icon("play", "icon icon-sm") : mode === "end" ? icon("stop", "icon icon-sm") : icon("check", "icon icon-sm")}${escapeHtml(copy[2])}</button>`,
+      className: `modal-wide shift-modal shift-modal-${escapeAttribute(mode)}`,
       meta: { type: "shift", mode, id: defaults.id || "", supplied: supplied || null }
     });
   }
@@ -1623,6 +1907,7 @@
     if (!date) return "Choose a shift date.";
     if ((mode === "start" || mode === "update" || mode === "end") && !start) return "Enter the shift start time.";
     if (mode !== "start" && mode !== "update" && !(start && end) && manualHours <= 0) return "Enter start and end times, or provide manual hours.";
+    if (mode === "end" && endOdometer <= 0) return "Enter the ending mileage.";
     if (startOdometer > 0 && endOdometer > 0 && endOdometer < startOdometer) return "End odometer cannot be lower than start odometer.";
     if (allocationTotal > 100.0001) return "This shift's allocations exceed 100%.";
     return "";
@@ -1691,8 +1976,16 @@
   function openMaintenanceModal(item) {
     const record = Core.normalizeMaintenance(item || { date: Core.localISODate(), odometer: Core.currentOdometer(state.shifts, state.maintenance, state.settings) });
     const types = Array.from(new Set([...MAINTENANCE_TYPES, record.type].filter(Boolean)));
-    const body = `<form data-form="maintenance" data-id="${escapeAttribute(item ? record.id : "")}" novalidate><div class="form-grid"><div class="field"><label for="maintenanceDateInput">Date</label><input id="maintenanceDateInput" type="date" name="date" value="${escapeAttribute(record.date)}" required autofocus></div><div class="field"><label for="maintenanceTypeInput">Service type</label><select id="maintenanceTypeInput" name="type">${types.map((type) => `<option value="${escapeAttribute(type)}"${record.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div>${numberField({ id: "maintenanceAmount", name: "amount", label: "Cost", value: record.amount, prefix: "$", blankZero: true })}${numberField({ id: "maintenanceOdometer", name: "odometer", label: "Odometer", value: record.odometer, suffix: "mi", step: "1", blankZero: true })}${numberField({ id: "maintenanceNextDue", name: "nextDueOdometer", label: "Next due odometer", value: record.nextDueOdometer, suffix: "mi", step: "1", blankZero: true, className: "span-2", help: "Optional. Use this for exact service reminders." })}<div class="field span-2"><label for="maintenanceNote">Notes</label><textarea id="maintenanceNote" name="note" maxlength="1000" placeholder="Brand, shop, work performed, warranty details…">${escapeHtml(record.note)}</textarea></div></div></form>`;
-    openModal({ title: item ? "Edit maintenance" : "Log maintenance", subtitle: "Keep service costs, mileage, and next-due details together.", body, footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-maintenance-form">${icon("check", "icon icon-sm")}${item ? "Save changes" : "Add record"}</button>`, meta: { type: "maintenance", id: item ? record.id : "" } });
+    const optional = formDisclosure({
+      title: "Reminder & notes",
+      icon: "route",
+      meta: record.nextDueOdometer || record.note ? "Saved details" : "Optional",
+      open: Boolean(item && (record.nextDueOdometer || record.note)),
+      className: "compact-entity-disclosure",
+      content: `<div class="form-grid">${numberField({ id: "maintenanceNextDue", name: "nextDueOdometer", label: "Next due odometer", value: record.nextDueOdometer, suffix: "mi", step: "1", blankZero: true, className: "span-2", help: "Use this for exact mileage reminders." })}<div class="field span-2"><label for="maintenanceNote">Notes</label><textarea id="maintenanceNote" name="note" maxlength="1000" placeholder="Brand, shop, work performed, warranty details…">${escapeHtml(record.note)}</textarea></div></div>`
+    });
+    const body = `<form class="compact-entity-form" data-form="maintenance" data-id="${escapeAttribute(item ? record.id : "")}" novalidate><div class="form-section compact-entity-essential"><div class="form-section-title">${icon("wrench", "icon icon-sm")}Service details</div><div class="form-grid"><div class="field"><label for="maintenanceDateInput">Date</label><input id="maintenanceDateInput" type="date" name="date" value="${escapeAttribute(record.date)}" required autofocus></div><div class="field"><label for="maintenanceTypeInput">Service type</label><select id="maintenanceTypeInput" name="type">${types.map((type) => `<option value="${escapeAttribute(type)}"${record.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div>${numberField({ id: "maintenanceAmount", name: "amount", label: "Cost", value: record.amount, prefix: "$", blankZero: true })}${numberField({ id: "maintenanceOdometer", name: "odometer", label: "Odometer", value: record.odometer, suffix: "mi", step: "1", blankZero: true })}</div></div>${optional}</form>`;
+    openModal({ title: item ? "Edit maintenance" : "Log maintenance", subtitle: "Capture the service now; reminders and notes stay optional.", body, footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-maintenance-form">${icon("check", "icon icon-sm")}${item ? "Save changes" : "Add record"}</button>`, className: "compact-entity-modal", meta: { type: "maintenance", id: item ? record.id : "" } });
   }
 
   function submitMaintenanceForm() {
@@ -1726,9 +2019,17 @@
 
   function openGoalModal(goal) {
     const record = Core.normalizeGoal(goal || { name: "", target: 0, targetDate: "", note: "" });
-    const body = `<form data-form="goal" data-id="${escapeAttribute(goal ? record.id : "")}" novalidate><div class="form-grid"><div class="field span-2"><label for="goalName">Goal name</label><input id="goalName" type="text" name="name" value="${escapeAttribute(goal ? record.name : "")}" maxlength="100" placeholder="Emergency fund, vacation, new tires…" required autofocus></div>${numberField({ id: "goalTarget", name: "target", label: "Target amount", value: record.target, prefix: "$", blankZero: true })}<div class="field"><label for="goalTargetDate">Target date</label><input id="goalTargetDate" type="date" name="targetDate" value="${escapeAttribute(record.targetDate)}"></div><div class="field span-2"><label for="goalNote">Notes</label><textarea id="goalNote" name="note" maxlength="1000" placeholder="Why this matters, funding plan, or any context…">${escapeHtml(record.note)}</textarea></div></div></form>`;
-    const deleteButton = goal ? `<button class="button button-danger" type="button" data-action="delete-goal" data-id="${escapeAttribute(record.id)}">${icon("trash", "icon icon-sm")}Delete</button>` : "";
-    openModal({ title: goal ? "Edit goal" : "Create goal", subtitle: "Set a clear target and fund it with traceable contributions.", body, footer: `${deleteButton}<span style="flex:1"></span><button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-goal-form">${icon("check", "icon icon-sm")}${goal ? "Save changes" : "Create goal"}</button>`, meta: { type: "goal", id: goal ? record.id : "" } });
+    const notes = formDisclosure({
+      title: "Goal note",
+      icon: "receipt",
+      meta: record.note ? "Saved note" : "Optional",
+      open: Boolean(goal && record.note),
+      className: "compact-entity-disclosure",
+      content: `<div class="field"><label for="goalNote">Notes</label><textarea id="goalNote" name="note" maxlength="1000" placeholder="Why this matters, funding plan, or any context…">${escapeHtml(record.note)}</textarea></div>`
+    });
+    const body = `<form class="compact-entity-form" data-form="goal" data-id="${escapeAttribute(goal ? record.id : "")}" novalidate><div class="form-section compact-entity-essential"><div class="form-section-title">${icon("goal", "icon icon-sm")}Goal basics</div><div class="form-grid"><div class="field span-2"><label for="goalName">Goal name</label><input id="goalName" type="text" name="name" value="${escapeAttribute(goal ? record.name : "")}" maxlength="100" placeholder="Emergency fund, vacation, new tires…" required autofocus></div>${numberField({ id: "goalTarget", name: "target", label: "Target amount", value: record.target, prefix: "$", blankZero: true })}<div class="field"><label for="goalTargetDate">Target date</label><input id="goalTargetDate" type="date" name="targetDate" value="${escapeAttribute(record.targetDate)}"></div></div></div>${notes}</form>`;
+    const deleteButton = goal ? `<button class="button button-danger goal-delete-button" type="button" data-action="delete-goal" data-id="${escapeAttribute(record.id)}">${icon("trash", "icon icon-sm")}<span>Delete</span></button>` : "";
+    openModal({ title: goal ? "Edit goal" : "Create goal", subtitle: "Set the target now; keep extra context tucked away.", body, footer: `${deleteButton}<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-goal-form">${icon("check", "icon icon-sm")}${goal ? "Save changes" : "Create goal"}</button>`, className: `compact-entity-modal ${goal ? "goal-modal-edit" : "goal-modal-create"}`, meta: { type: "goal", id: goal ? record.id : "" } });
   }
 
   function submitGoalForm() {
@@ -2183,16 +2484,31 @@
         break;
       case "start-shift":
         if (state.activeShift) openShiftModal("update", state.activeShift);
-        else openShiftModal("start");
+        else openMileageCheckpoint("start");
         break;
       case "update-active-shift":
         if (state.activeShift) openShiftModal("update", state.activeShift);
         else showToast("There is no active shift to update.", "warning");
         break;
       case "end-active-shift":
-        if (state.activeShift) openShiftModal("end", state.activeShift);
+        if (state.activeShift) openMileageCheckpoint("end");
         else showToast("There is no active shift to finish.", "warning");
         break;
+      case "change-ending-mileage": {
+        const form = dom.modalRoot.querySelector('[data-form="shift"]');
+        const draft = form ? shiftFromForm(form, false) : Core.clone(state.activeShift);
+        openMileageCheckpoint("end", {
+          draft,
+          startOdometer: draft && draft.startOdometer,
+          endOdometer: draft && draft.endOdometer
+        });
+        break;
+      }
+      case "submit-mileage-checkpoint": {
+        const form = dom.modalRoot.querySelector('[data-form="mileage-checkpoint"]');
+        if (form) submitMileageCheckpoint(form);
+        break;
+      }
       case "submit-shift-form":
         submitShiftForm();
         break;
@@ -2441,6 +2757,9 @@
     if (target.matches('[data-form="shift"] input, [data-form="shift"] select, [data-form="shift"] textarea')) {
       updateShiftPreview(target.closest('[data-form="shift"]'));
     }
+    if (target.matches('[data-form="mileage-checkpoint"] input')) {
+      updateMileageCheckpoint(target.closest('[data-form="mileage-checkpoint"]'));
+    }
     if (target.matches("[data-allocation]")) updateAllocationTotal();
     const filter = target.dataset.filter;
     if (filter === "shift-search") {
@@ -2483,6 +2802,7 @@
     const type = form.dataset.form;
     if (type === "settings") submitSettingsForm(form);
     else if (type === "shift") submitShiftForm();
+    else if (type === "mileage-checkpoint") submitMileageCheckpoint(form);
     else if (type === "maintenance") submitMaintenanceForm();
     else if (type === "goal") submitGoalForm();
     else if (type === "contribution") submitContributionForm();

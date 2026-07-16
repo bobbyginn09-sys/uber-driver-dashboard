@@ -4966,3 +4966,397 @@ details > summary::-webkit-details-marker {
     max-width: 100%;
   }
 }
+
+/* ========================================================================== 
+   Mileage-first live-shift checkpoints
+   ========================================================================== */
+
+.mileage-checkpoint-modal {
+  width: min(480px, 100%);
+}
+
+.mileage-checkpoint-modal .modal-body {
+  overflow: visible;
+}
+
+.mileage-checkpoint-form {
+  display: grid;
+  gap: 14px;
+}
+
+.mileage-checkpoint-focus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--accent-border);
+  border-radius: 15px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 84%, transparent), transparent),
+    var(--surface-soft);
+}
+
+.mileage-checkpoint-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #07110b;
+  background: var(--accent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.mileage-checkpoint-modal-end .mileage-checkpoint-icon {
+  color: var(--text);
+  background: var(--surface-3);
+  box-shadow: none;
+}
+
+.mileage-checkpoint-focus > div {
+  min-width: 0;
+}
+
+.mileage-checkpoint-focus span,
+.mileage-checkpoint-focus strong {
+  display: block;
+}
+
+.mileage-checkpoint-focus > div > span {
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.mileage-checkpoint-focus strong {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.mileage-checkpoint-field > label {
+  margin-bottom: 7px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.mileage-checkpoint-input-wrap {
+  position: relative;
+}
+
+.mileage-checkpoint-input-wrap input {
+  width: 100%;
+  min-height: 76px;
+  padding: 12px 58px 12px 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% -40%, color-mix(in srgb, var(--accent-soft) 80%, transparent), transparent 62%),
+    var(--surface-2);
+  font-size: clamp(28px, 7vw, 36px);
+  font-weight: 860;
+  letter-spacing: -0.035em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.mileage-checkpoint-input-wrap input:focus {
+  border-color: var(--accent);
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+.mileage-checkpoint-input-wrap > span {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 850;
+  pointer-events: none;
+}
+
+.mileage-checkpoint-field .field-help {
+  margin-top: 7px;
+  text-align: center;
+}
+
+.mileage-checkpoint-secondary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.mileage-checkpoint-auto {
+  min-height: 64px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.mileage-checkpoint-auto span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.mileage-checkpoint-auto strong {
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-checkpoint-reading {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--border);
+}
+
+.mileage-checkpoint-reading > div {
+  min-width: 0;
+  padding: 11px 12px;
+  background: var(--surface-soft);
+}
+
+.mileage-checkpoint-reading span,
+.mileage-checkpoint-reading strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mileage-checkpoint-reading span {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 780;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mileage-checkpoint-reading strong {
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-checkpoint-reading strong.is-ready {
+  color: var(--accent);
+}
+
+.mileage-checkpoint-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
+  border-radius: 12px;
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.mileage-checkpoint-warning .icon {
+  margin-top: 1px;
+}
+
+.mileage-checkpoint-warning strong,
+.mileage-checkpoint-warning span {
+  display: block;
+}
+
+.mileage-checkpoint-warning strong {
+  color: var(--text-soft);
+  font-size: 10.5px;
+}
+
+.mileage-checkpoint-warning span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+.mileage-checkpoint-recovery {
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.mileage-captured-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 11px;
+  border: 1px solid var(--accent-border);
+  border-radius: 13px;
+  background: var(--accent-soft);
+}
+
+.mileage-captured-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--surface-solid) 74%, transparent);
+}
+
+.mileage-captured-strip > div {
+  min-width: 0;
+}
+
+.mileage-captured-strip > div > span,
+.mileage-captured-strip > div > strong,
+.mileage-captured-strip > div > small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mileage-captured-strip > div > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.mileage-captured-strip > div > strong {
+  margin-top: 1px;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-captured-strip > div > small {
+  margin-top: 1px;
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 750;
+}
+
+.mileage-captured-strip .button {
+  min-height: 34px;
+  padding-inline: 10px;
+}
+
+@media (max-width: 760px) {
+  .mileage-checkpoint-modal {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+  }
+
+  .mileage-checkpoint-modal .modal-body {
+    padding: 12px 14px 14px;
+  }
+
+  .mileage-checkpoint-form {
+    gap: 11px;
+  }
+
+  .mileage-checkpoint-focus {
+    padding: 10px 11px;
+  }
+
+  .mileage-checkpoint-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .mileage-checkpoint-input-wrap input {
+    min-height: 72px;
+    padding-right: 52px;
+    font-size: 31px;
+  }
+
+  .mileage-checkpoint-input-wrap > span {
+    right: 16px;
+  }
+
+  .mileage-checkpoint-secondary {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
+    gap: 8px;
+  }
+
+  .mileage-checkpoint-secondary .field select,
+  .mileage-checkpoint-recovery input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .mileage-checkpoint-auto {
+    min-height: 62px;
+    padding: 8px 10px;
+  }
+
+  .mileage-checkpoint-reading > div {
+    padding: 9px 10px;
+  }
+
+  .mileage-captured-strip {
+    gap: 8px;
+    padding: 9px 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mileage-checkpoint-focus > div > span {
+    display: none;
+  }
+
+  .mileage-checkpoint-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .mileage-checkpoint-auto {
+    min-height: 50px;
+  }
+
+  .mileage-captured-icon {
+    display: none;
+  }
+
+  .mileage-captured-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.mileage-checkpoint-input-wrap input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.mileage-checkpoint-input-wrap input::-webkit-outer-spin-button,
+.mileage-checkpoint-input-wrap input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}

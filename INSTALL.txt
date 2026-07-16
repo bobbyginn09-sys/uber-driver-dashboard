@@ -1,4 +1,4 @@
-DRIVER COMMAND 3.1.0 — INSTALL
+DRIVER COMMAND 3.2.0 — INSTALL
 
 1. Extract the entire folder.
 2. In the extracted folder, run:  python3 -m http.server 8080

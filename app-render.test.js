@@ -84,7 +84,7 @@ context.window.addEventListener = () => {};
 let source = fs.readFileSync(require.resolve("../app.js"), "utf8");
 source = source.replace(
   /\n  init\(\);\n\}\)\(\);\s*$/,
-  `\n  globalThis.__appTest = {\n    ui,\n    getState: () => state,\n    setState: (value) => { state = value; },\n    renderOverviewPage, renderShiftsPage, renderAnalyticsPage, renderCalendarPage,\n    renderVehiclePage, renderGoalsPage, renderSettingsPage, shiftsToCSV,\n    parseCSV, csvRowsToShifts, prepareImportPayload, filteredShifts, filteredMaintenance,\n    updateShiftResults, updateVehicleResults, openShiftModal, openMaintenanceModal,\n    openGoalModal, openContributionModal, openMoreModal, openConfirm, openImportReview, dismissModal\n  };\n})();`
+  `\n  globalThis.__appTest = {\n    ui,\n    getState: () => state,\n    setState: (value) => { state = value; },\n    renderOverviewPage, renderShiftsPage, renderAnalyticsPage, renderCalendarPage,\n    renderVehiclePage, renderGoalsPage, renderSettingsPage, shiftsToCSV,\n    parseCSV, csvRowsToShifts, prepareImportPayload, filteredShifts, filteredMaintenance,\n    updateShiftResults, updateVehicleResults, openShiftModal, openMileageCheckpoint, openMaintenanceModal,\n    openGoalModal, openContributionModal, openMoreModal, openConfirm, openImportReview, dismissModal\n  };\n})();`
 );
 vm.runInNewContext(source, context, { filename: "app.js" });
 const app = context.__appTest;
@@ -152,7 +152,37 @@ nodes.set("maintenanceResultsMeta", createNode());
 app.updateVehicleResults();
 assert(nodes.get("maintenanceResults").innerHTML.includes("Oil Change"));
 
-// Exercise every modal renderer.
+// Exercise every modal renderer, including the mileage-first live-shift flow.
+app.setState({ ...sampleState, activeShift: null });
+app.openShiftModal("start");
+assert(nodes.get("modalRoot").innerHTML.includes("Starting mileage"));
+assert(nodes.get("modalRoot").innerHTML.includes('name="odometer"'));
+assert(nodes.get("modalRoot").innerHTML.includes("Platform"));
+assert(!nodes.get("modalRoot").innerHTML.includes("Gross earnings"), "starting a shift should begin with mileage, not a large earnings form");
+
+const activeShift = Core.normalizeShift({
+  id: "active-1",
+  date: Core.localISODate(),
+  platform: "Uber",
+  startTime: "09:00",
+  startOdometer: 32100,
+  gross: 80,
+  trips: 4
+}, sampleState.settings);
+app.setState({ ...sampleState, activeShift });
+app.openMileageCheckpoint("end");
+assert(nodes.get("modalRoot").innerHTML.includes("Ending mileage"));
+assert(nodes.get("modalRoot").innerHTML.includes("Starting mileage"));
+assert(nodes.get("modalRoot").innerHTML.includes("Continue"));
+assert(!nodes.get("modalRoot").innerHTML.includes("Gross earnings"), "ending a shift should prompt for ending mileage before final totals");
+
+app.openShiftModal("end", { ...activeShift, endOdometer: 32142.5, endTime: "12:00" });
+assert(nodes.get("modalRoot").innerHTML.includes("Mileage captured"));
+assert(nodes.get("modalRoot").innerHTML.includes("42.5 miles driven"));
+assert(nodes.get("modalRoot").innerHTML.includes("Final totals"));
+assert(nodes.get("modalRoot").innerHTML.includes('name="endOdometer" value="32142.5"'));
+
+app.setState(sampleState);
 app.openShiftModal("add");
 assert(nodes.get("modalRoot").innerHTML.includes("Add completed shift"));
 app.openShiftModal("edit", sampleState.shifts[0]);

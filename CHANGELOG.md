@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.2.0 — Mileage-first live shifts
+
+### Added
+- Dedicated starting-mileage checkpoint that appears before every new live shift
+- Dedicated ending-mileage checkpoint that appears before final shift totals
+- Live distance preview from the captured start and end odometer readings
+- Recovery input for older active shifts that do not contain a starting odometer
+
+### Changed
+- Date and start time are now captured automatically after the starting-mileage confirmation
+- The end-shift review now shows a compact captured-mileage summary instead of repeating odometer fields in the main form
+- Editing ending mileage preserves unsaved earnings, trips, fuel, time, notes, and allocation changes
+- Advanced final-shift details remain collapsed to keep the end flow short on phones
+- Advanced the offline cache version so installed dashboards receive the new workflow
+
 ## 3.1.0 — Compact mobile management
 
 ### Changed

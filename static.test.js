@@ -25,6 +25,11 @@ const app = read("app.js");
 const worker = read("service-worker.js");
 const manifest = JSON.parse(read("manifest.json"));
 
+assert(core.includes('const APP_VERSION = "3.2.0";'), "core version should match the 3.2.0 release");
+assert(worker.includes('driver-command-v3.2.0'), "offline cache should advance with the 3.2.0 release");
+assert(app.includes('title: isEnd ? "Ending mileage" : "Starting mileage"'), "live shifts should use mileage-first checkpoints");
+assert(app.includes('data-action="submit-mileage-checkpoint"'), "mileage checkpoint should have an explicit submit action");
+
 // Compile scripts without executing browser-only code.
 new vm.Script(core, { filename: "core.js" });
 new vm.Script(app, { filename: "app.js" });

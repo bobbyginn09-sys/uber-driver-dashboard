@@ -1,8 +1,22 @@
-# Driver Command 3.1
+# Driver Command 3.2
 
 A premium, local-first dashboard for managing rideshare shifts, earnings, mileage, allocations, goals, and vehicle costs.
 
 This rebuild keeps compatibility with the original dashboard's browser storage while replacing the cramped single-page experience with a responsive command center designed for desktop, tablet, and phone.
+
+## 3.2 mileage-first shift flow
+
+Live shifts now follow the real-world order of a driver's workflow:
+
+- Tapping **Start shift** opens a focused **Starting mileage** checkpoint before anything else.
+- The latest saved odometer is pre-filled when available, and the platform remains selectable in the same compact sheet.
+- Date and start time are captured automatically when the shift begins.
+- Tapping **End shift** opens a focused **Ending mileage** checkpoint first.
+- After ending mileage is entered, a compact final-totals review opens for earnings, trips, fuel, end time, and optional details.
+- The final review shows the captured start-to-end mileage and calculated distance, with an Edit control that preserves any totals already entered.
+- Older active shifts without starting mileage receive a safe recovery field instead of producing an incorrect distance.
+
+The start and end mileage checkpoints are designed to fit common phone viewports without internal scrolling.
 
 ## 3.1 compact-mobile update
 
@@ -137,4 +151,4 @@ The calculation suite validates strict dates, periods, normalization, allocation
 
 ## Version
 
-Driver Command 3.1.0 — compact mobile management update.
+Driver Command 3.2.0 — mileage-first live-shift workflow.
