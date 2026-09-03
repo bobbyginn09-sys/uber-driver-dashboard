@@ -8,7 +8,7 @@ function close(actual, expected, message) {
 }
 
 const settings = Core.normalizeSettings({});
-assert.equal(Core.APP_VERSION, "3.6.0");
+assert.equal(Core.APP_VERSION, "3.7.0");
 assert.equal(settings.moneyPlan.version, 3);
 assert.equal(settings.moneyPlan.basis, "gross");
 assert.equal(settings.moneyPlan.vehiclePct, 5);
@@ -24,7 +24,8 @@ const shift = Core.calculateShift({
   pausedMs: 30 * 60000,
   startOdometer: 1000,
   endOdometer: 1120,
-  gross: 300,
+  uberGross: 180,
+  lyftGross: 120,
   fuel: 40,
   tolls: 10,
   otherExpenses: 10,
@@ -33,6 +34,11 @@ const shift = Core.calculateShift({
 
 assert.equal(shift.hours, 5);
 assert.equal(shift.miles, 120);
+assert.equal(shift.platform, "Uber + Lyft");
+close(shift.uberGross, 180, "Uber gross");
+close(shift.lyftGross, 120, "Lyft gross");
+close(shift.gross, 300, "combined overall gross");
+assert.equal(shift.grossBreakdownComplete, true);
 close(shift.expenses, 60, "expenses");
 close(shift.net, 240, "net");
 close(shift.allocationBase, 300, "gross allocation base");
@@ -53,7 +59,7 @@ assert.equal(shift.isPreviousMoneyPlan, false);
 // The new plan remains based on gross earnings even when expenses create a loss.
 const loss = Core.calculateShift({
   date: "2026-09-03",
-  gross: 25,
+  uberGross: 25,
   fuel: 30,
   tolls: 5,
   moneyPlanRates: Core.DEFAULT_MONEY_PLAN
@@ -74,10 +80,48 @@ const tinyPlan = Core.normalizeMoneyPlan({
   investmentMix: { bitcoin: 34, solana: 33, schg: 33, aave: 0 }
 });
 const tinySettings = Core.normalizeSettings({ moneyPlan: tinyPlan });
-const tiny = Core.calculateShift({ date: "2026-09-03", gross: 0.02, moneyPlanRates: tinyPlan }, tinySettings);
+const tiny = Core.calculateShift({ date: "2026-09-03", lyftGross: 0.02, moneyPlanRates: tinyPlan }, tinySettings);
 close(tiny.investment, 0.02, "tiny investment");
 assert.ok([tiny.bitcoin, tiny.solana, tiny.schg, tiny.aave].every((amount) => amount >= 0), "all split amounts should be nonnegative");
 close(tiny.bitcoin + tiny.solana + tiny.schg + tiny.aave, tiny.investment, "tiny split sum");
+
+// Old records with only one gross field migrate into the matching platform bucket.
+const oldUber = Core.normalizeShift({ id: "old-uber", date: "2026-09-01", platform: "Uber", gross: 90 }, settings);
+const oldLyft = Core.normalizeShift({ id: "old-lyft", date: "2026-09-01", platform: "Lyft", gross: 70 }, settings);
+const oldMixed = Core.normalizeShift({ id: "old-mixed", date: "2026-09-01", platform: "Uber + Lyft", gross: 160 }, settings);
+assert.equal(oldUber.uberGross, 90);
+assert.equal(oldUber.lyftGross, 0);
+assert.equal(oldLyft.uberGross, 0);
+assert.equal(oldLyft.lyftGross, 70);
+assert.equal(oldMixed.unassignedGross, 160);
+assert.equal(oldMixed.grossBreakdownComplete, false);
+assert.equal(oldMixed.platform, "Uber + Lyft");
+
+// Explicit platform components always add into overall gross and produce an automatic label.
+const multiApp = Core.normalizeShift({
+  id: "multi-app",
+  date: "2026-09-01",
+  platform: "DoorDash",
+  uberGross: 50,
+  lyftGross: 25,
+  otherGross: 15
+}, settings);
+assert.equal(multiApp.gross, 90);
+assert.equal(multiApp.platform, "Multi-app");
+
+// A larger old overall-gross value is retained honestly as unassigned instead of being lost.
+const residual = Core.normalizeShift({
+  id: "residual",
+  date: "2026-09-01",
+  platform: "Uber + Lyft",
+  uberGross: 100,
+  lyftGross: 40,
+  gross: 150
+}, settings);
+assert.equal(residual.uberGross, 100);
+assert.equal(residual.lyftGross, 40);
+assert.equal(residual.unassignedGross, 10);
+assert.equal(residual.gross, 150);
 
 // The former 5/10/10 positive-net plan remains calculable for saved historical shifts.
 const previous = Core.calculateShift({
@@ -137,6 +181,12 @@ assert.equal(summary.historicalPlanCount, 3);
 close(summary.currentInvestment, 60, "summary current investments");
 close(summary.currentBitcoin, 24, "summary current BTC");
 close(summary.historicalSavings, 9, "summary historical savings");
+close(summary.uberGross, 680, "summary Uber gross");
+close(summary.lyftGross, 120, "summary Lyft gross");
+close(summary.rideshareGross, 800, "summary rideshare gross");
+close(summary.uberShare, 85, "summary Uber share");
+close(summary.lyftShare, 15, "summary Lyft share");
+assert.equal(summary.grossBreakdownComplete, true);
 
 const active = Core.normalizeActiveShift({
   date: "2026-09-03",

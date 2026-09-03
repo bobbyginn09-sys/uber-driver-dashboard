@@ -135,6 +135,23 @@ const formerState = {
       investment: 18,
       savings: 9,
       allocationRates: { vehicle: 5, investment: 20, savings: 10 }
+    },
+    {
+      id: "old-lyft",
+      date: "2026-08-18",
+      platform: "Lyft",
+      gross: 60,
+      moneyPlanRates: formerPlan,
+      moneyPlanVersion: 2
+    },
+    {
+      id: "old-mixed",
+      date: "2026-08-17",
+      platform: "Uber + Lyft",
+      gross: 110,
+      vehicleFund: 5,
+      investment: 20,
+      savings: 10
     }
   ],
   maintenance: [],
@@ -153,11 +170,16 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(state.settings.moneyPlan)),
   JSON.parse(JSON.stringify(Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN)))
 );
-assert.equal(state.shifts.length, 2);
+assert.equal(state.shifts.length, 4);
 assert.equal(state.shifts[0].moneyPlanRates.version, 2, "saved version-2 shift should remain historical");
 assert.equal(state.shifts[1].moneyPlanRates, null, "pre-versioned shift should remain legacy");
 assert.equal(Core.calculateShift(state.shifts[0], state.settings).isPreviousMoneyPlan, true);
 assert.equal(Core.calculateShift(state.shifts[1], state.settings).isNewMoneyPlan, false);
+assert.equal(state.shifts[0].uberGross, 300, "old Uber gross should migrate into Uber");
+assert.equal(state.shifts[1].uberGross, 100, "legacy Uber gross should migrate into Uber");
+assert.equal(state.shifts[2].lyftGross, 60, "old Lyft gross should migrate into Lyft");
+assert.equal(state.shifts[3].unassignedGross, 110, "old combined gross should stay unassigned");
+assert.equal(state.shifts[3].grossBreakdownComplete, false);
 
 assert.equal(migrated.api.saveState(), true);
 const saved = JSON.parse(migrated.seed.get(Core.STORAGE_KEY));
@@ -165,7 +187,7 @@ assert.equal(saved.schemaVersion, Core.APP_VERSION);
 assert.equal(saved.settings.moneyPlan.version, 3);
 assert.equal(saved.shifts[0].moneyPlanRates.version, 2);
 const mirrored = JSON.parse(migrated.seed.get("uberEntries"));
-assert.equal(mirrored.length, 2);
+assert.equal(mirrored.length, 4);
 assert.equal(mirrored[0].id, "old-v2");
 
 const customPlan = Core.normalizeMoneyPlan({
@@ -188,5 +210,7 @@ assert.equal(legacyOnly.settings.moneyPlan.version, 3, "legacy-only storage shou
 assert.equal(legacyOnly.shifts.length, 1);
 assert.equal(legacyOnly.shifts[0].fuel, 8);
 assert.equal(legacyOnly.shifts[0].moneyPlanRates, null);
+assert.equal(legacyOnly.shifts[0].uberGross, 75);
+assert.equal(legacyOnly.shifts[0].gross, 75);
 
 console.log("migration.test.js: all assertions passed");

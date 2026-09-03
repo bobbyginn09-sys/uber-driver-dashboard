@@ -1,5 +1,5 @@
 "use strict";
-const CACHE_NAME = "driver-command-3.6.0-v1";
+const CACHE_NAME = "driver-command-3.7.0-v1";
 const APP_SHELL = [
   "./",
   "./index.html",

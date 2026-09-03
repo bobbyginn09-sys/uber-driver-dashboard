@@ -1,4 +1,4 @@
-DRIVER COMMAND 3.6.0 — INSTALL
+DRIVER COMMAND 3.7.0 — INSTALL
 
 NEW INSTALL
 1. Extract the complete folder.
@@ -14,7 +14,14 @@ UPDATING AN EXISTING COPY
 - Existing version-3 browser data remains compatible.
 - Confirm that your old shifts are present before deleting the backup.
 
-3.6 MONEY PLAN
+3.7 UBER + LYFT TRACKING
+- End shift now has separate Uber gross and Lyft gross fields.
+- The app adds Uber + Lyft automatically into overall gross.
+- Overall gross drives net, hourly, vehicle-fund, investment, take-out, and keep-available calculations.
+- Day, week, month, year, and all-time Money views show the platform totals and shares.
+- CSV and JSON backups keep the platform split.
+
+MONEY PLAN
 - Future shifts use 5% of gross earnings for the vehicle fund.
 - Future shifts use 20% of gross earnings for investments.
 - There is no savings allocation.
@@ -26,5 +33,5 @@ UPDATING AN EXISTING COPY
 SHIFT FLOW
 - Start shift asks for starting mileage first.
 - Pause shift stops work time during lunch or errands.
-- End shift asks for ending mileage, earnings, and expenses.
+- End shift asks for ending mileage, separate Uber/Lyft earnings, and expenses.
 - Finish & show money plan displays the exact amounts to move into the vehicle fund and each investment.

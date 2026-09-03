@@ -146,6 +146,35 @@
     }).format(Core.safeNumber(value));
   }
 
+  function grossBreakdownParts(value, includeZeros) {
+    const source = value || {};
+    const parts = [];
+    const push = (label, amount) => {
+      if (includeZeros || Core.safeNumber(amount) > 0) parts.push(`${label} ${formatMoney(amount)}`);
+    };
+    push("Uber", source.uberGross);
+    push("Lyft", source.lyftGross);
+    push("Other", source.otherGross);
+    push("Unassigned", source.unassignedGross);
+    return parts;
+  }
+
+  function grossBreakdownText(value, includeZeros) {
+    const parts = grossBreakdownParts(value, includeZeros);
+    return parts.length ? parts.join(" · ") : "No earnings entered";
+  }
+
+  function rideshareGrossText(value) {
+    const source = value || {};
+    return `Uber ${formatMoney(source.uberGross)} · Lyft ${formatMoney(source.lyftGross)}`;
+  }
+
+  function platformGrossStrip(summaryValue) {
+    const summary = summaryValue || {};
+    const extra = Core.round(Core.safeNumber(summary.otherGross) + Core.safeNumber(summary.unassignedGross), 2);
+    return `<div class="platform-gross-strip"><div class="platform-gross-item"><span>Uber gross</span><strong>${formatMoney(summary.uberGross)}</strong><small>${formatPercent(summary.uberShare)}% of Uber + Lyft</small></div><div class="platform-gross-item"><span>Lyft gross</span><strong>${formatMoney(summary.lyftGross)}</strong><small>${formatPercent(summary.lyftShare)}% of Uber + Lyft</small></div><div class="platform-gross-item"><span>Overall gross</span><strong>${formatMoney(summary.gross)}</strong><small>${extra ? `${formatMoney(extra)} other / unassigned` : "Uber + Lyft combined"}</small></div></div>`;
+  }
+
   function currentMoneyPlan() {
     const plan = Core.normalizeMoneyPlan(state.settings.moneyPlan || Core.DEFAULT_MONEY_PLAN);
     return plan.version >= 3 ? plan : Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
@@ -490,7 +519,7 @@
     return `<div class="overview-stack">
       <div class="overview-grid">${renderActiveHero()}${renderTodayPlan()}</div>
       <section class="metric-strip" aria-label="This week">
-        ${metricCard({ icon: "dollar", label: "Week net", value: formatMoney(week.net), meta: `${formatMoney(week.gross)} gross · ${formatMoney(week.expenses)} expenses` })}
+        ${metricCard({ icon: "dollar", label: "Week net", value: formatMoney(week.net), meta: `${rideshareGrossText(week)} · ${formatMoney(week.expenses)} expenses` })}
         ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Net hourly", value: `${formatMoney(week.hourly)}/hr`, meta: `${formatNumber(week.hours, 1)} active hours` })}
         ${metricCard({ icon: "wallet", iconClass: "is-violet", label: "Move out", value: formatMoney(week.takeOut), meta: `Gas + ${formatMoney(week.allocated)} plan` })}
         ${metricCard({ icon: "target", iconClass: "is-amber", label: "Weekly goal", value: `${formatNumber(goalPct, 0)}%`, meta: goal ? `${formatMoney(Math.max(0, goal - week.net))} remaining` : "Set a goal in settings" })}
@@ -519,7 +548,7 @@
     if (query) {
       list = list.filter((item) => {
         const shift = Core.calculateShift(item, state.settings);
-        return [shift.date, shift.platform, shift.notes, shift.gross, shift.net, shift.miles].join(" ").toLowerCase().includes(query);
+        return [shift.date, shift.platform, shift.notes, shift.gross, shift.uberGross, shift.lyftGross, shift.otherGross, shift.net, shift.miles].join(" ").toLowerCase().includes(query);
       });
     }
     return sortedShifts(list);
@@ -528,14 +557,14 @@
   function shiftTableRows(list) {
     return list.map((raw) => {
       const shift = Core.calculateShift(raw, state.settings);
-      return `<tr><td><span class="table-primary">${escapeHtml(formatDate(shift.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="table-secondary">${escapeHtml(shift.platform)} · ${formatTime(shift.startTime)}–${formatTime(shift.endTime)}</span></td><td class="table-number">${formatNumber(shift.hours, 1)} hr</td><td class="table-number">${formatNumber(shift.miles, 1)} mi</td><td class="table-number">${formatMoney(shift.gross)}</td><td class="table-number">${formatMoney(shift.expenses)}</td><td class="table-number">${formatMoney(shift.net)}</td><td class="table-number">${formatMoney(shift.takeOut)}</td><td class="table-number">${formatMoney(shift.spendable)}</td><td><div class="row-actions"><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}" aria-label="Money plan">${icon("wallet", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Edit">${icon("edit", "icon icon-sm")}</button><button class="icon-button is-danger" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete">${icon("trash", "icon icon-sm")}</button></div></td></tr>`;
+      return `<tr><td><span class="table-primary">${escapeHtml(formatDate(shift.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="table-secondary">${escapeHtml(shift.platform)} · ${formatTime(shift.startTime)}–${formatTime(shift.endTime)}</span></td><td class="table-number">${formatNumber(shift.hours, 1)} hr</td><td class="table-number">${formatNumber(shift.miles, 1)} mi</td><td class="table-number"><span class="table-primary">${formatMoney(shift.gross)}</span><span class="table-secondary">U ${formatMoney(shift.uberGross)} · L ${formatMoney(shift.lyftGross)}</span></td><td class="table-number">${formatMoney(shift.expenses)}</td><td class="table-number">${formatMoney(shift.net)}</td><td class="table-number">${formatMoney(shift.takeOut)}</td><td class="table-number">${formatMoney(shift.spendable)}</td><td><div class="row-actions"><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}" aria-label="Money plan">${icon("wallet", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Edit">${icon("edit", "icon icon-sm")}</button><button class="icon-button is-danger" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete">${icon("trash", "icon icon-sm")}</button></div></td></tr>`;
     }).join("");
   }
 
   function shiftMobileCards(list) {
     return list.map((raw) => {
       const shift = Core.calculateShift(raw, state.settings);
-      return `<article class="shift-card panel"><div class="shift-card-head"><div class="shift-card-title"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))} · ${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)}${shift.pausedMs ? ` · ${formatDuration(shift.pausedMs, false)} paused` : ""}</span></div><strong class="shift-card-net">${formatMoney(shift.net)}</strong></div><div class="shift-card-grid"><div class="shift-mini"><span>Gross</span><strong>${formatMoney(shift.gross)}</strong></div><div class="shift-mini"><span>Miles</span><strong>${formatNumber(shift.miles, 1)}</strong></div><div class="shift-mini"><span>Move out</span><strong>${formatMoney(shift.takeOut)}</strong></div><div class="shift-mini"><span>Keep</span><strong>${formatMoney(shift.spendable)}</strong></div></div><div class="shift-card-actions"><button class="button button-primary button-small" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}Plan</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-danger button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></article>`;
+      return `<article class="shift-card panel"><div class="shift-card-head"><div class="shift-card-title"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))} · ${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)}${shift.pausedMs ? ` · ${formatDuration(shift.pausedMs, false)} paused` : ""}</span></div><strong class="shift-card-net">${formatMoney(shift.net)}</strong></div><div class="shift-card-grid"><div class="shift-mini"><span>Overall gross</span><strong>${formatMoney(shift.gross)}</strong><small>U ${formatMoney(shift.uberGross)} · L ${formatMoney(shift.lyftGross)}</small></div><div class="shift-mini"><span>Miles</span><strong>${formatNumber(shift.miles, 1)}</strong></div><div class="shift-mini"><span>Move out</span><strong>${formatMoney(shift.takeOut)}</strong></div><div class="shift-mini"><span>Keep</span><strong>${formatMoney(shift.spendable)}</strong></div></div><div class="shift-card-actions"><button class="button button-primary button-small" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}Plan</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-danger button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></article>`;
     }).join("");
   }
 
@@ -546,7 +575,7 @@
     return `<div class="page-stack">
       <section class="toolbar panel"><div class="toolbar-row"><div class="search-field">${icon("search", "icon icon-sm")}<input type="search" data-input="shift-search" value="${escapeAttribute(ui.shiftSearch)}" placeholder="Search shifts, notes, or amounts" aria-label="Search shifts"></div><button class="button button-primary" type="button" data-action="add-shift">${icon("plus", "icon icon-sm")}Add shift</button></div><div class="toolbar-row"><div class="filter-chips">${chips.map(([value, label]) => `<button class="filter-chip${ui.shiftFilter === value ? " is-active" : ""}" type="button" data-action="shift-filter" data-value="${value}">${label}</button>`).join("")}</div><span class="pill">${list.length} result${list.length === 1 ? "" : "s"}</span></div></section>
       <section class="metric-strip">
-        ${metricCard({ icon: "dollar", label: "Net", value: formatMoney(summary.net), meta: `${formatMoney(summary.gross)} gross` })}
+        ${metricCard({ icon: "dollar", label: "Net", value: formatMoney(summary.net), meta: rideshareGrossText(summary) })}
         ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Hours", value: formatNumber(summary.hours, 1), meta: `${formatMoney(summary.hourly)}/hr net` })}
         ${metricCard({ icon: "route", iconClass: "is-violet", label: "Miles", value: formatNumber(summary.miles, 1), meta: `${formatMoney(summary.netPerMile)}/mi net` })}
         ${metricCard({ icon: "wallet", iconClass: "is-amber", label: "Move out", value: formatMoney(summary.takeOut), meta: `${formatMoney(summary.spendable)} left available` })}
@@ -579,7 +608,7 @@
     if (!dates.length) return `<div class="empty-state" style="min-height:150px"><div class="empty-state-inner"><span class="empty-icon">${icon("wallet", "icon icon-lg")}</span><h3>No money directions here yet</h3><p>Complete a shift in this period to create the breakdown.</p></div></div>`;
     return `<div class="daily-list">${dates.map((date) => {
       const summary = Core.summarizeShifts(groups[date], state.settings);
-      return `<button class="daily-row" type="button" data-action="open-money-day" data-date="${date}"><span class="daily-date"><strong>${escapeHtml(formatDate(date, { weekday: "short", month: "short", day: "numeric" }))}</strong><span>${summary.count} shift${summary.count === 1 ? "" : "s"} · ${formatNumber(summary.hours, 1)} hr</span></span><span class="daily-metric"><span>Net</span><strong>${formatMoney(summary.net)}</strong></span><span class="daily-metric"><span>Gas</span><strong>${formatMoney(summary.fuel)}</strong></span><span class="daily-metric"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></span></button>`;
+      return `<button class="daily-row" type="button" data-action="open-money-day" data-date="${date}"><span class="daily-date"><strong>${escapeHtml(formatDate(date, { weekday: "short", month: "short", day: "numeric" }))}</strong><span>${summary.count} shift${summary.count === 1 ? "" : "s"} · U ${formatMoney(summary.uberGross)} · L ${formatMoney(summary.lyftGross)}</span></span><span class="daily-metric"><span>Net</span><strong>${formatMoney(summary.net)}</strong></span><span class="daily-metric"><span>Gas</span><strong>${formatMoney(summary.fuel)}</strong></span><span class="daily-metric"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></span></button>`;
     }).join("")}</div>`;
   }
 
@@ -613,9 +642,9 @@
     return `<div class="page-stack">
       <section class="period-toolbar panel"><div class="segmented">${periods.map(([value, label]) => `<button class="segment${ui.moneyPeriod === value ? " is-active" : ""}" type="button" data-action="money-period" data-value="${value}">${label}</button>`).join("")}</div><div class="date-nav"><button class="icon-button" type="button" data-action="money-prev" aria-label="Previous period" ${ui.moneyPeriod === "all" ? "disabled" : ""}>${icon("chevronLeft", "icon icon-sm")}</button><button class="button button-ghost button-small date-nav-label" type="button" data-action="money-today">${escapeHtml(moneyPeriodLabel())}</button><button class="icon-button" type="button" data-action="money-next" aria-label="Next period" ${ui.moneyPeriod === "all" ? "disabled" : ""}>${icon("chevronRight", "icon icon-sm")}</button></div></section>
       <div class="money-layout">
-        <section class="money-hero panel"><div class="money-hero-top"><div><span class="money-hero-label">Take out / move</span><strong class="money-hero-value">${formatMoney(summary.takeOut)}</strong><p class="money-hero-copy">${formatMoney(summary.fuel)} gas + ${formatMoney(summary.allocated)} allocated</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="allocation-cards"><div class="allocation-card"><span>Gas replacement</span><strong>${formatMoney(summary.fuel)}</strong><small>Add back what you spent</small></div><div class="allocation-card"><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong><small>${vehicleMeta}</small></div><div class="allocation-card"><span>${investmentLabel}</span><strong>${formatMoney(nonVehicleAllocation)}</strong><small>${investmentMeta}</small></div><div class="allocation-card"><span>Total allocation</span><strong>${formatMoney(summary.allocated)}</strong><small>${allocationMeta}</small></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and allocations</p></div><strong>${formatMoney(summary.spendable)}</strong></div></section>
+        <section class="money-hero panel"><div class="money-hero-top"><div><span class="money-hero-label">Take out / move</span><strong class="money-hero-value">${formatMoney(summary.takeOut)}</strong><p class="money-hero-copy">${formatMoney(summary.fuel)} gas + ${formatMoney(summary.allocated)} allocated</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div>${platformGrossStrip(summary)}<div class="allocation-cards"><div class="allocation-card"><span>Gas replacement</span><strong>${formatMoney(summary.fuel)}</strong><small>Add back what you spent</small></div><div class="allocation-card"><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong><small>${vehicleMeta}</small></div><div class="allocation-card"><span>${investmentLabel}</span><strong>${formatMoney(nonVehicleAllocation)}</strong><small>${investmentMeta}</small></div><div class="allocation-card"><span>Total allocation</span><strong>${formatMoney(summary.allocated)}</strong><small>${allocationMeta}</small></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and allocations</p></div><strong>${formatMoney(summary.spendable)}</strong></div></section>
         <aside class="money-side">${investmentDirectionsPanel(summary, plan)}
-        <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Period totals</h2><p class="panel-subtitle">How the money was calculated</p></div></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Gross earnings</span><strong>${formatMoney(summary.gross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>All expenses</span><strong>−${formatMoney(summary.expenses)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Net after expenses</span><strong>${formatMoney(summary.net)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Total allocation</span><strong>−${formatMoney(summary.allocated)}</strong></div>${summary.historicalAllocated ? `<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Older plans included above</span><strong>${formatMoney(summary.historicalAllocated)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Keep available</span><strong>${formatMoney(summary.spendable)}</strong></div></div></section></aside>
+        <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Period totals</h2><p class="panel-subtitle">Uber and Lyft combine into overall gross</p></div></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Uber gross</span><strong>${formatMoney(summary.uberGross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Lyft gross</span><strong>${formatMoney(summary.lyftGross)}</strong></div>${summary.otherGross ? `<div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Other app gross</span><strong>${formatMoney(summary.otherGross)}</strong></div>` : ""}${summary.unassignedGross ? `<div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Older unassigned gross</span><strong>${formatMoney(summary.unassignedGross)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Overall gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>All expenses</span><strong>−${formatMoney(summary.expenses)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Net after expenses</span><strong>${formatMoney(summary.net)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Total allocation</span><strong>−${formatMoney(summary.allocated)}</strong></div>${summary.historicalAllocated ? `<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Older plans included above</span><strong>${formatMoney(summary.historicalAllocated)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Keep available</span><strong>${formatMoney(summary.spendable)}</strong></div></div></section></aside>
       </div>
       <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Day-by-day breakdown</h2><p class="panel-subtitle">Tap a day to isolate it</p></div><span class="pill">${list.length} shift${list.length === 1 ? "" : "s"}</span></div>${dailyMoneyRows(list)}</section>
       <div class="notice">${icon("info", "icon icon-sm")}<p>New shifts put ${formatPercent(plan.vehiclePct)}% of gross earnings into the vehicle fund and ${formatPercent(plan.investmentPct)}% into investments. “Take out” adds your recorded gas on top. Older shifts keep the allocation plan saved with them. This is your custom money-management plan, not investment or tax advice.</p></div>
@@ -654,7 +683,7 @@
       const date = new Date(2026, 0, 4 + ((state.settings.weekStartsOn + i) % 7));
       weekdays.push(new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date));
     }
-    return `<div class="page-stack"><div class="calendar-layout"><section class="calendar-panel panel"><div class="calendar-toolbar"><button class="icon-button" type="button" data-action="calendar-prev">${icon("chevronLeft", "icon icon-sm")}</button><div class="calendar-title"><strong>${new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(data.monthStart)}</strong><span>${data.monthSummary.count} shifts · ${formatMoney(data.monthSummary.net)} net</span></div><div style="display:flex;gap:5px"><button class="button button-ghost button-small" type="button" data-action="calendar-today">Today</button><button class="icon-button" type="button" data-action="calendar-next">${icon("chevronRight", "icon icon-sm")}</button></div></div><div class="calendar-grid">${weekdays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span><span class="calendar-day-move">${formatMoney(day.summary.takeOut, { compact: true })} move</span>` : ""}</button>`).join("")}</div></section><aside class="calendar-detail panel"><div class="panel-header"><div><h2 class="detail-date">${escapeHtml(formatDate(ui.calendarSelected, { weekday: "long", month: "long", day: "numeric" }))}</h2><p class="panel-subtitle">${summary.count} completed shift${summary.count === 1 ? "" : "s"}</p></div><button class="button button-primary button-small" type="button" data-action="add-shift-for-date" data-date="${ui.calendarSelected}">${icon("plus", "icon icon-sm")}Add</button></div><div class="detail-summary"><div class="detail-stat"><span>Gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="detail-stat"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div><div class="detail-stat"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></div><div class="detail-stat"><span>Keep</span><strong>${formatMoney(summary.spendable)}</strong></div></div>${selected.length ? `<div class="recent-list">${sortedShifts(selected).map((raw) => { const shift = Core.calculateShift(raw, state.settings); return `<div class="recent-row"><div class="recent-main"><strong>${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)} · ${formatNumber(shift.miles, 1)} mi</span></div><div class="recent-money"><strong>${formatMoney(shift.net)}</strong><span>${formatMoney(shift.takeOut)} move</span></div><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}</button></div>`; }).join("")}</div>` : `<div class="empty-state" style="min-height:160px"><div class="empty-state-inner"><span class="empty-icon">${icon("calendar", "icon icon-lg")}</span><h3>No shift saved</h3><p>Add one for this date or choose another day.</p></div></div>`}</aside></div></div>`;
+    return `<div class="page-stack"><div class="calendar-layout"><section class="calendar-panel panel"><div class="calendar-toolbar"><button class="icon-button" type="button" data-action="calendar-prev">${icon("chevronLeft", "icon icon-sm")}</button><div class="calendar-title"><strong>${new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(data.monthStart)}</strong><span>${data.monthSummary.count} shifts · ${formatMoney(data.monthSummary.net)} net</span></div><div style="display:flex;gap:5px"><button class="button button-ghost button-small" type="button" data-action="calendar-today">Today</button><button class="icon-button" type="button" data-action="calendar-next">${icon("chevronRight", "icon icon-sm")}</button></div></div><div class="calendar-grid">${weekdays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span><span class="calendar-day-move">${formatMoney(day.summary.takeOut, { compact: true })} move</span>` : ""}</button>`).join("")}</div></section><aside class="calendar-detail panel"><div class="panel-header"><div><h2 class="detail-date">${escapeHtml(formatDate(ui.calendarSelected, { weekday: "long", month: "long", day: "numeric" }))}</h2><p class="panel-subtitle">${summary.count} completed shift${summary.count === 1 ? "" : "s"}</p></div><button class="button button-primary button-small" type="button" data-action="add-shift-for-date" data-date="${ui.calendarSelected}">${icon("plus", "icon icon-sm")}Add</button></div><div class="detail-summary"><div class="detail-stat"><span>Overall gross</span><strong>${formatMoney(summary.gross)}</strong><small>U ${formatMoney(summary.uberGross)} · L ${formatMoney(summary.lyftGross)}</small></div><div class="detail-stat"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div><div class="detail-stat"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></div><div class="detail-stat"><span>Keep</span><strong>${formatMoney(summary.spendable)}</strong></div></div>${selected.length ? `<div class="recent-list">${sortedShifts(selected).map((raw) => { const shift = Core.calculateShift(raw, state.settings); return `<div class="recent-row"><div class="recent-main"><strong>${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)} · ${formatNumber(shift.miles, 1)} mi</span></div><div class="recent-money"><strong>${formatMoney(shift.net)}</strong><span>${formatMoney(shift.takeOut)} move</span></div><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}</button></div>`; }).join("")}</div>` : `<div class="empty-state" style="min-height:160px"><div class="empty-state-inner"><span class="empty-icon">${icon("calendar", "icon icon-lg")}</span><h3>No shift saved</h3><p>Add one for this date or choose another day.</p></div></div>`}</aside></div></div>`;
   }
 
   function vehicleFundSummary() {
@@ -744,10 +773,49 @@
     return options.map((option) => `<option value="${escapeAttribute(option)}"${option === current ? " selected" : ""}>${escapeHtml(option)}</option>`).join("");
   }
 
+  function amountInputValue(value) {
+    const amount = Core.safeNumber(value);
+    return amount ? escapeAttribute(Core.round(amount, 2)) : "";
+  }
+
+  function earningsFormValues(data) {
+    const read = (name) => String(data.get(name) == null ? "" : data.get(name)).trim();
+    const raw = {
+      uberGross: read("uberGross"),
+      lyftGross: read("lyftGross"),
+      otherGross: read("otherGross"),
+      unassignedGross: read("unassignedGross")
+    };
+    const hasEntry = Object.values(raw).some((value) => value !== "");
+    const hasNegative = Object.values(raw).some((value) => value !== "" && Core.safeNumber(value) < 0);
+    return {
+      ...raw,
+      hasEntry,
+      hasNegative,
+      gross: Core.round(
+        Math.max(0, Core.safeNumber(raw.uberGross))
+        + Math.max(0, Core.safeNumber(raw.lyftGross))
+        + Math.max(0, Core.safeNumber(raw.otherGross))
+        + Math.max(0, Core.safeNumber(raw.unassignedGross)),
+        2
+      )
+    };
+  }
+
+  function earningsFieldsMarkup(prefix, defaultsValue, optionsValue) {
+    const defaults = defaultsValue || {};
+    const options = optionsValue || {};
+    const otherOpen = Boolean(options.otherOpen || Core.safeNumber(defaults.otherGross) || Core.safeNumber(defaults.unassignedGross));
+    const otherLabel = options.otherLabel || "Other app gross";
+    const otherHelp = options.otherHelp || "Use this only for earnings from another driving app.";
+    const includeUnassigned = Boolean(options.includeUnassigned);
+    return `<div class="form-grid earnings-grid"><div class="field"><label for="${prefix}UberGross">Uber gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}UberGross" name="uberGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.uberGross)}" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="${prefix}LyftGross">Lyft gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}LyftGross" name="lyftGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.lyftGross)}" inputmode="decimal" placeholder="0.00"></div></div></div><details class="optional-earnings"${otherOpen ? " open" : ""}><summary>${icon("plus", "icon icon-sm")}Other / older earnings</summary><div class="form-grid${includeUnassigned ? "" : " is-one"}"><div class="field"><label for="${prefix}OtherGross">${escapeHtml(otherLabel)}</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}OtherGross" name="otherGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.otherGross)}" inputmode="decimal" placeholder="0.00"></div><p class="field-help">${escapeHtml(otherHelp)}</p></div>${includeUnassigned ? `<div class="field"><label for="${prefix}UnassignedGross">Older unassigned gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}UnassignedGross" name="unassignedGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.unassignedGross)}" inputmode="decimal" placeholder="0.00"></div><p class="field-help">Only older Uber + Lyft records may have money here. Move it into the two fields above when you know the split.</p></div>` : ""}</div></details>`;
+  }
+
   function moneyPreviewMarkup(shiftValue) {
     const shift = Core.calculateShift(shiftValue, state.settings);
     const planLabel = shift.isGrossMoneyPlan ? `${formatPercent(moneyPlanTotalPct(shift.moneyPlan))}% gross plan` : "Saved allocation";
-    return `<div class="preview-strip"><div class="preview-item"><span>Net after expenses</span><strong data-preview-net>${formatMoney(shift.net)}</strong></div><div class="preview-item"><span>${planLabel}</span><strong data-preview-allocated>${formatMoney(shift.allocated)}</strong></div><div class="preview-item"><span>Take out + gas</span><strong data-preview-takeout>${formatMoney(shift.takeOut)}</strong></div><div class="preview-item"><span>Keep available</span><strong data-preview-keep>${formatMoney(shift.spendable)}</strong></div></div>`;
+    return `<div class="preview-strip preview-strip-five"><div class="preview-item preview-overall"><span>Overall gross</span><strong data-preview-gross>${formatMoney(shift.gross)}</strong><small>All app earnings combined</small></div><div class="preview-item"><span>Net after expenses</span><strong data-preview-net>${formatMoney(shift.net)}</strong></div><div class="preview-item"><span>${planLabel}</span><strong data-preview-allocated>${formatMoney(shift.allocated)}</strong></div><div class="preview-item"><span>Take out + gas</span><strong data-preview-takeout>${formatMoney(shift.takeOut)}</strong></div><div class="preview-item"><span>Keep available</span><strong data-preview-keep>${formatMoney(shift.spendable)}</strong></div></div>`;
   }
 
   function openStartShiftModal() {
@@ -808,9 +876,13 @@
 
   function endPreviewFromForm(form) {
     const data = new FormData(form);
+    const earnings = earningsFormValues(data);
     return {
       date: state.activeShift ? state.activeShift.date : Core.localISODate(),
-      gross: data.get("gross"),
+      uberGross: earnings.uberGross,
+      lyftGross: earnings.lyftGross,
+      otherGross: earnings.otherGross,
+      unassignedGross: earnings.unassignedGross,
       fuel: data.get("fuel"),
       tolls: data.get("tolls"),
       otherExpenses: data.get("otherExpenses"),
@@ -826,6 +898,7 @@
     if (!form) return;
     const shift = Core.calculateShift(endPreviewFromForm(form), state.settings);
     const map = {
+      "[data-preview-gross]": shift.gross,
       "[data-preview-net]": shift.net,
       "[data-preview-allocated]": shift.allocated,
       "[data-preview-takeout]": shift.takeOut,
@@ -846,7 +919,10 @@
     const now = new Date();
     const paused = Boolean(active.pauseStartedAt);
     const preview = {
-      gross: 0,
+      uberGross: 0,
+      lyftGross: 0,
+      otherGross: 0,
+      unassignedGross: 0,
       fuel: 0,
       tolls: 0,
       otherExpenses: 0,
@@ -855,10 +931,43 @@
       startOdometer: active.startOdometer,
       endOdometer: active.startOdometer
     };
-    const body = `<form data-form="end-shift"><div class="notice ${paused ? "is-warning" : "is-success"}">${icon(paused ? "pause" : "clock", "icon icon-sm")}<p>${paused ? "This shift is paused. Finishing it will close the current pause and keep paused time out of your work hours." : `Active work time: ${formatDuration(Core.activeDurationMs(active, now), false)}. Paused time: ${formatDuration(Core.activePausedMs(active, now), false)}.`}</p></div><div class="form-section" style="margin-top:11px"><div class="form-section-title">${icon("route", "icon icon-sm")}Ending mileage</div><div class="form-grid"><div class="field"><label>Starting mileage</label><input value="${escapeAttribute(active.startOdometer)}" disabled></div><div class="field"><label for="endOdometer">Ending mileage</label><div class="input-shell has-suffix"><input id="endOdometer" name="endOdometer" type="number" min="${escapeAttribute(active.startOdometer)}" step="0.1" value="${escapeAttribute(Math.max(active.startOdometer, Core.currentOdometer(state.shifts, state.maintenance, state.settings)))}" inputmode="decimal" autofocus required><span class="input-suffix">mi</span></div></div></div></div><div class="form-section"><div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings & expenses</div><div class="form-grid"><div class="field"><label for="endGross">Gross earnings</label><div class="input-shell"><span class="input-prefix">$</span><input id="endGross" name="gross" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required></div></div><div class="field"><label for="endFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="endFuel" name="fuel" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="endTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="endTolls" name="tolls" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="endOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="endOther" name="otherExpenses" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div></div>${moneyPreviewMarkup(preview)}</div><div class="form-section"><div class="form-section-title">${icon("receipt", "icon icon-sm")}Shift notes</div><div class="form-grid"><div class="field"><label for="endTrips">Trips / deliveries</label><input id="endTrips" name="trips" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div><div class="field"><label for="endNotes">Notes</label><input id="endNotes" name="notes" maxlength="220" value="${escapeAttribute(active.notes || "")}" placeholder="Optional"></div></div></div></form>`;
+    const rideshareFlags = /uber/i.test(active.platform) || /lyft/i.test(active.platform);
+    const otherLabel = rideshareFlags ? "Other app gross" : `${active.platform} gross`;
+    const body = `<form data-form="end-shift">
+      <div class="notice ${paused ? "is-warning" : "is-success"}">${icon(paused ? "pause" : "clock", "icon icon-sm")}<p>${paused ? "This shift is paused. Finishing it will close the current pause and keep paused time out of your work hours." : `Active work time: ${formatDuration(Core.activeDurationMs(active, now), false)}. Paused time: ${formatDuration(Core.activePausedMs(active, now), false)}.`}</p></div>
+      <div class="form-section" style="margin-top:11px">
+        <div class="form-section-title">${icon("route", "icon icon-sm")}Ending mileage</div>
+        <div class="form-grid">
+          <div class="field"><label>Starting mileage</label><input value="${escapeAttribute(active.startOdometer)}" disabled></div>
+          <div class="field"><label for="endOdometer">Ending mileage</label><div class="input-shell has-suffix"><input id="endOdometer" name="endOdometer" type="number" min="${escapeAttribute(active.startOdometer)}" step="0.1" value="${escapeAttribute(Math.max(active.startOdometer, Core.currentOdometer(state.shifts, state.maintenance, state.settings)))}" inputmode="decimal" autofocus required><span class="input-suffix">mi</span></div></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings by app</div>
+        <p class="form-section-copy">Enter each app separately. Driver Command adds them together for overall gross and uses that total for every money calculation.</p>
+        ${earningsFieldsMarkup("end", preview, {
+          otherOpen: !rideshareFlags,
+          otherLabel,
+          otherHelp: rideshareFlags ? "Optional earnings from another driving app." : `Use this for ${active.platform} or another app.`
+        })}
+        <div class="form-grid expense-grid">
+          <div class="field"><label for="endFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="endFuel" name="fuel" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
+          <div class="field"><label for="endTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="endTolls" name="tolls" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
+          <div class="field span-2"><label for="endOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="endOther" name="otherExpenses" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
+        </div>
+        ${moneyPreviewMarkup(preview)}
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">${icon("receipt", "icon icon-sm")}Shift notes</div>
+        <div class="form-grid">
+          <div class="field"><label for="endTrips">Trips / deliveries</label><input id="endTrips" name="trips" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div class="field"><label for="endNotes">Notes</label><input id="endNotes" name="notes" maxlength="220" value="${escapeAttribute(active.notes || "")}" placeholder="Optional"></div>
+        </div>
+      </div>
+    </form>`;
     openModal({
       title: "Finish shift",
-      subtitle: "Save the numbers, then get your exact money directions.",
+      subtitle: "Enter Uber and Lyft separately, then get your exact money directions.",
       body,
       footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-end-shift">${icon("wallet", "icon icon-sm")}Finish & show money plan</button>`,
       className: "modal-wide",
@@ -872,14 +981,14 @@
     if (!form || !activeOriginal) return;
     const data = new FormData(form);
     const endRaw = String(data.get("endOdometer") || "").trim();
-    const grossRaw = String(data.get("gross") || "").trim();
+    const earnings = earningsFormValues(data);
     const endOdometer = Core.safeNumber(endRaw);
     if (endRaw === "" || endOdometer < Core.safeNumber(activeOriginal.startOdometer)) {
       showToast("Ending mileage must be at least the starting mileage.", "warning");
       return;
     }
-    if (grossRaw === "" || Core.safeNumber(grossRaw) < 0) {
-      showToast("Enter the shift’s gross earnings.", "warning");
+    if (!earnings.hasEntry || earnings.hasNegative) {
+      showToast("Enter gross earnings for at least one app.", "warning");
       return;
     }
     const now = new Date();
@@ -893,7 +1002,10 @@
       endTime: currentTimeValue(now),
       startedAt: active.startedAt,
       endedAt: now.toISOString(),
-      gross: Math.max(0, Core.safeNumber(grossRaw)),
+      uberGross: Math.max(0, Core.safeNumber(earnings.uberGross)),
+      lyftGross: Math.max(0, Core.safeNumber(earnings.lyftGross)),
+      otherGross: Math.max(0, Core.safeNumber(earnings.otherGross)),
+      unassignedGross: 0,
       fuel: Math.max(0, Core.safeNumber(data.get("fuel"))),
       tolls: Math.max(0, Core.safeNumber(data.get("tolls"))),
       otherExpenses: Math.max(0, Core.safeNumber(data.get("otherExpenses"))),
@@ -957,7 +1069,7 @@
     const plan = shift.moneyPlan;
     const mix = plan.investmentMix;
     const totalPct = moneyPlanTotalPct(plan);
-    return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} from the ${formatPercent(totalPct)}% gross plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="money-instructions"><div class="instruction-card"><span class="instruction-number">1</span><span><span>Replace gas</span><strong>Put back what the shift used</strong></span><strong class="instruction-amount">${formatMoney(shift.fuel)}</strong></div><div class="instruction-card"><span class="instruction-number">2</span><span><span>Vehicle fund · ${formatPercent(plan.vehiclePct)}%</span><strong>Set aside for maintenance</strong></span><strong class="instruction-amount">${formatMoney(shift.vehicleFund)}</strong></div><div class="instruction-card"><span class="instruction-number">3</span><span><span>Investments · ${formatPercent(plan.investmentPct)}%</span><strong>Split across the four assets below</strong></span><strong class="instruction-amount">${formatMoney(shift.investment)}</strong></div></div></div><div class="crypto-box"><div class="crypto-box-head"><strong>Split the ${formatMoney(shift.investment)} investment contribution</strong><span class="pill pill-blue">100%</span></div><div class="crypto-grid"><div class="crypto-coin"><span>Bitcoin</span><strong>${formatMoney(shift.bitcoin)}</strong><small>${formatPercent(mix.bitcoin)}% of investments · ${formatPercent(investmentGrossPct(plan, "bitcoin"))}% gross</small></div><div class="crypto-coin"><span>Solana</span><strong>${formatMoney(shift.solana)}</strong><small>${formatPercent(mix.solana)}% of investments · ${formatPercent(investmentGrossPct(plan, "solana"))}% gross</small></div><div class="crypto-coin"><span>SCHG</span><strong>${formatMoney(shift.schg)}</strong><small>${formatPercent(mix.schg)}% of investments · ${formatPercent(investmentGrossPct(plan, "schg"))}% gross</small></div><div class="crypto-coin"><span>AAVE</span><strong>${formatMoney(shift.aave)}</strong><small>${formatPercent(mix.aave)}% of investments · ${formatPercent(investmentGrossPct(plan, "aave"))}% gross</small></div></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and the ${formatPercent(totalPct)}% plan</p></div><strong>${formatMoney(shift.spendable)}</strong></div><div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>The percentage base is ${formatMoney(shift.gross)} in gross earnings. Gas, tolls, and other expenses reduce what stays available, but they do not reduce the vehicle or investment contribution.</p></div>`;
+    return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} from the ${formatPercent(totalPct)}% gross plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="money-instructions"><div class="instruction-card"><span class="instruction-number">1</span><span><span>Replace gas</span><strong>Put back what the shift used</strong></span><strong class="instruction-amount">${formatMoney(shift.fuel)}</strong></div><div class="instruction-card"><span class="instruction-number">2</span><span><span>Vehicle fund · ${formatPercent(plan.vehiclePct)}%</span><strong>Set aside for maintenance</strong></span><strong class="instruction-amount">${formatMoney(shift.vehicleFund)}</strong></div><div class="instruction-card"><span class="instruction-number">3</span><span><span>Investments · ${formatPercent(plan.investmentPct)}%</span><strong>Split across the four assets below</strong></span><strong class="instruction-amount">${formatMoney(shift.investment)}</strong></div></div></div><div class="crypto-box"><div class="crypto-box-head"><strong>Split the ${formatMoney(shift.investment)} investment contribution</strong><span class="pill pill-blue">100%</span></div><div class="crypto-grid"><div class="crypto-coin"><span>Bitcoin</span><strong>${formatMoney(shift.bitcoin)}</strong><small>${formatPercent(mix.bitcoin)}% of investments · ${formatPercent(investmentGrossPct(plan, "bitcoin"))}% gross</small></div><div class="crypto-coin"><span>Solana</span><strong>${formatMoney(shift.solana)}</strong><small>${formatPercent(mix.solana)}% of investments · ${formatPercent(investmentGrossPct(plan, "solana"))}% gross</small></div><div class="crypto-coin"><span>SCHG</span><strong>${formatMoney(shift.schg)}</strong><small>${formatPercent(mix.schg)}% of investments · ${formatPercent(investmentGrossPct(plan, "schg"))}% gross</small></div><div class="crypto-coin"><span>AAVE</span><strong>${formatMoney(shift.aave)}</strong><small>${formatPercent(mix.aave)}% of investments · ${formatPercent(investmentGrossPct(plan, "aave"))}% gross</small></div></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and the ${formatPercent(totalPct)}% plan</p></div><strong>${formatMoney(shift.spendable)}</strong></div><div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>The percentage base is ${formatMoney(shift.gross)} in overall gross (${grossBreakdownText(shift)}). Gas, tolls, and other expenses reduce what stays available, but they do not reduce the vehicle or investment contribution.</p></div>`;
   }
 
   function openMoneyPlanModal(id, justFinished) {
@@ -969,7 +1081,7 @@
     const calculated = Core.calculateShift(shift, state.settings);
     openModal({
       title: justFinished ? "Shift saved — here’s what to do" : "Shift money directions",
-      subtitle: `${formatDate(calculated.date, { weekday: "long", month: "long", day: "numeric" })} · ${calculated.platform} · ${formatMoney(calculated.gross)} gross`,
+      subtitle: `${formatDate(calculated.date, { weekday: "long", month: "long", day: "numeric" })} · ${calculated.platform} · ${formatMoney(calculated.gross)} overall gross`,
       body: moneyPlanMarkup(shift),
       footer: `<button class="button button-ghost" type="button" data-action="close-modal">Done</button><button class="button button-primary" type="button" data-action="view-money-page" data-date="${escapeAttribute(calculated.date)}">${icon("wallet", "icon icon-sm")}Open money dashboard</button>`,
       className: "modal-plan",
@@ -979,10 +1091,12 @@
 
   function manualPreviewFromForm(form, existing) {
     const data = new FormData(form);
+    const earnings = earningsFormValues(data);
     const isLegacy = existing && !existing.moneyPlanRates;
     return {
       ...(existing || {}),
       date: String(data.get("date") || Core.localISODate()),
+      platform: String(data.get("platform") || (existing && existing.platform) || state.settings.defaultPlatform),
       startTime: String(data.get("startTime") || ""),
       endTime: String(data.get("endTime") || ""),
       pausedMs: Math.max(0, Core.safeNumber(data.get("pausedMinutes"))) * 60000,
@@ -990,7 +1104,11 @@
       startOdometer: data.get("startOdometer"),
       endOdometer: data.get("endOdometer"),
       manualMiles: data.get("manualMiles"),
-      gross: data.get("gross"),
+      uberGross: earnings.uberGross,
+      lyftGross: earnings.lyftGross,
+      otherGross: earnings.otherGross,
+      unassignedGross: earnings.unassignedGross,
+      gross: earnings.gross,
       fuel: data.get("fuel"),
       tolls: data.get("tolls"),
       otherExpenses: data.get("otherExpenses"),
@@ -1005,6 +1123,7 @@
     const existing = form.dataset.id ? findShift(form.dataset.id) : null;
     const shift = Core.calculateShift(manualPreviewFromForm(form, existing), state.settings);
     const map = {
+      "[data-preview-gross]": shift.gross,
       "[data-preview-net]": shift.net,
       "[data-preview-allocated]": shift.allocated,
       "[data-preview-takeout]": shift.takeOut,
@@ -1032,6 +1151,10 @@
       startOdometer: Core.currentOdometer(state.shifts, state.maintenance, state.settings),
       endOdometer: 0,
       manualMiles: 0,
+      uberGross: 0,
+      lyftGross: 0,
+      otherGross: 0,
+      unassignedGross: 0,
       gross: 0,
       fuel: 0,
       tolls: 0,
@@ -1041,10 +1164,56 @@
       moneyPlanRates: state.settings.moneyPlan
     };
     const preview = existing || { ...defaults, moneyPlanRates: state.settings.moneyPlan };
-    const body = `<form data-form="manual-shift" data-id="${escapeAttribute(existing ? existing.id : "")}"><div class="form-section"><div class="form-section-title">${icon("calendar", "icon icon-sm")}Shift details</div><div class="form-grid is-three"><div class="field"><label for="manualDate">Date</label><input id="manualDate" name="date" type="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="manualPlatform">Platform</label><select id="manualPlatform" name="platform">${platformOptions(defaults.platform)}</select></div><div class="field"><label for="manualTrips">Trips</label><input id="manualTrips" name="trips" type="number" min="0" step="1" value="${defaults.trips || ""}" inputmode="numeric"></div><div class="field"><label for="manualStartTime">Start time</label><input id="manualStartTime" name="startTime" type="time" value="${escapeAttribute(defaults.startTime || "")}"></div><div class="field"><label for="manualEndTime">End time</label><input id="manualEndTime" name="endTime" type="time" value="${escapeAttribute(defaults.endTime || "")}"></div><div class="field"><label for="manualHours">Manual active hours</label><div class="input-shell has-suffix"><input id="manualHours" name="manualHours" type="number" min="0" step="0.01" value="${defaults.manualHours ? escapeAttribute(Core.round(defaults.manualHours, 2)) : ""}" inputmode="decimal"><span class="input-suffix">hr</span></div><p class="field-help">Overrides start/end time when entered.</p></div><div class="field"><label for="manualPause">Paused minutes</label><div class="input-shell has-suffix"><input id="manualPause" name="pausedMinutes" type="number" min="0" step="1" value="${defaults.pausedMs ? escapeAttribute(Core.round(defaults.pausedMs / 60000, 0)) : ""}" inputmode="numeric"><span class="input-suffix">min</span></div></div></div></div><div class="form-section"><div class="form-section-title">${icon("route", "icon icon-sm")}Mileage</div><div class="form-grid is-three"><div class="field"><label for="manualStartOdo">Start odometer</label><div class="input-shell has-suffix"><input id="manualStartOdo" name="startOdometer" type="number" min="0" step="0.1" value="${defaults.startOdometer ? escapeAttribute(defaults.startOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div><div class="field"><label for="manualEndOdo">End odometer</label><div class="input-shell has-suffix"><input id="manualEndOdo" name="endOdometer" type="number" min="0" step="0.1" value="${defaults.endOdometer ? escapeAttribute(defaults.endOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div><div class="field"><label for="manualMiles">Manual business miles</label><div class="input-shell has-suffix"><input id="manualMiles" name="manualMiles" type="number" min="0" step="0.1" value="${defaults.manualMiles ? escapeAttribute(defaults.manualMiles) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div><p class="field-help">Used when odometer values are unavailable.</p></div></div></div><div class="form-section"><div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings & expenses</div><div class="form-grid"><div class="field"><label for="manualGross">Gross earnings</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualGross" name="gross" type="number" min="0" step="0.01" value="${defaults.gross ? escapeAttribute(defaults.gross) : ""}" inputmode="decimal" required></div></div><div class="field"><label for="manualFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualFuel" name="fuel" type="number" min="0" step="0.01" value="${defaults.fuel ? escapeAttribute(defaults.fuel) : ""}" inputmode="decimal"></div></div><div class="field"><label for="manualTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualTolls" name="tolls" type="number" min="0" step="0.01" value="${defaults.tolls ? escapeAttribute(defaults.tolls) : ""}" inputmode="decimal"></div></div><div class="field"><label for="manualOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualOther" name="otherExpenses" type="number" min="0" step="0.01" value="${defaults.otherExpenses ? escapeAttribute(defaults.otherExpenses) : ""}" inputmode="decimal"></div></div></div>${moneyPreviewMarkup(preview)}</div><div class="form-section"><div class="form-section-title">${icon("receipt", "icon icon-sm")}Notes</div><div class="field"><label for="manualNotes">Notes</label><textarea id="manualNotes" name="notes" maxlength="500" placeholder="Optional">${escapeHtml(defaults.notes || "")}</textarea></div></div>${existing && !existing.moneyPlanRates ? `<div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>This older shift will keep its original saved allocation when edited.</p></div>` : ""}</form>`;
+    const unsplitNotice = Core.safeNumber(defaults.unassignedGross) > 0
+      ? `<div class="notice is-warning" style="margin-top:10px">${icon("warning", "icon icon-sm")}<p>This older Uber + Lyft shift only stored one combined gross. Leave it under “Older unassigned gross,” or move the amount into Uber and Lyft when you know the split.</p></div>`
+      : "";
+    const body = `<form data-form="manual-shift" data-id="${escapeAttribute(existing ? existing.id : "")}">
+      <div class="form-section">
+        <div class="form-section-title">${icon("calendar", "icon icon-sm")}Shift details</div>
+        <div class="form-grid is-three">
+          <div class="field"><label for="manualDate">Date</label><input id="manualDate" name="date" type="date" value="${escapeAttribute(defaults.date)}" required></div>
+          <div class="field"><label for="manualPlatform">Starting / other app</label><select id="manualPlatform" name="platform">${platformOptions(defaults.platform)}</select><p class="field-help">Uber and Lyft labels update automatically from the amounts below.</p></div>
+          <div class="field"><label for="manualTrips">Trips</label><input id="manualTrips" name="trips" type="number" min="0" step="1" value="${defaults.trips || ""}" inputmode="numeric"></div>
+          <div class="field"><label for="manualStartTime">Start time</label><input id="manualStartTime" name="startTime" type="time" value="${escapeAttribute(defaults.startTime || "")}"></div>
+          <div class="field"><label for="manualEndTime">End time</label><input id="manualEndTime" name="endTime" type="time" value="${escapeAttribute(defaults.endTime || "")}"></div>
+          <div class="field"><label for="manualHours">Manual active hours</label><div class="input-shell has-suffix"><input id="manualHours" name="manualHours" type="number" min="0" step="0.01" value="${defaults.manualHours ? escapeAttribute(Core.round(defaults.manualHours, 2)) : ""}" inputmode="decimal"><span class="input-suffix">hr</span></div><p class="field-help">Overrides start/end time when entered.</p></div>
+          <div class="field"><label for="manualPause">Paused minutes</label><div class="input-shell has-suffix"><input id="manualPause" name="pausedMinutes" type="number" min="0" step="1" value="${defaults.pausedMs ? escapeAttribute(Core.round(defaults.pausedMs / 60000, 0)) : ""}" inputmode="numeric"><span class="input-suffix">min</span></div></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">${icon("route", "icon icon-sm")}Mileage</div>
+        <div class="form-grid is-three">
+          <div class="field"><label for="manualStartOdo">Start odometer</label><div class="input-shell has-suffix"><input id="manualStartOdo" name="startOdometer" type="number" min="0" step="0.1" value="${defaults.startOdometer ? escapeAttribute(defaults.startOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div>
+          <div class="field"><label for="manualEndOdo">End odometer</label><div class="input-shell has-suffix"><input id="manualEndOdo" name="endOdometer" type="number" min="0" step="0.1" value="${defaults.endOdometer ? escapeAttribute(defaults.endOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div>
+          <div class="field"><label for="manualMiles">Manual business miles</label><div class="input-shell has-suffix"><input id="manualMiles" name="manualMiles" type="number" min="0" step="0.1" value="${defaults.manualMiles ? escapeAttribute(defaults.manualMiles) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div><p class="field-help">Used when odometer values are unavailable.</p></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings by app</div>
+        <p class="form-section-copy">Uber gross plus Lyft gross becomes the overall gross used everywhere else in the dashboard.</p>
+        ${earningsFieldsMarkup("manual", defaults, {
+          includeUnassigned: true,
+          otherOpen: Core.safeNumber(defaults.otherGross) > 0 || Core.safeNumber(defaults.unassignedGross) > 0,
+          otherLabel: "Other app gross",
+          otherHelp: "Optional earnings from DoorDash or another app."
+        })}
+        ${unsplitNotice}
+        <div class="form-grid expense-grid">
+          <div class="field"><label for="manualFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualFuel" name="fuel" type="number" min="0" step="0.01" value="${amountInputValue(defaults.fuel)}" inputmode="decimal"></div></div>
+          <div class="field"><label for="manualTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualTolls" name="tolls" type="number" min="0" step="0.01" value="${amountInputValue(defaults.tolls)}" inputmode="decimal"></div></div>
+          <div class="field span-2"><label for="manualOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualOther" name="otherExpenses" type="number" min="0" step="0.01" value="${amountInputValue(defaults.otherExpenses)}" inputmode="decimal"></div></div>
+        </div>
+        ${moneyPreviewMarkup(preview)}
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">${icon("receipt", "icon icon-sm")}Notes</div>
+        <div class="field"><label for="manualNotes">Notes</label><textarea id="manualNotes" name="notes" maxlength="500" placeholder="Optional">${escapeHtml(defaults.notes || "")}</textarea></div>
+      </div>
+      ${existing && !existing.moneyPlanRates ? `<div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>This older shift will keep its original saved allocation when edited.</p></div>` : ""}
+    </form>`;
     openModal({
       title: existing ? "Edit shift" : "Add completed shift",
-      subtitle: existing ? "Update the record without changing its historical allocation plan." : "New entries use your current gross-earnings vehicle and investment plan.",
+      subtitle: existing ? "Update the app split without changing its historical money plan." : "Enter Uber and Lyft separately; overall gross is calculated for you.",
       body,
       footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-manual-shift">${icon("check", "icon icon-sm")}${existing ? "Save changes" : "Save & show plan"}</button>`,
       className: "modal-wide",
@@ -1058,9 +1227,9 @@
     const existing = form.dataset.id ? findShift(form.dataset.id) : null;
     const data = new FormData(form);
     const date = String(data.get("date") || "");
-    const grossRaw = String(data.get("gross") || "").trim();
-    if (!Core.parseISODate(date) || grossRaw === "") {
-      showToast("Add a valid date and gross earnings.", "warning");
+    const earnings = earningsFormValues(data);
+    if (!Core.parseISODate(date) || !earnings.hasEntry || earnings.hasNegative) {
+      showToast("Add a valid date and gross earnings for at least one app.", "warning");
       return;
     }
     const startOdoRaw = String(data.get("startOdometer") || "").trim();
@@ -1087,7 +1256,11 @@
       startOdometer: Math.max(0, Core.safeNumber(data.get("startOdometer"))),
       endOdometer: Math.max(0, Core.safeNumber(data.get("endOdometer"))),
       manualMiles: Math.max(0, Core.safeNumber(data.get("manualMiles"))),
-      gross: Math.max(0, Core.safeNumber(grossRaw)),
+      uberGross: Math.max(0, Core.safeNumber(earnings.uberGross)),
+      lyftGross: Math.max(0, Core.safeNumber(earnings.lyftGross)),
+      otherGross: Math.max(0, Core.safeNumber(earnings.otherGross)),
+      unassignedGross: Math.max(0, Core.safeNumber(earnings.unassignedGross)),
+      gross: earnings.gross,
       fuel: Math.max(0, Core.safeNumber(data.get("fuel"))),
       tolls: Math.max(0, Core.safeNumber(data.get("tolls"))),
       otherExpenses: Math.max(0, Core.safeNumber(data.get("otherExpenses"))),
@@ -1463,7 +1636,7 @@
   function shiftsToCSV(values) {
     const headers = [
       "id", "date", "platform", "startTime", "endTime", "activeHours", "pausedMinutes", "startOdometer", "endOdometer", "miles", "trips",
-      "gross", "gas", "tollsParking", "otherExpenses", "totalExpenses", "netAfterExpenses",
+      "uberGross", "lyftGross", "otherGross", "unassignedGross", "overallGross", "gas", "tollsParking", "otherExpenses", "totalExpenses", "netAfterExpenses",
       "moneyPlanVersion", "allocationBasis", "allocationBase", "planVehiclePct", "planInvestmentPct", "planStockPct", "planCryptoPct",
       "planBitcoinPct", "planSolanaPct", "planSchgPct", "planEthereumPct", "planAavePct",
       "vehicleFund", "investmentContribution", "savingsAllocation", "stockContribution", "cryptoContribution",
@@ -1478,7 +1651,7 @@
       const previousMix = shift.isPreviousMoneyPlan ? plan.cryptoMix : {};
       return [
         shift.id, shift.date, shift.platform, shift.startTime, shift.endTime, shift.hours, Core.round(shift.pausedMs / 60000, 2), shift.startOdometer, shift.endOdometer, shift.miles, shift.trips,
-        shift.gross, shift.fuel, shift.tolls, shift.otherExpenses, shift.expenses, shift.net,
+        shift.uberGross, shift.lyftGross, shift.otherGross, shift.unassignedGross, shift.gross, shift.fuel, shift.tolls, shift.otherExpenses, shift.expenses, shift.net,
         shift.moneyPlanVersion, shift.allocationBasis, shift.allocationBase,
         plan.vehiclePct == null ? "" : plan.vehiclePct,
         shift.isGrossMoneyPlan ? plan.investmentPct : "",
@@ -1550,7 +1723,11 @@
       const date = String(find(row, ["date", "shiftdate"])).replace(/^'/, "").trim();
       if (!Core.parseISODate(date)) return null;
 
-      const grossRaw = find(row, ["gross", "grossearnings", "earnings"]);
+      const uberGrossRaw = find(row, ["ubergross", "uberearnings", "grossuber"]);
+      const lyftGrossRaw = find(row, ["lyftgross", "lyftearnings", "grosslyft"]);
+      const otherGrossRaw = find(row, ["othergross", "otherappgross", "otherearnings", "doordashgross"]);
+      const unassignedGrossRaw = find(row, ["unassignedgross", "legacygross", "unsplitgross"]);
+      const grossRaw = find(row, ["overallgross", "combinedgross", "totalgross", "gross", "grossearnings", "earnings"]);
       const fuelRaw = find(row, ["gas", "fuel", "fuelcost"]);
       const tollsRaw = find(row, ["tollsparking", "tolls", "parking"]);
       let otherRaw = find(row, ["otherexpenses", "othercosts"]);
@@ -1563,7 +1740,14 @@
       }
       const otherExpenses = Math.max(0, Core.safeNumber(otherRaw));
       const totalExpenses = fuel + tolls + otherExpenses;
-      const gross = hasValue(grossRaw) ? Math.max(0, Core.safeNumber(grossRaw)) : Math.max(0, Core.safeNumber(netRaw) + totalExpenses);
+      const breakdownValues = [uberGrossRaw, lyftGrossRaw, otherGrossRaw, unassignedGrossRaw];
+      const hasGrossBreakdown = breakdownValues.some(hasValue);
+      const componentGross = Core.round(breakdownValues.reduce((sum, value) => sum + Math.max(0, Core.safeNumber(value)), 0), 2);
+      const gross = hasValue(grossRaw)
+        ? Math.max(0, Core.safeNumber(grossRaw))
+        : hasGrossBreakdown
+          ? componentGross
+          : Math.max(0, Core.safeNumber(netRaw) + totalExpenses);
 
       const versionRaw = find(row, ["moneyplanversion", "planversion"]);
       const version = Math.max(0, Math.floor(Core.safeNumber(versionRaw)));
@@ -1640,6 +1824,10 @@
         endOdometer: find(row, ["endodometer", "endmiles"]),
         manualMiles: find(row, ["miles", "manualmiles", "businessmiles"]),
         trips: find(row, ["trips", "rides", "deliveries"]),
+        uberGross: hasValue(uberGrossRaw) ? Math.max(0, Core.safeNumber(uberGrossRaw)) : undefined,
+        lyftGross: hasValue(lyftGrossRaw) ? Math.max(0, Core.safeNumber(lyftGrossRaw)) : undefined,
+        otherGross: hasValue(otherGrossRaw) ? Math.max(0, Core.safeNumber(otherGrossRaw)) : undefined,
+        unassignedGross: hasValue(unassignedGrossRaw) ? Math.max(0, Core.safeNumber(unassignedGrossRaw)) : undefined,
         gross,
         fuel,
         tolls,

@@ -1,10 +1,18 @@
-# Driver Command 3.6.0
+# Driver Command 3.7.0
 
 Driver Command is a private, local-first rideshare dashboard for shifts, mileage, expenses, money allocation, vehicle costs, goals, and day-by-day performance.
 
-## New in 3.6.0
+## New in 3.7.0
 
-### New gross-earnings money plan
+### Separate Uber and Lyft earnings
+
+Completed shifts now store **Uber gross** and **Lyft gross** separately. Driver Command automatically combines both amounts into **overall gross**, which is then used for net earnings, hourly performance, the vehicle fund, investments, and the final take-out amount.
+
+The Money dashboard shows Uber, Lyft, and overall gross for the selected day, week, month, year, or all-time period, including each platform’s share of Uber + Lyft earnings. Shift cards, the shift ledger, calendar details, JSON backups, and CSV exports also preserve the split.
+
+Older single-platform records are assigned to their saved platform automatically. An older record labeled Uber + Lyft that only had one combined amount remains under **Older unassigned gross** until it is optionally edited, so the app does not invent a platform split.
+
+### Gross-earnings money plan
 
 Newly saved shifts use this default allocation:
 
@@ -59,7 +67,7 @@ The four investment percentages must total 100%. Changes apply only to shifts sa
 4. Open the deployed app and refresh it. For an installed home-screen copy, fully close and reopen it after the new deployment loads.
 5. Confirm that your old shifts appear before deleting the backup.
 
-Driver Command 3.6.0 continues using the established `uberDriverDashboard.v3` browser-storage key. The current settings plan is upgraded to the new 5% vehicle and 20% investment default once. Historical shifts retain their own saved allocation model.
+Driver Command 3.7.0 continues using the established `uberDriverDashboard.v3` browser-storage key. The current settings plan is upgraded to the new 5% vehicle and 20% investment default once. Historical shifts retain their own saved allocation model.
 
 ## Running locally
 
@@ -75,7 +83,7 @@ Then open `http://localhost:8080`.
 
 ## Tests
 
-The included zero-dependency Node tests cover current and historical money math, cent-level investment splitting, migration, rendering, CSV round trips, required files, and source syntax.
+The included zero-dependency Node tests cover Uber/Lyft gross combining, platform trend totals, current and historical money math, cent-level investment splitting, migration, rendering, CSV round trips, required files, and source syntax.
 
 ```bash
 node core.test.js

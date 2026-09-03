@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.7.0 — Uber + Lyft Earnings Split
+
+- Added separate Uber gross and Lyft gross fields when finishing, adding, or editing a shift.
+- Automatically combines all entered app earnings into overall gross for every existing earnings, expense, allocation, and take-out calculation.
+- Added Uber, Lyft, and overall gross totals to the Money dashboard for day, week, month, year, and all-time views.
+- Added Uber/Lyft breakdowns to shift cards, the desktop ledger, day-by-day money rows, overview metrics, and calendar details.
+- Added platform share percentages to make Uber-versus-Lyft trends easier to compare.
+- Preserved the platform split in JSON backups and CSV exports/imports.
+- Migrated older Uber-only and Lyft-only records into the matching platform total without changing their money plan.
+- Keeps older combined Uber + Lyft records honest as unassigned gross until the user chooses to edit the split.
+- Updated the offline cache, version labels, documentation, and automated tests.
+
 ## 3.6.0 — Gross Investment Plan
 
 - Replaced the former 5% vehicle / 10% stock / 10% crypto default with 5% vehicle and 20% investments.

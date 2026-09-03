@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.6.0";
+  const APP_VERSION = "3.7.0";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
   const LEGACY_MONEY_PLAN_V2 = Object.freeze({
@@ -350,6 +350,93 @@
     };
   }
 
+  function ownSourceNumber(source, keys) {
+    const input = source && typeof source === "object" ? source : {};
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(input, key)) continue;
+      const value = input[key];
+      if (value == null || String(value).trim() === "") continue;
+      return Math.max(0, round(safeNumber(value), 2));
+    }
+    return null;
+  }
+
+  function grossPlatformFlags(platformValue) {
+    const platform = String(platformValue || "").trim().toLowerCase();
+    return {
+      uber: /(^|\W)uber(\W|$)/.test(platform),
+      lyft: /(^|\W)lyft(\W|$)/.test(platform)
+    };
+  }
+
+  function derivePlatformLabel(breakdownValue, originalValue, fallbackValue) {
+    const breakdown = breakdownValue && typeof breakdownValue === "object" ? breakdownValue : {};
+    const uber = safeNumber(breakdown.uberGross) > 0;
+    const lyft = safeNumber(breakdown.lyftGross) > 0;
+    const other = safeNumber(breakdown.otherGross) > 0;
+    const unassigned = safeNumber(breakdown.unassignedGross) > 0;
+    const original = String(originalValue || "").trim();
+    const fallback = String(fallbackValue || "Uber").trim() || "Uber";
+
+    if (unassigned) return original || "Uber + Lyft";
+    if (uber && lyft && !other) return "Uber + Lyft";
+    if (uber && !lyft && !other) return "Uber";
+    if (lyft && !uber && !other) return "Lyft";
+    if (other && (uber || lyft)) return "Multi-app";
+    if (other) {
+      const flags = grossPlatformFlags(original);
+      return original && !flags.uber && !flags.lyft ? original : "Other";
+    }
+    return original || fallback;
+  }
+
+  function normalizeGrossBreakdown(value, platformValue, fallbackPlatform) {
+    const source = value && typeof value === "object" ? value : {};
+    const originalPlatform = String(platformValue || source.platform || source.app || fallbackPlatform || "Uber");
+    const grossSource = ownSourceNumber(source, ["gross", "earnings", "totalGross"]);
+    const uberSource = ownSourceNumber(source, ["uberGross", "uberEarnings", "grossUber"]);
+    const lyftSource = ownSourceNumber(source, ["lyftGross", "lyftEarnings", "grossLyft"]);
+    const otherSource = ownSourceNumber(source, ["otherGross", "otherAppGross", "otherEarnings", "doordashGross"]);
+    const unassignedSource = ownSourceNumber(source, ["unassignedGross", "legacyGross", "unsplitGross"]);
+    const hasBreakdown = [uberSource, lyftSource, otherSource, unassignedSource].some((item) => item != null);
+
+    let uberGross = uberSource == null ? 0 : uberSource;
+    let lyftGross = lyftSource == null ? 0 : lyftSource;
+    let otherGross = otherSource == null ? 0 : otherSource;
+    let unassignedGross = unassignedSource == null ? 0 : unassignedSource;
+
+    if (!hasBreakdown) {
+      const gross = grossSource == null ? 0 : grossSource;
+      const flags = grossPlatformFlags(originalPlatform);
+      if (flags.uber && flags.lyft) unassignedGross = gross;
+      else if (flags.lyft) lyftGross = gross;
+      else if (flags.uber) uberGross = gross;
+      else otherGross = gross;
+    } else if (grossSource != null) {
+      const assigned = round(uberGross + lyftGross + otherGross + unassignedGross, 2);
+      if (grossSource > assigned + 0.004) {
+        unassignedGross = round(unassignedGross + grossSource - assigned, 2);
+      }
+    }
+
+    uberGross = round(uberGross, 2);
+    lyftGross = round(lyftGross, 2);
+    otherGross = round(otherGross, 2);
+    unassignedGross = round(unassignedGross, 2);
+    const gross = round(uberGross + lyftGross + otherGross + unassignedGross, 2);
+    const platform = derivePlatformLabel({ uberGross, lyftGross, otherGross, unassignedGross }, originalPlatform, fallbackPlatform);
+
+    return {
+      uberGross,
+      lyftGross,
+      otherGross,
+      unassignedGross,
+      gross,
+      platform,
+      grossBreakdownComplete: unassignedGross <= 0.004
+    };
+  }
+
   function normalizeShift(value, settingsValue) {
     const settings = normalizeSettings(settingsValue || DEFAULT_SETTINGS);
     const source = value && typeof value === "object" ? value : {};
@@ -366,16 +453,24 @@
         })
       : null;
 
+    const originalPlatform = String(source.platform || source.app || settings.defaultPlatform);
+    const earnings = normalizeGrossBreakdown(source, originalPlatform, settings.defaultPlatform);
+
     return {
       ...source,
       id: String(source.id || uid("shift")),
       date,
-      platform: String(source.platform || source.app || settings.defaultPlatform),
+      platform: earnings.platform,
       startTime: String(source.startTime || source.start || ""),
       endTime: String(source.endTime || source.end || ""),
       startedAt: String(source.startedAt || ""),
       endedAt: String(source.endedAt || ""),
-      gross: Math.max(0, safeNumber(source.gross, source.earnings)),
+      uberGross: earnings.uberGross,
+      lyftGross: earnings.lyftGross,
+      otherGross: earnings.otherGross,
+      unassignedGross: earnings.unassignedGross,
+      gross: earnings.gross,
+      grossBreakdownComplete: earnings.grossBreakdownComplete,
       fuel: Math.max(0, safeNumber(source.fuel, source.gas)),
       tolls: Math.max(0, safeNumber(source.tolls, source.parking)),
       otherExpenses: Math.max(0, safeNumber(source.otherExpenses, source.other)),
@@ -665,6 +760,10 @@
     const summary = {
       count: list.length,
       gross: sum("gross"),
+      uberGross: sum("uberGross"),
+      lyftGross: sum("lyftGross"),
+      otherGross: sum("otherGross"),
+      unassignedGross: sum("unassignedGross"),
       fuel: sum("fuel"),
       tolls: sum("tolls"),
       otherExpenses: sum("otherExpenses"),
@@ -710,6 +809,11 @@
     summary.hourly = summary.hours > 0 ? round(summary.net / summary.hours, 2) : 0;
     summary.netPerMile = summary.miles > 0 ? round(summary.net / summary.miles, 2) : 0;
     summary.averageShift = summary.count ? round(summary.net / summary.count, 2) : 0;
+    summary.rideshareGross = round(summary.uberGross + summary.lyftGross, 2);
+    summary.knownPlatformGross = round(summary.rideshareGross + summary.otherGross, 2);
+    summary.uberShare = summary.rideshareGross > 0 ? round(summary.uberGross / summary.rideshareGross * 100, 2) : 0;
+    summary.lyftShare = summary.rideshareGross > 0 ? round(summary.lyftGross / summary.rideshareGross * 100, 2) : 0;
+    summary.grossBreakdownComplete = summary.unassignedGross <= 0.004;
     return summary;
   }
 
@@ -822,6 +926,8 @@
     allocateMoneyByMix,
     normalizeSettings,
     normalizeActiveShift,
+    normalizeGrossBreakdown,
+    derivePlatformLabel,
     normalizeShift,
     normalizeMaintenance,
     normalizeGoal,
