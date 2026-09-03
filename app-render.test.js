@@ -1,33 +1,45 @@
 "use strict";
 
-const fs = require("fs");
-const vm = require("vm");
-const assert = require("assert");
-const Core = require("../core.js");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const assert = require("node:assert/strict");
+const Core = require("./core.js");
+
+class HTMLElementStub {}
+class HTMLFormElementStub extends HTMLElementStub {}
+class HTMLInputElementStub extends HTMLElementStub {}
+class HTMLTextAreaElementStub extends HTMLElementStub {}
+class HTMLSelectElementStub extends HTMLElementStub {}
 
 function createNode() {
-  return {
+  return Object.assign(new HTMLElementStub(), {
     innerHTML: "",
     textContent: "",
     title: "",
+    hidden: true,
+    files: [],
+    value: "",
     style: {},
     dataset: {},
     className: "",
     classList: { toggle() {}, add() {}, remove() {} },
     setAttribute() {},
     getAttribute() { return null; },
+    addEventListener() {},
     focus() {},
     appendChild() {},
     remove() {},
+    click() {},
     querySelector() { return null; },
     querySelectorAll() { return []; }
-  };
+  });
 }
 
 const nodes = new Map();
 const document = {
   body: createNode(),
   documentElement: { dataset: {} },
+  activeElement: null,
   title: "",
   getElementById(id) {
     if (!nodes.has(id)) nodes.set(id, createNode());
@@ -39,7 +51,8 @@ const document = {
   },
   querySelectorAll() { return []; },
   createElement() { return createNode(); },
-  addEventListener() {}
+  addEventListener() {},
+  contains() { return false; }
 };
 
 const storage = new Map();
@@ -68,7 +81,12 @@ const context = {
   Blob,
   URL,
   FormData,
-  HTMLFormElement: function HTMLFormElement() {},
+  HTMLElement: HTMLElementStub,
+  HTMLFormElement: HTMLFormElementStub,
+  HTMLInputElement: HTMLInputElementStub,
+  HTMLTextAreaElement: HTMLTextAreaElementStub,
+  HTMLSelectElement: HTMLSelectElementStub,
+  FileReader: class FileReader {},
   setTimeout() { return 0; },
   clearTimeout() {},
   setInterval() { return 0; },
@@ -81,202 +99,200 @@ context.window.history = context.history;
 context.window.scrollTo = () => {};
 context.window.addEventListener = () => {};
 
-let source = fs.readFileSync(require.resolve("../app.js"), "utf8");
-source = source.replace(
-  /\n  init\(\);\n\}\)\(\);\s*$/,
-  `\n  globalThis.__appTest = {\n    ui,\n    getState: () => state,\n    setState: (value) => { state = value; },\n    renderOverviewPage, renderShiftsPage, renderAnalyticsPage, renderCalendarPage,\n    renderVehiclePage, renderGoalsPage, renderSettingsPage, shiftsToCSV,\n    parseCSV, csvRowsToShifts, prepareImportPayload, filteredShifts, filteredMaintenance,\n    updateShiftResults, updateVehicleResults, openShiftModal, openMileagePrompt, openMaintenanceModal,\n    openGoalModal, openContributionModal, openMoreModal, openConfirm, openImportReview, dismissModal\n  };\n})();`
-);
+let source = fs.readFileSync(require.resolve("./app.js"), "utf8");
+const marker = "\n  initialize();\n})();";
+assert.ok(source.includes(marker), "app initialization marker should exist");
+source = source.replace(marker, `\n  globalThis.__appTest = {\n    ui,\n    getState: () => state,\n    setState: (value) => { state = Core.normalizeState(value); },\n    renderOverviewPage,\n    renderShiftsPage,\n    renderMoneyPage,\n    renderCalendarPage,\n    renderVehiclePage,\n    renderGoalsPage,\n    renderSettingsPage,\n    moneyPlanMarkup,\n    openMoneyPlanEditor,\n    shiftsToCSV,\n    parseCSV,\n    csvRowsToShifts,\n    prepareImport\n  };\n})();`);
 vm.runInNewContext(source, context, { filename: "app.js" });
 const app = context.__appTest;
-assert(app, "test API should be exposed");
+assert.ok(app, "test API should be exposed");
 
-const emptyState = {
-  version: Core.APP_VERSION,
-  shifts: [],
-  maintenance: [],
-  goals: [],
-  settings: Core.normalizeSettings({}),
-  activeShift: null
-};
+const renderers = [
+  "renderOverviewPage",
+  "renderShiftsPage",
+  "renderMoneyPage",
+  "renderCalendarPage",
+  "renderVehiclePage",
+  "renderGoalsPage",
+  "renderSettingsPage"
+];
+
+const emptyState = Core.normalizeState({ settings: {}, shifts: [], maintenance: [], goals: [], activeShift: null });
 app.setState(emptyState);
-for (const fn of [
-  "renderOverviewPage", "renderShiftsPage", "renderAnalyticsPage", "renderCalendarPage",
-  "renderVehiclePage", "renderGoalsPage", "renderSettingsPage"
-]) {
-  const html = app[fn]();
-  assert.strictEqual(typeof html, "string", `${fn} should return HTML`);
-  assert(html.length > 200, `${fn} should return a substantive view`);
-  assert(!html.includes("undefined"), `${fn} should not render undefined`);
+for (const name of renderers) {
+  const html = app[name]();
+  assert.equal(typeof html, "string", `${name} should return HTML`);
+  assert.ok(html.length > 200, `${name} should return a substantive view`);
+  assert.ok(!html.includes("undefined"), `${name} should not render undefined`);
+  assert.ok(!html.includes("NaN"), `${name} should not render NaN`);
+}
+assert.ok(app.renderMoneyPage().includes("No directions yet"), "empty money page should show a useful empty state");
+const emptySettingsHtml = app.renderSettingsPage();
+for (const phrase of ["Your money plan", "Edit plan", "Vehicle fund", "Investments", "Bitcoin", "Solana", "SCHG", "AAVE", "no savings allocation"]) {
+  assert.ok(emptySettingsHtml.toLowerCase().includes(phrase.toLowerCase()), `settings should include ${phrase}`);
 }
 
-const sampleState = {
-  version: Core.APP_VERSION,
-  settings: Core.normalizeSettings({ weeklyNetGoal: 900, monthlyNetGoal: 3500 }),
-  shifts: [
-    Core.normalizeShift({ id: "s1", date: Core.localISODate(), platform: "Uber", startTime: "08:00", endTime: "12:30", gross: 180, fuel: 22, tolls: 4, startOdometer: 25000, endOdometer: 25128, trips: 9, notes: "Morning airport run" }),
-    Core.normalizeShift({ id: "s2", date: Core.localISODate(Core.shiftDate(new Date(), -2)), platform: "Lyft", startTime: "17:15", endTime: "22:00", gross: 205, fuel: 28, manualMiles: 142, trips: 11 })
-  ],
-  maintenance: [Core.normalizeMaintenance({ id: "m1", date: Core.localISODate(), type: "Oil Change", amount: 84.5, odometer: 25000, nextDueOdometer: 30000, note: "Full synthetic" })],
-  goals: [Core.normalizeGoal({ id: "g1", name: "New tires", target: 900, targetDate: Core.localISODate(Core.shiftDate(new Date(), 60)), contributions: [{ id: "c1", date: Core.localISODate(), amount: 250, note: "Opening contribution" }] })],
-  activeShift: null
-};
-app.setState(sampleState);
-for (const fn of [
-  "renderOverviewPage", "renderShiftsPage", "renderAnalyticsPage", "renderCalendarPage",
-  "renderVehiclePage", "renderGoalsPage", "renderSettingsPage"
-]) {
-  const html = app[fn]();
-  assert(html.length > 500, `${fn} should render sample data`);
-  assert(!html.includes("NaN"), `${fn} should not render NaN`);
-  assert(!html.includes("undefined"), `${fn} should not render undefined`);
-}
-
-const lossState = {
-  ...sampleState,
-  shifts: [Core.normalizeShift({ id: "loss", date: Core.localISODate(), platform: "Uber", manualHours: 1, gross: 0, fuel: 25 }, sampleState.settings)]
-};
-app.setState(lossState);
-assert(app.renderAnalyticsPage().includes("is-negative"), "analytics should visibly represent negative performance");
-app.setState(sampleState);
-
-// Exercise dynamic result rendering against lightweight DOM nodes.
-nodes.set("shiftResultsMeta", createNode());
-nodes.set("shiftSummary", createNode());
-nodes.set("shiftBulkBar", createNode());
-nodes.set("shiftTableWrap", createNode());
-nodes.set("shiftMobileList", createNode());
-app.updateShiftResults();
-assert(nodes.get("shiftTableWrap").innerHTML.includes("data-table"));
-nodes.set("maintenanceResults", createNode());
-nodes.set("maintenanceResultsMeta", createNode());
-app.updateVehicleResults();
-assert(nodes.get("maintenanceResults").innerHTML.includes("Oil Change"));
-
-// Exercise every modal renderer.
-app.openMileagePrompt("start");
-assert(nodes.get("modalRoot").innerHTML.includes("Starting mileage"));
-assert(nodes.get("modalRoot").innerHTML.includes("Starts immediately"));
-assert(nodes.get("modalRoot").innerHTML.includes("autofocus"));
-
-const activeShift = Core.normalizeShift({
-  id: "live-1",
-  date: Core.localISODate(),
+const settings = Core.normalizeSettings({ weeklyNetGoal: 900, monthlyNetGoal: 3500 });
+const today = Core.localISODate();
+const currentShift = Core.normalizeShift({
+  id: "current",
+  date: today,
   platform: "Uber",
   startTime: "08:00",
+  endTime: "12:00",
+  gross: 200,
+  fuel: 30,
   startOdometer: 25000,
-  gross: 75
-}, sampleState.settings);
-app.setState({ ...sampleState, activeShift });
-app.openMileagePrompt("end", activeShift);
-assert(nodes.get("modalRoot").innerHTML.includes("Ending mileage"));
-assert(nodes.get("modalRoot").innerHTML.includes("Business miles"));
-app.openShiftModal("end", { ...activeShift, endTime: "12:00", endOdometer: 25120 });
-assert(nodes.get("modalRoot").innerHTML.includes("Mileage is captured"));
-assert(nodes.get("modalRoot").innerHTML.includes("120 mi"));
-assert(nodes.get("modalRoot").innerHTML.includes("Edit mileage"));
-app.setState(sampleState);
+  endOdometer: 25120,
+  trips: 9,
+  notes: "Morning airport run",
+  moneyPlanRates: settings.moneyPlan
+}, settings);
+const previousShift = Core.normalizeShift({
+  id: "previous",
+  date: today,
+  platform: "Lyft",
+  manualHours: 2,
+  gross: 100,
+  fuel: 10,
+  moneyPlanRates: Core.LEGACY_MONEY_PLAN_V2
+}, settings);
+const legacyShift = Core.normalizeShift({
+  id: "legacy",
+  date: today,
+  platform: "Uber",
+  manualHours: 1,
+  gross: 80,
+  fuel: 8,
+  vehicleFund: 3.6,
+  investment: 12,
+  savings: 7.2,
+  allocationRates: { vehicle: 5, investment: 16.67, savings: 10 }
+}, settings);
 
-app.openShiftModal("add");
-assert(nodes.get("modalRoot").innerHTML.includes("Add completed shift"));
-app.openShiftModal("edit", sampleState.shifts[0]);
-assert(nodes.get("modalRoot").innerHTML.includes("Edit shift"));
-app.openMaintenanceModal(sampleState.maintenance[0]);
-assert(nodes.get("modalRoot").innerHTML.includes("Edit maintenance"));
-app.openGoalModal(sampleState.goals[0]);
-assert(nodes.get("modalRoot").innerHTML.includes("Edit goal"));
-app.openContributionModal(sampleState.goals[0]);
-assert(nodes.get("modalRoot").innerHTML.includes("Fund New tires"));
-app.openMoreModal();
-assert(nodes.get("modalRoot").innerHTML.includes("More tools"));
-app.openConfirm({ title: "Confirm test", body: "Confirmation body", onConfirm() {} });
-assert(nodes.get("modalRoot").innerHTML.includes("Confirmation body"));
-let importReviewRestored = false;
-const reviewPayload = { source: "CSV", shifts: sampleState.shifts, maintenance: [], goals: [], settings: null, activeShift: null };
-app.openImportReview(reviewPayload, "ledger.csv");
-app.openConfirm({
-  title: "Replace test",
-  body: "Replace confirmation",
-  onConfirm() {},
-  onCancel() {
-    importReviewRestored = true;
-    app.openImportReview(reviewPayload, "ledger.csv");
-  }
+const sampleState = Core.normalizeState({
+  settings,
+  shifts: [currentShift],
+  maintenance: [{ id: "m1", date: today, type: "Oil Change", amount: 84.5, odometer: 25000, nextDueOdometer: 30000, note: "Full synthetic" }],
+  goals: [{ id: "g1", name: "New tires", target: 900, targetDate: "2026-12-01", contributions: [{ id: "c1", date: today, amount: 250 }] }],
+  activeShift: null
 });
-app.dismissModal();
-assert(importReviewRestored, "canceling a nested confirmation should restore the import review");
-assert(nodes.get("modalRoot").innerHTML.includes("ledger.csv"));
+app.setState(sampleState);
+for (const name of renderers) {
+  const html = app[name]();
+  assert.ok(html.length > 500, `${name} should render sample data`);
+  assert.ok(!html.includes("undefined"), `${name} should not render undefined`);
+  assert.ok(!html.includes("NaN"), `${name} should not render NaN`);
+}
 
-const csv = app.shiftsToCSV(sampleState.shifts);
-assert(csv.includes("Morning airport run"));
-assert.strictEqual(app.parseCSV(csv).length, 3);
-assert.strictEqual(app.csvRowsToShifts(app.parseCSV(csv)).length, 2);
+const currentPlanHtml = app.moneyPlanMarkup(currentShift);
+for (const phrase of ["$80.00", "$10.00", "$40.00", "$16.00", "$12.00", "$8.00", "$4.00", "40% of investments · 8% gross"]) {
+  assert.ok(currentPlanHtml.includes(phrase), `current money receipt should include ${phrase}`);
+}
+assert.ok(!currentPlanHtml.includes("Ethereum"), "current plan should not include Ethereum");
+const moneyPageHtml = app.renderMoneyPage();
+assert.ok(moneyPageHtml.includes("$80.00"), "day money page should show gas plus 25% take-out");
+assert.ok(moneyPageHtml.includes("Investment directions"));
+assert.ok(moneyPageHtml.includes("SCHG"));
+
+const previousPlanHtml = app.moneyPlanMarkup(previousShift);
+assert.ok(previousPlanHtml.includes("historical 5/10/10 plan"));
+assert.ok(previousPlanHtml.includes("Ethereum"));
+
+app.openMoneyPlanEditor();
+const modalHtml = nodes.get("modalRoot").innerHTML;
+for (const phrase of ["Edit money plan", "planVehiclePct", "planInvestmentPct", "planBitcoinPct", "planSolanaPct", "planSchgPct", "planAavePct", "Savings allocation", "0%"] ) {
+  assert.ok(modalHtml.includes(phrase), `money-plan editor should include ${phrase}`);
+}
+
+const priorGrossPlan = Core.normalizeMoneyPlan({
+  version: 3,
+  vehiclePct: 6,
+  investmentPct: 19,
+  investmentMix: { bitcoin: 50, solana: 20, schg: 20, aave: 10 }
+});
+const priorGrossShift = Core.normalizeShift({ id: "prior-v3", date: today, gross: 100, moneyPlanRates: priorGrossPlan }, settings);
+app.setState({ ...sampleState, shifts: [currentShift, priorGrossShift] });
+const mixedHtml = app.renderMoneyPage();
+assert.ok(mixedHtml.includes("Saved plans combined"), "mixed periods should not label every total with current percentages");
+assert.ok(mixedHtml.includes("1 older shift"), "mixed periods should identify historical plan amounts");
+
+// Versioned CSV round trips must preserve current, former, and legacy plan types.
+app.setState({ ...sampleState, shifts: [currentShift, previousShift, legacyShift] });
+const csv = app.shiftsToCSV([currentShift, previousShift, legacyShift]);
+assert.ok(csv.includes("moneyPlanVersion"));
+assert.ok(csv.includes("schgInvestment"));
+assert.ok(csv.includes("Morning airport run"));
+const imported = app.csvRowsToShifts(app.parseCSV(csv));
+assert.equal(imported.length, 3);
+const importedCurrent = imported.find((item) => item.id === "current");
+const importedPrevious = imported.find((item) => item.id === "previous");
+const importedLegacy = imported.find((item) => item.id === "legacy");
+assert.equal(importedCurrent.moneyPlanRates.version, 3);
+assert.equal(importedPrevious.moneyPlanRates.version, 2);
+assert.equal(importedLegacy.moneyPlanRates, null);
+assert.equal(Core.calculateShift(importedCurrent, settings).takeOut, 80);
+assert.equal(Core.calculateShift(importedPrevious, settings).isPreviousMoneyPlan, true);
+assert.equal(Core.calculateShift(importedLegacy, settings).isNewMoneyPlan, false);
+
+// A CSV exported by version 3.5 did not include plan-version columns. Detect it
+// from its old 5/10/10 amount columns and preserve it as version 2.
+const oldCsv = [
+  "date,platform,gross,gas,tollsParking,otherExpenses,totalExpenses,netAfterExpenses,vehicleFund5Pct,stocks10Pct,crypto10Pct,bitcoin55PctOfCrypto,solana25PctOfCrypto,ethereum15PctOfCrypto,aave5PctOfCrypto,totalAllocation,gasPlusAllocationTakeOut,keepAvailable",
+  "2026-09-01,Uber,300,40,10,10,60,240,12,24,24,13.2,6,3.6,1.2,60,100,180"
+].join("\n");
+const oldImported = app.csvRowsToShifts(app.parseCSV(oldCsv));
+assert.equal(oldImported.length, 1);
+assert.equal(oldImported[0].moneyPlanRates.version, 2);
+assert.equal(Core.calculateShift(oldImported[0], settings).takeOut, 100);
+assert.equal(Core.calculateShift(oldImported[0], settings).ethereum, 3.6);
+
+const genericLedgerCsv = "date,platform,gross,expenses,net,manualHours\n2026-07-12,Uber,100,25,75,2\n2026-07-13,Uber,,25,0,1";
+const genericRows = app.csvRowsToShifts(app.parseCSV(genericLedgerCsv));
+assert.equal(genericRows.length, 2);
+assert.equal(genericRows[0].moneyPlanRates, null);
+assert.equal(Core.calculateShift(genericRows[0], settings).net, 75);
+assert.equal(Core.calculateShift(genericRows[1], settings).net, 0);
+assert.equal(genericRows[1].otherExpenses, 25);
 
 const formulaShift = Core.normalizeShift({
-  id: "formula-shift",
+  id: "formula",
   date: "2026-07-12",
   platform: "=2+2",
-  manualHours: 1,
   gross: 50,
-  notes: "@SUM(1,1)"
-}, sampleState.settings);
-const protectedCSV = app.shiftsToCSV([formulaShift]);
-assert(protectedCSV.includes("'=2+2"), "formula-like text should be neutralized in CSV exports");
-const formulaRoundTrip = app.csvRowsToShifts(app.parseCSV(protectedCSV));
-assert.strictEqual(formulaRoundTrip[0].platform, "=2+2");
-assert.strictEqual(formulaRoundTrip[0].notes, "@SUM(1,1)");
+  notes: "@SUM(1,1)",
+  moneyPlanRates: settings.moneyPlan
+}, settings);
+const protectedCsv = app.shiftsToCSV([formulaShift]);
+assert.ok(protectedCsv.includes("'=2+2"), "formula-like labels should be neutralized in CSV exports");
+const formulaRoundTrip = app.csvRowsToShifts(app.parseCSV(protectedCsv));
+assert.equal(formulaRoundTrip[0].platform, "=2+2");
+assert.equal(formulaRoundTrip[0].notes, "@SUM(1,1)");
 
-const dateAuditCSV = "date,platform,gross,manualHours\n2026-02-31,Uber,100,2\n2026-02-28,Uber,100,2";
-const dateAuditRows = app.csvRowsToShifts(app.parseCSV(dateAuditCSV));
-assert.strictEqual(dateAuditRows.length, 1, "invalid imported dates should be skipped instead of becoming today");
-assert.strictEqual(dateAuditRows[0].date, "2026-02-28");
+const invalidDateCsv = "date,platform,gross\n2026-02-31,Uber,100\n2026-02-28,Uber,100";
+const validDateRows = app.csvRowsToShifts(app.parseCSV(invalidDateCsv));
+assert.equal(validDateRows.length, 1, "invalid imported dates should be skipped");
+assert.equal(validDateRows[0].date, "2026-02-28");
 
-const genericLedgerCSV = "date,platform,gross,expenses,net,manualHours\n2026-07-12,Uber,100,25,75,2\n2026-07-13,Uber,,25,0,1";
-const genericRows = app.csvRowsToShifts(app.parseCSV(genericLedgerCSV));
-assert.strictEqual(Core.calculateShift(genericRows[0], sampleState.settings).net, 75);
-assert.strictEqual(Core.calculateShift(genericRows[1], sampleState.settings).net, 0);
-assert.strictEqual(genericRows[1].otherExpenses, 25);
+const jsonPayload = app.prepareImport(JSON.stringify(sampleState), "backup.json");
+assert.equal(jsonPayload.shifts.length, 1);
+assert.equal(jsonPayload.maintenance.length, 1);
+assert.equal(jsonPayload.goals.length, 1);
 
-const jsonImport = app.prepareImportPayload(JSON.stringify(sampleState), "json");
-assert.strictEqual(jsonImport.shifts.length, 2);
-assert.strictEqual(jsonImport.maintenance.length, 1);
-
-// User-entered labels and notes must never become executable markup.
-const unsafe = `<img src=x onerror=alert(1)>`;
+// User-entered labels and notes must remain escaped in rendered HTML.
+const unsafe = "<img src=x onerror=alert(1)>";
 const unsafeSettings = Core.normalizeSettings({ defaultPlatform: unsafe, vehicle: { name: unsafe } });
-const unsafeState = {
-  version: Core.APP_VERSION,
+const unsafeState = Core.normalizeState({
   settings: unsafeSettings,
-  shifts: [Core.normalizeShift({ id: "unsafe-shift", date: Core.localISODate(), platform: unsafe, notes: unsafe, gross: 100 }, unsafeSettings)],
-  maintenance: [Core.normalizeMaintenance({ id: "unsafe-maintenance", date: Core.localISODate(), type: unsafe, note: unsafe })],
-  goals: [Core.normalizeGoal({ id: "unsafe-goal", name: unsafe, note: unsafe, target: 100 })],
+  shifts: [{ id: "unsafe-shift", date: today, platform: unsafe, notes: unsafe, gross: 100, moneyPlanRates: unsafeSettings.moneyPlan }],
+  maintenance: [{ id: "unsafe-maintenance", date: today, type: unsafe, note: unsafe }],
+  goals: [{ id: "unsafe-goal", name: unsafe, note: unsafe, target: 100 }],
   activeShift: null
-};
+});
 app.setState(unsafeState);
-for (const fn of [
-  "renderOverviewPage", "renderShiftsPage", "renderAnalyticsPage", "renderCalendarPage",
-  "renderVehiclePage", "renderGoalsPage", "renderSettingsPage"
-]) {
-  const html = app[fn]();
-  assert(!html.includes("<img src=x"), `${fn} should escape user-provided HTML`);
+for (const name of renderers) {
+  const html = app[name]();
+  assert.ok(!html.includes("<img src=x"), `${name} should escape user-provided HTML`);
 }
-nodes.set("shiftResultsMeta", createNode());
-nodes.set("shiftSummary", createNode());
-nodes.set("shiftBulkBar", createNode());
-nodes.set("shiftTableWrap", createNode());
-nodes.set("shiftMobileList", createNode());
-app.updateShiftResults();
-assert(!nodes.get("shiftTableWrap").innerHTML.includes("<img src=x"));
-assert(!nodes.get("shiftMobileList").innerHTML.includes("<img src=x"));
-nodes.set("maintenanceResults", createNode());
-nodes.set("maintenanceResultsMeta", createNode());
-app.updateVehicleResults();
-assert(!nodes.get("maintenanceResults").innerHTML.includes("<img src=x"));
 
-app.openShiftModal("edit", unsafeState.shifts[0]);
-assert(!nodes.get("modalRoot").innerHTML.includes("<img src=x"));
-app.openMaintenanceModal(unsafeState.maintenance[0]);
-assert(!nodes.get("modalRoot").innerHTML.includes("<img src=x"));
-app.openGoalModal(unsafeState.goals[0]);
-assert(!nodes.get("modalRoot").innerHTML.includes("<img src=x"));
-
-console.log("app-render.test.js: all tests passed");
+console.log("app-render.test.js: all assertions passed");

@@ -1,5 +1,6 @@
-DRIVER COMMAND 3.4.0 — INSTALL
+DRIVER COMMAND 3.6.0 — INSTALL
 
+NEW INSTALL
 1. Extract the complete folder.
 2. In the extracted folder, run:  python3 -m http.server 8080
 3. Open:  http://localhost:8080
@@ -9,17 +10,21 @@ You may open index.html directly for ordinary dashboard use. Installation and of
 UPDATING AN EXISTING COPY
 - Open Settings & data and create a Full backup first.
 - Replace the old application files with this complete folder.
-- Reload the page. An installed home-screen copy may need one additional reload while the new cache takes control.
-- Existing version 3 browser data remains compatible.
+- Reload the page. An installed home-screen copy may need to be fully closed and reopened after the deployment loads.
+- Existing version-3 browser data remains compatible.
+- Confirm that your old shifts are present before deleting the backup.
 
-3.3 GLANCE MODE
-- Home, Analytics, Calendar, Vehicle status, and Settings are designed to fit in about one phone screen.
-- Shifts, maintenance, and goals begin with a short recent list and expand only when requested.
-- Starting mileage still appears first when starting a shift; ending mileage still appears first when ending one.
+3.6 MONEY PLAN
+- Future shifts use 5% of gross earnings for the vehicle fund.
+- Future shifts use 20% of gross earnings for investments.
+- There is no savings allocation.
+- The 20% investment contribution is split into Bitcoin 40%, Solana 30%, SCHG 20%, and AAVE 10%.
+- Take out / move = recorded gas + the full vehicle and investment allocation.
+- Open Settings & data → Your money plan → Edit plan to change the percentages later.
+- Existing shifts keep the allocation plan they originally used.
 
-
-3.4 DAILY MONEY PLAN
-- Analytics now includes a Day period.
-- Open Analytics → Money → Day to see the combined amount to move out.
-- Take out today = recorded gas + 25% of positive net earnings for investments.
-- The same card shows what remains available after recorded costs.
+SHIFT FLOW
+- Start shift asks for starting mileage first.
+- Pause shift stops work time during lunch or errands.
+- End shift asks for ending mileage, earnings, and expenses.
+- Finish & show money plan displays the exact amounts to move into the vehicle fund and each investment.

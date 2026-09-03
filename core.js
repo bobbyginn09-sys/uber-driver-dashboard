@@ -5,11 +5,12 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.5.0";
+  const APP_VERSION = "3.6.0";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
-  const DEFAULT_MONEY_PLAN = Object.freeze({
+  const LEGACY_MONEY_PLAN_V2 = Object.freeze({
     version: 2,
+    basis: "positiveNet",
     vehiclePct: 5,
     stockPct: 10,
     cryptoPct: 10,
@@ -18,6 +19,19 @@
       solana: 25,
       ethereum: 15,
       aave: 5
+    })
+  });
+
+  const DEFAULT_MONEY_PLAN = Object.freeze({
+    version: 3,
+    basis: "gross",
+    vehiclePct: 5,
+    investmentPct: 20,
+    investmentMix: Object.freeze({
+      bitcoin: 40,
+      solana: 30,
+      schg: 20,
+      aave: 10
     })
   });
 
@@ -136,32 +150,104 @@
     return round(clamp(number, 0, 100), 4);
   }
 
-  function normalizeCryptoMix(value) {
+  function normalizeMix(value, defaults, keys) {
     const source = value && typeof value === "object" ? value : {};
-    const mix = {
-      bitcoin: normalizePercentage(source.bitcoin, DEFAULT_MONEY_PLAN.cryptoMix.bitcoin),
-      solana: normalizePercentage(source.solana, DEFAULT_MONEY_PLAN.cryptoMix.solana),
-      ethereum: normalizePercentage(source.ethereum, DEFAULT_MONEY_PLAN.cryptoMix.ethereum),
-      aave: normalizePercentage(source.aave, DEFAULT_MONEY_PLAN.cryptoMix.aave)
-    };
-    const total = mix.bitcoin + mix.solana + mix.ethereum + mix.aave;
-    if (Math.abs(total - 100) < 0.0001 || total <= 0) return total <= 0 ? { ...DEFAULT_MONEY_PLAN.cryptoMix } : mix;
-    return {
-      bitcoin: round(mix.bitcoin / total * 100, 4),
-      solana: round(mix.solana / total * 100, 4),
-      ethereum: round(mix.ethereum / total * 100, 4),
-      aave: round(mix.aave / total * 100, 4)
-    };
+    const mix = {};
+    keys.forEach((key) => {
+      mix[key] = normalizePercentage(source[key], defaults[key]);
+    });
+    const total = keys.reduce((sum, key) => sum + mix[key], 0);
+    if (total <= 0) return { ...defaults };
+    if (Math.abs(total - 100) < 0.0001) return mix;
+    const normalized = {};
+    keys.forEach((key) => {
+      normalized[key] = round(mix[key] / total * 100, 4);
+    });
+    return normalized;
+  }
+
+  function normalizeLegacyCryptoMix(value) {
+    return normalizeMix(value, LEGACY_MONEY_PLAN_V2.cryptoMix, ["bitcoin", "solana", "ethereum", "aave"]);
+  }
+
+  function normalizeInvestmentMix(value) {
+    return normalizeMix(value, DEFAULT_MONEY_PLAN.investmentMix, ["bitcoin", "solana", "schg", "aave"]);
+  }
+
+  function moneyPlanSignature(value) {
+    const plan = normalizeMoneyPlan(value);
+    if (plan.version >= 3) {
+      return [
+        `v${plan.version}`,
+        plan.basis,
+        plan.vehiclePct,
+        plan.investmentPct,
+        plan.investmentMix.bitcoin,
+        plan.investmentMix.solana,
+        plan.investmentMix.schg,
+        plan.investmentMix.aave
+      ].join("|");
+    }
+    return [
+      `v${plan.version}`,
+      plan.basis,
+      plan.vehiclePct,
+      plan.stockPct,
+      plan.cryptoPct,
+      plan.cryptoMix.bitcoin,
+      plan.cryptoMix.solana,
+      plan.cryptoMix.ethereum,
+      plan.cryptoMix.aave
+    ].join("|");
+  }
+
+  function allocateMoneyByMix(amountValue, mixValue, keysValue) {
+    const keys = Array.isArray(keysValue) && keysValue.length ? keysValue : Object.keys(mixValue || {});
+    const totalCents = Math.max(0, Math.round(round(amountValue, 2) * 100));
+    const weights = keys.map((key) => Math.max(0, safeNumber(mixValue && mixValue[key])));
+    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+    const result = Object.fromEntries(keys.map((key) => [key, 0]));
+    if (!totalCents || weightTotal <= 0 || !keys.length) return result;
+
+    const allocations = weights.map((weight, index) => {
+      const exact = totalCents * weight / weightTotal;
+      const cents = Math.floor(exact + 1e-9);
+      return { index, cents, remainder: exact - cents };
+    });
+    let centsLeft = totalCents - allocations.reduce((sum, item) => sum + item.cents, 0);
+    const ranked = allocations.slice().sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+    for (let index = 0; centsLeft > 0; index += 1, centsLeft -= 1) {
+      ranked[index % ranked.length].cents += 1;
+    }
+    allocations.forEach((item) => {
+      result[keys[item.index]] = round(item.cents / 100, 2);
+    });
+    return result;
   }
 
   function normalizeMoneyPlan(value) {
     const source = value && typeof value === "object" ? value : {};
+    const explicitVersion = Math.floor(safeNumber(source.version, 0));
+    const resemblesVersion2 = explicitVersion === 2
+      || (explicitVersion < 3 && (source.stockPct != null || source.cryptoPct != null || source.cryptoMix != null));
+
+    if (resemblesVersion2) {
+      return {
+        version: 2,
+        basis: "positiveNet",
+        vehiclePct: normalizePercentage(source.vehiclePct, LEGACY_MONEY_PLAN_V2.vehiclePct),
+        stockPct: normalizePercentage(source.stockPct, LEGACY_MONEY_PLAN_V2.stockPct),
+        cryptoPct: normalizePercentage(source.cryptoPct, LEGACY_MONEY_PLAN_V2.cryptoPct),
+        cryptoMix: normalizeLegacyCryptoMix(source.cryptoMix)
+      };
+    }
+
     return {
-      version: Math.max(2, Math.floor(safeNumber(source.version, DEFAULT_MONEY_PLAN.version))),
+      version: Math.max(3, explicitVersion || DEFAULT_MONEY_PLAN.version),
+      basis: "gross",
       vehiclePct: normalizePercentage(source.vehiclePct, DEFAULT_MONEY_PLAN.vehiclePct),
-      stockPct: normalizePercentage(source.stockPct, DEFAULT_MONEY_PLAN.stockPct),
-      cryptoPct: normalizePercentage(source.cryptoPct, DEFAULT_MONEY_PLAN.cryptoPct),
-      cryptoMix: normalizeCryptoMix(source.cryptoMix)
+      investmentPct: normalizePercentage(source.investmentPct, DEFAULT_MONEY_PLAN.investmentPct),
+      investmentMix: normalizeInvestmentMix(source.investmentMix || source.mix)
     };
   }
 
@@ -273,7 +359,11 @@
     const pausedMs = Math.max(0, safeNumber(source.pausedMs, safeNumber(source.totalPausedMs, safeNumber(source.pausedMinutes) * 60000)));
     const hasNewPlan = Boolean(source.moneyPlanRates || source.allocationPlan || safeNumber(source.moneyPlanVersion) >= 2);
     const moneyPlanRates = hasNewPlan
-      ? normalizeMoneyPlan(source.moneyPlanRates || source.allocationPlan || { version: source.moneyPlanVersion, cryptoMix: source.cryptoMix })
+      ? normalizeMoneyPlan(source.moneyPlanRates || source.allocationPlan || {
+          version: source.moneyPlanVersion,
+          cryptoMix: source.cryptoMix,
+          investmentMix: source.investmentMix
+        })
       : null;
 
     return {
@@ -299,7 +389,7 @@
       pauseHistory: normalizePauseHistory(source.pauseHistory),
       notes: String(source.notes || source.note || ""),
       moneyPlanRates,
-      moneyPlanVersion: moneyPlanRates ? 2 : Math.max(0, Math.floor(safeNumber(source.moneyPlanVersion))),
+      moneyPlanVersion: moneyPlanRates ? moneyPlanRates.version : Math.max(0, Math.floor(safeNumber(source.moneyPlanVersion))),
       allocationRates: normalizeAllocationRates(source.allocationRates, settings),
       createdAt: String(source.createdAt || new Date().toISOString()),
       updatedAt: String(source.updatedAt || source.createdAt || new Date().toISOString())
@@ -385,8 +475,8 @@
     return match ? { rate: Math.max(0, safeNumber(match.rate)), source: match } : { rate: 0, source: null };
   }
 
-  function calculateNewPlan(base, planValue) {
-    const plan = normalizeMoneyPlan(planValue);
+  function calculateVersion2Plan(base, planValue) {
+    const plan = normalizeMoneyPlan(planValue || LEGACY_MONEY_PLAN_V2);
     const positiveBase = Math.max(0, safeNumber(base));
     const vehicleFund = round(positiveBase * plan.vehiclePct / 100, 2);
     const stock = round(positiveBase * plan.stockPct / 100, 2);
@@ -398,10 +488,62 @@
       ethereum: round(crypto * cryptoMix.ethereum / 100, 2),
       aave: 0
     };
-    // Put any rounding remainder into AAVE so the displayed coin amounts always equal the crypto bucket.
+    // Keep the historical crypto bucket exact after cent-level rounding.
     cryptoBreakdown.aave = round(crypto - cryptoBreakdown.bitcoin - cryptoBreakdown.solana - cryptoBreakdown.ethereum, 2);
-    const allocated = round(vehicleFund + stock + crypto, 2);
-    return { plan, vehicleFund, stock, crypto, cryptoBreakdown, allocated };
+    const investment = round(stock + crypto, 2);
+    const allocated = round(vehicleFund + investment, 2);
+    return {
+      plan,
+      allocationBase: positiveBase,
+      allocationBasis: "positiveNet",
+      vehicleFund,
+      investment,
+      stock,
+      crypto,
+      investmentBreakdown: {
+        bitcoin: cryptoBreakdown.bitcoin,
+        solana: cryptoBreakdown.solana,
+        schg: 0,
+        aave: cryptoBreakdown.aave
+      },
+      cryptoBreakdown,
+      allocated
+    };
+  }
+
+  function calculateVersion3Plan(base, planValue) {
+    const plan = normalizeMoneyPlan(planValue || DEFAULT_MONEY_PLAN);
+    const grossBase = Math.max(0, safeNumber(base));
+    const vehicleFund = round(grossBase * plan.vehiclePct / 100, 2);
+    const investment = round(grossBase * plan.investmentPct / 100, 2);
+    const mix = plan.investmentMix;
+    const investmentBreakdown = allocateMoneyByMix(investment, mix, ["bitcoin", "solana", "schg", "aave"]);
+    const stock = investmentBreakdown.schg;
+    const crypto = round(investmentBreakdown.bitcoin + investmentBreakdown.solana + investmentBreakdown.aave, 2);
+    const cryptoBreakdown = {
+      bitcoin: investmentBreakdown.bitcoin,
+      solana: investmentBreakdown.solana,
+      ethereum: 0,
+      aave: investmentBreakdown.aave
+    };
+    const allocated = round(vehicleFund + investment, 2);
+    return {
+      plan,
+      allocationBase: grossBase,
+      allocationBasis: "gross",
+      vehicleFund,
+      investment,
+      stock,
+      crypto,
+      investmentBreakdown,
+      cryptoBreakdown,
+      allocated
+    };
+  }
+
+  function calculateNewPlan(base, planValue) {
+    const plan = normalizeMoneyPlan(planValue);
+    return plan.version >= 3 ? calculateVersion3Plan(base, plan) : calculateVersion2Plan(base, plan);
   }
 
   function calculateLegacyPlan(shift, positiveNet) {
@@ -432,25 +574,37 @@
     const hours = round(durationHours(shift), 4);
     const miles = round(mileage(shift), 2);
     const isNewPlan = Boolean(shift.moneyPlanRates);
+    const moneyPlanVersion = isNewPlan ? Math.max(2, Math.floor(safeNumber(shift.moneyPlanRates.version, shift.moneyPlanVersion))) : 0;
+    const isGrossMoneyPlan = moneyPlanVersion >= 3;
+    const activeMoneyPlan = normalizeMoneyPlan(settings.moneyPlan || DEFAULT_MONEY_PLAN);
+    const isCurrentMoneyPlan = isGrossMoneyPlan && activeMoneyPlan.version >= 3
+      && moneyPlanSignature(shift.moneyPlanRates) === moneyPlanSignature(activeMoneyPlan);
+    const isPreviousMoneyPlan = moneyPlanVersion === 2;
     let vehicleFund = 0;
     let stock = 0;
     let crypto = 0;
     let cryptoBreakdown = { bitcoin: 0, solana: 0, ethereum: 0, aave: 0 };
+    let investmentBreakdown = { bitcoin: 0, solana: 0, schg: 0, aave: 0 };
     let legacyInvestment = 0;
     let investment = 0;
     let savings = 0;
     let allocated = 0;
+    let allocationBase = positiveNet;
+    let allocationBasis = "historical";
     let plan = null;
 
     if (isNewPlan) {
-      const result = calculateNewPlan(positiveNet, shift.moneyPlanRates);
+      const result = calculateNewPlan(isGrossMoneyPlan ? shift.gross : positiveNet, shift.moneyPlanRates);
       plan = result.plan;
+      allocationBase = result.allocationBase;
+      allocationBasis = result.allocationBasis;
       vehicleFund = result.vehicleFund;
       stock = result.stock;
       crypto = result.crypto;
       cryptoBreakdown = result.cryptoBreakdown;
+      investmentBreakdown = result.investmentBreakdown;
       allocated = result.allocated;
-      investment = round(stock + crypto, 2);
+      investment = result.investment;
     } else {
       const legacy = calculateLegacyPlan(shift, positiveNet);
       vehicleFund = legacy.vehicleFund;
@@ -479,6 +633,12 @@
       stock,
       crypto,
       cryptoBreakdown,
+      investmentBreakdown,
+      bitcoin: investmentBreakdown.bitcoin,
+      solana: investmentBreakdown.solana,
+      schg: investmentBreakdown.schg,
+      ethereum: cryptoBreakdown.ethereum,
+      aave: investmentBreakdown.aave,
       legacyInvestment,
       investment,
       savings,
@@ -486,7 +646,13 @@
       takeOut,
       spendable,
       moneyPlan: plan,
+      moneyPlanVersion,
       isNewMoneyPlan: isNewPlan,
+      isGrossMoneyPlan,
+      isCurrentMoneyPlan,
+      isPreviousMoneyPlan,
+      allocationBase,
+      allocationBasis,
       taxRate: rate,
       taxDeduction: round(miles * rate, 2)
     };
@@ -495,6 +661,7 @@
   function summarizeShifts(values, settingsValue) {
     const list = Array.isArray(values) ? values.map((item) => calculateShift(item, settingsValue)) : [];
     const sum = (field) => round(list.reduce((total, item) => total + safeNumber(item[field]), 0), 2);
+    const sumWhere = (predicate, field) => round(list.reduce((total, item) => predicate(item) ? total + safeNumber(item[field]) : total, 0), 2);
     const summary = {
       count: list.length,
       gross: sum("gross"),
@@ -508,17 +675,37 @@
       miles: sum("miles"),
       trips: Math.round(list.reduce((total, item) => total + safeNumber(item.trips), 0)),
       vehicleFund: sum("vehicleFund"),
+      investment: sum("investment"),
+      savings: sum("savings"),
       stock: sum("stock"),
       crypto: sum("crypto"),
-      bitcoin: round(list.reduce((total, item) => total + safeNumber(item.cryptoBreakdown && item.cryptoBreakdown.bitcoin), 0), 2),
-      solana: round(list.reduce((total, item) => total + safeNumber(item.cryptoBreakdown && item.cryptoBreakdown.solana), 0), 2),
-      ethereum: round(list.reduce((total, item) => total + safeNumber(item.cryptoBreakdown && item.cryptoBreakdown.ethereum), 0), 2),
-      aave: round(list.reduce((total, item) => total + safeNumber(item.cryptoBreakdown && item.cryptoBreakdown.aave), 0), 2),
+      bitcoin: sum("bitcoin"),
+      solana: sum("solana"),
+      schg: sum("schg"),
+      ethereum: sum("ethereum"),
+      aave: sum("aave"),
       legacyInvestment: sum("legacyInvestment"),
       allocated: sum("allocated"),
       takeOut: sum("takeOut"),
       spendable: sum("spendable"),
-      taxDeduction: sum("taxDeduction")
+      taxDeduction: sum("taxDeduction"),
+      currentPlanCount: list.filter((item) => item.isCurrentMoneyPlan).length,
+      historicalPlanCount: list.filter((item) => !item.isCurrentMoneyPlan).length,
+      currentGross: sumWhere((item) => item.isCurrentMoneyPlan, "gross"),
+      currentVehicleFund: sumWhere((item) => item.isCurrentMoneyPlan, "vehicleFund"),
+      currentInvestment: sumWhere((item) => item.isCurrentMoneyPlan, "investment"),
+      currentBitcoin: sumWhere((item) => item.isCurrentMoneyPlan, "bitcoin"),
+      currentSolana: sumWhere((item) => item.isCurrentMoneyPlan, "solana"),
+      currentSchg: sumWhere((item) => item.isCurrentMoneyPlan, "schg"),
+      currentAave: sumWhere((item) => item.isCurrentMoneyPlan, "aave"),
+      currentAllocated: sumWhere((item) => item.isCurrentMoneyPlan, "allocated"),
+      historicalVehicleFund: sumWhere((item) => !item.isCurrentMoneyPlan, "vehicleFund"),
+      historicalInvestment: sumWhere((item) => !item.isCurrentMoneyPlan, "investment"),
+      historicalSavings: sumWhere((item) => !item.isCurrentMoneyPlan, "savings"),
+      historicalStock: sumWhere((item) => !item.isCurrentMoneyPlan, "stock"),
+      historicalCrypto: sumWhere((item) => !item.isCurrentMoneyPlan, "crypto"),
+      historicalEthereum: sumWhere((item) => !item.isCurrentMoneyPlan, "ethereum"),
+      historicalAllocated: sumWhere((item) => !item.isCurrentMoneyPlan, "allocated")
     };
     summary.hourly = summary.hours > 0 ? round(summary.net / summary.hours, 2) : 0;
     summary.netPerMile = summary.miles > 0 ? round(summary.net / summary.miles, 2) : 0;
@@ -612,6 +799,7 @@
   return {
     APP_VERSION,
     STORAGE_KEY,
+    LEGACY_MONEY_PLAN_V2,
     DEFAULT_MONEY_PLAN,
     DEFAULT_SETTINGS,
     safeNumber,
@@ -630,6 +818,8 @@
     startOfYear,
     endOfYear,
     normalizeMoneyPlan,
+    moneyPlanSignature,
+    allocateMoneyByMix,
     normalizeSettings,
     normalizeActiveShift,
     normalizeShift,
@@ -641,6 +831,8 @@
     durationHours,
     mileage,
     getMileageRate,
+    calculateVersion2Plan,
+    calculateVersion3Plan,
     calculateNewPlan,
     calculateShift,
     summarizeShifts,

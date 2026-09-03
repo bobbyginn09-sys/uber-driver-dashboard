@@ -371,6 +371,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .form-section + .form-section { margin-top: 11px; }
 .form-section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; font-size: 10px; font-weight: 820; text-transform: uppercase; letter-spacing: .04em; }
 .preview-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.preview-strip.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .preview-item { min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
 .preview-item span, .preview-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview-item span { color: var(--muted); font-size: 7px; text-transform: uppercase; }
@@ -558,11 +559,15 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr); gap: 14px; align-items: start; }
 .settings-stack { display: grid; gap: 12px; }
 .settings-section { padding: 16px; }
-.settings-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.settings-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .settings-plan-item { padding: 10px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-soft); }
-.settings-plan-item span, .settings-plan-item strong { display: block; }
+.settings-plan-item span, .settings-plan-item strong, .settings-plan-item small { display: block; }
 .settings-plan-item span { color: var(--muted); font-size: 7px; text-transform: uppercase; }
 .settings-plan-item strong { margin-top: 3px; font-size: 15px; }
+.settings-plan-item small { margin-top: 2px; color: var(--faint); font-size: 7px; }
+.plan-split-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; }
+.plan-split-head span { color: var(--muted); font-size: 7px; font-weight: 820; text-transform: uppercase; letter-spacing: .05em; }
+.plan-split-head strong { font-size: 8.5px; }
 .data-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .data-action { min-height: 105px; display: flex; flex-direction: column; align-items: flex-start; padding: 11px; border: 1px solid var(--border); border-radius: 12px; color: var(--text); background: var(--surface-soft); cursor: pointer; text-align: left; }
 .data-action:hover { border-color: var(--border-strong); }
@@ -571,9 +576,10 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .data-action span { margin-top: 3px; color: var(--muted); font-size: 8px; line-height: 1.35; }
 .crypto-rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .crypto-rule { padding: 8px; border-radius: 9px; background: var(--surface-2); }
-.crypto-rule span, .crypto-rule strong { display: block; }
+.crypto-rule span, .crypto-rule strong, .crypto-rule small { display: block; }
 .crypto-rule span { color: var(--muted); font-size: 6.5px; text-transform: uppercase; }
 .crypto-rule strong { margin-top: 2px; font-size: 11px; }
+.crypto-rule small { margin-top: 2px; color: var(--faint); font-size: 6.5px; }
 
 .empty-state { min-height: 175px; display: grid; place-items: center; padding: 22px; text-align: center; }
 .empty-state-inner { max-width: 360px; }
@@ -695,7 +701,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
   .instruction-card { padding: 8px; }
   .crypto-box { padding: 9px; }
   .keep-box { padding: 10px; }
-  .settings-plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .settings-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .data-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -710,7 +716,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
   .shift-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid, .form-grid.is-three { grid-template-columns: minmax(0, 1fr); }
   .field.span-2, .field.span-full { grid-column: auto; }
-  .settings-plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .settings-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
   .crypto-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.6.0 — Gross Investment Plan
+
+- Replaced the former 5% vehicle / 10% stock / 10% crypto default with 5% vehicle and 20% investments.
+- Removed the savings allocation from future shifts.
+- Changed the allocation base from positive net earnings to gross earnings for newly saved shifts.
+- Split the 20% investment contribution into Bitcoin 40%, Solana 30%, SCHG 20%, and AAVE 10%.
+- Added an in-app money-plan editor under Settings & data.
+- Kept the headline take-out amount as recorded gas plus the full vehicle and investment allocation.
+- Preserved old shifts under their original allocation model, including the prior Ethereum split.
+- Added accurate mixed-plan summaries when a period includes both current and historical shifts.
+- Updated CSV exports and imports with money-plan version, basis, percentages, and all four current investment amounts.
+- Added cent-safe investment allocation so the four asset amounts always equal the investment contribution.
+- Updated offline cache, version labels, documentation, and automated tests.
+
 ## 3.5.0 — Money Plan and Shift Pausing
 
 - Added the post-shift money-instructions screen.

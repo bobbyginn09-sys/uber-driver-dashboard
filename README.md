@@ -1,50 +1,65 @@
-# Driver Command 3.5.0
+# Driver Command 3.6.0
 
-Driver Command is a local-first rideshare dashboard for shifts, mileage, expenses, money allocation, vehicle costs, goals, and day-by-day performance.
+Driver Command is a private, local-first rideshare dashboard for shifts, mileage, expenses, money allocation, vehicle costs, goals, and day-by-day performance.
 
-## New in 3.5.0
+## New in 3.6.0
 
-### End-of-shift money directions
-After you enter ending mileage, gross earnings, gas, and any other expenses, select **Finish & show money plan**. The saved shift is followed by a compact receipt that tells you exactly what to move.
+### New gross-earnings money plan
 
-The calculation is:
+Newly saved shifts use this default allocation:
 
-1. **Net earnings** = gross earnings − gas − tolls/parking − other expenses.
-2. The percentage base is positive net earnings. A loss never creates a negative investment amount.
-3. **Vehicle fund** = 5% of positive net.
-4. **Stocks** = 10% of positive net.
-5. **Crypto** = 10% of positive net.
-6. **Total allocated** = 25% of positive net.
-7. **Take out / move** = gas + total allocated.
-8. **Keep available** = net earnings − total allocated.
+- **Vehicle fund:** 5% of gross earnings
+- **Investments:** 20% of gross earnings
+- **Savings:** 0%
 
-The 10% crypto bucket is divided into:
+The 20% investment contribution is split as follows:
 
-- Bitcoin: 55%
-- Solana: 25%
-- Ethereum: 15%
-- AAVE: 5%
+| Investment | Share of investment contribution | Share of gross earnings |
+|---|---:|---:|
+| Bitcoin | 40% | 8% |
+| Solana | 30% | 6% |
+| SCHG | 20% | 4% |
+| AAVE | 10% | 2% |
 
-The app rounds displayed money to cents and assigns any one-cent rounding remainder to AAVE so the four coin amounts always equal the crypto bucket.
+The post-shift calculation is:
 
-### Pause and resume a live shift
-A live shift now has a **Pause shift** button for lunch, errands, or other personal stops. While paused:
+1. **Net after expenses** = gross earnings − gas − tolls/parking − other expenses.
+2. **Vehicle fund** = gross earnings × 5%.
+3. **Investment contribution** = gross earnings × 20%.
+4. **Total allocation** = vehicle fund + investment contribution, normally 25% of gross earnings.
+5. **Take out / move** = recorded gas + total allocation.
+6. **Keep available** = net after expenses − total allocation.
 
-- the active-work timer is frozen;
-- the paused state survives a refresh or reopening the app;
-- selecting **Resume shift** continues the same shift;
-- finishing while paused closes the current pause automatically;
-- completed-shift hours exclude all paused time.
+The percentage base is gross earnings, so expenses do not reduce the vehicle or investment contribution. Investment amounts are divided in whole cents and always add back to the full investment contribution.
+
+### Change the plan inside the app
+
+Open **Settings & data → Your money plan → Edit plan**. You can change:
+
+- the vehicle-fund percentage;
+- the total investment percentage; and
+- the Bitcoin, Solana, SCHG, and AAVE split.
+
+The four investment percentages must total 100%. Changes apply only to shifts saved afterward. Existing shifts retain the plan they originally used so past totals do not change.
+
+### Existing features retained
+
+- End-of-shift money directions after entering ending mileage and earnings
+- Pause and resume for lunch, errands, or other personal stops
+- Daily, weekly, monthly, yearly, and all-time money views
+- JSON backup and restore
+- Spreadsheet-friendly CSV export and import
+- Historical support for the former 5% vehicle / 10% stocks / 10% crypto plan
 
 ## Updating an existing copy
 
 1. Open the current dashboard and use **Settings & data → Full backup**.
-2. Replace the existing GitHub Pages/app files with the contents of this folder.
+2. Replace the existing GitHub Pages or hosted app files with the contents of this folder.
 3. Commit and publish the replacement files.
-4. Open the deployed app and refresh it. For an installed home-screen version, fully close and reopen it after the new deployment loads.
-5. Confirm your old shifts appear before deleting the backup.
+4. Open the deployed app and refresh it. For an installed home-screen copy, fully close and reopen it after the new deployment loads.
+5. Confirm that your old shifts appear before deleting the backup.
 
-Driver Command 3.5.0 continues using the established `uberDriverDashboard.v3` browser-storage key and mirrors the principal legacy keys. Historical shifts retain their previously saved allocation model; newly completed shifts use the 5% vehicle, 10% stocks, and 10% crypto plan.
+Driver Command 3.6.0 continues using the established `uberDriverDashboard.v3` browser-storage key. The current settings plan is upgraded to the new 5% vehicle and 20% investment default once. Historical shifts retain their own saved allocation model.
 
 ## Running locally
 
@@ -60,11 +75,13 @@ Then open `http://localhost:8080`.
 
 ## Tests
 
-The included zero-dependency Node tests cover the money math, crypto split, loss handling, pause duration, required files, service-worker cache, manifest, and source syntax.
+The included zero-dependency Node tests cover current and historical money math, cent-level investment splitting, migration, rendering, CSV round trips, required files, and source syntax.
 
 ```bash
-node tests/core.test.js
-node tests/static.test.js
+node core.test.js
+node static.test.js
+node migration.test.js
+node app-render.test.js
 ```
 
 ## Privacy and backups
