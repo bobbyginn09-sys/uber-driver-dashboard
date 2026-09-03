@@ -1,96 +1,63 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#080a0b">
-  <meta name="description" content="A calm, glanceable, offline-ready dashboard for rideshare shifts, earnings, mileage, goals, and vehicle care.">
-  <title>Uber Driver Command Center</title>
-
+  <meta name="theme-color" content="#07110c">
+  <meta name="description" content="A private, local-first rideshare shift and money dashboard.">
+  <title>Driver Command</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="favicon.png" sizes="32x32">
-  <link rel="icon" href="icon-192.png" sizes="192x192">
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Driver Command">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
   <link rel="stylesheet" href="styles.css">
-  <script defer src="core.js"></script>
-  <script defer src="app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Skip to dashboard</a>
 
-  <div class="app-shell" id="appShell">
+  <div class="app-shell">
     <aside class="sidebar" aria-label="Primary navigation">
-      <div class="brand-block">
+      <div class="brand">
         <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none">
-            <rect x="3" y="3" width="42" height="42" rx="14" stroke="currentColor" stroke-width="2.5"/>
-            <path d="M14 30.5 23 25l7 4 7-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M31 21h6v6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <svg viewBox="0 0 48 48" fill="none"><path d="M13 10h17.5C36.3 10 40 13.7 40 19.5v9C40 34.3 36.3 38 30.5 38H17C11.5 38 8 34.5 8 29V15c0-2.8 2.2-5 5-5Z"/><path d="M16 17h14M16 24h9M16 31h16"/></svg>
         </div>
-        <div>
-          <div class="brand-name">Driver Command</div>
-          <div class="brand-kicker">Uber dashboard</div>
-        </div>
+        <div><strong>Driver Command</strong><span>Money & shift control</span></div>
       </div>
-
-      <nav class="sidebar-nav" id="sidebarNav"></nav>
-
-      <div class="sidebar-footer">
-        <div class="privacy-card">
-          <span class="privacy-icon" aria-hidden="true">●</span>
-          <div>
-            <strong>Private by default</strong>
-            <span>Your data stays in this browser.</span>
-          </div>
-        </div>
-        <div class="version-label" id="versionLabel"></div>
+      <nav id="sidebarNav" class="sidebar-nav"></nav>
+      <div class="sidebar-foot">
+        <span class="local-dot"></span>
+        <div><strong>Stored locally</strong><span id="versionLabel">Version 3.5.0</span></div>
       </div>
     </aside>
 
-    <div class="workspace">
+    <div class="app-column">
       <header class="topbar">
         <div class="mobile-brand" aria-label="Driver Command">
-          <span class="mobile-brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 36 36" fill="none">
-              <rect x="2" y="2" width="32" height="32" rx="11" stroke="currentColor" stroke-width="2"/>
-              <path d="M10 23 17 19l5 3 5-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M23 16h4v4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
+          <span class="mobile-brand-mark">DC</span>
         </div>
-
         <div class="page-heading">
-          <div class="page-eyebrow" id="pageEyebrow">Command center</div>
+          <span id="pageEyebrow" class="eyebrow">Command center</span>
           <h1 id="pageTitle">Overview</h1>
-          <p id="pageSubtitle">Your earnings, efficiency, and goals at a glance.</p>
+          <p id="pageSubtitle">Your shift, money, and vehicle at a glance.</p>
         </div>
-
         <div class="topbar-actions">
-          <div class="connection-pill" id="connectionPill" title="Connection status">
-            <span></span><b>Local</b>
-          </div>
-          <button class="icon-button" type="button" data-action="toggle-theme" id="themeToggle" aria-label="Switch color theme"></button>
-          <button class="button button-primary topbar-add" type="button" data-action="open-add-shift">
-            <span class="button-icon" id="topbarAddIcon" aria-hidden="true"></span>
-            <span>Add shift</span>
+          <button id="themeToggle" class="icon-button" type="button" data-action="toggle-theme" aria-label="Switch theme"></button>
+          <button class="button button-primary topbar-start" type="button" data-action="primary-shift-action">
+            <span id="topbarShiftIcon" aria-hidden="true"></span><span id="topbarShiftLabel">Start shift</span>
           </button>
         </div>
       </header>
 
-      <main class="main-content" id="mainContent" tabindex="-1"></main>
+      <main id="mainContent" class="main-content" tabindex="-1"></main>
     </div>
   </div>
 
-  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation"></nav>
+  <nav id="mobileNav" class="mobile-nav" aria-label="Mobile navigation"></nav>
 
-  <div id="modalRoot"></div>
-  <div class="toast-region" id="toastRoot" aria-live="polite" aria-atomic="true"></div>
+  <div id="modalRoot" class="modal-root" hidden></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+  <input id="importFileInput" type="file" accept="application/json,.json,text/csv,.csv" hidden>
 
-  <input class="visually-hidden" type="file" id="importFileInput" accept=".json,.csv,application/json,text/csv">
+  <script src="core.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

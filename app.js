@@ -3,204 +3,116 @@
 
   const Core = window.DriverCore;
   if (!Core) {
-    document.body.innerHTML = "<p style='padding:24px;font-family:sans-serif'>The dashboard could not load its core module.</p>";
+    document.body.innerHTML = "<p style='padding:24px;font-family:sans-serif'>Driver Command could not load its calculation module.</p>";
     return;
   }
 
-  const STORAGE_KEY = "uberDriverDashboard.v3";
   const LEGACY_KEYS = {
-    shifts: "uberEntries",
-    maintenance: "uberMaintenance",
-    goals: "uberSpendingGoals",
-    activeDraft: "activeShiftDraft",
-    clockIn: "clockInTime",
-    clockOut: "clockOutTime"
+    shifts: ["uberEntries", "uberEntriesV3"],
+    maintenance: ["uberMaintenance"],
+    goals: ["uberSpendingGoals"],
+    activeShift: ["activeShiftDraft"],
+    clockIn: ["clockInTime"]
   };
 
   const ROUTES = ["overview", "shifts", "analytics", "calendar", "vehicle", "goals", "settings"];
-
   const PAGE_META = {
-    overview: {
-      eyebrow: "Command center",
-      title: "Overview",
-      subtitle: "Your earnings, efficiency, goals, and current shift in one place."
-    },
-    shifts: {
-      eyebrow: "Operations",
-      title: "Shift ledger",
-      subtitle: "Search, filter, edit, duplicate, export, and safely manage every shift."
-    },
-    analytics: {
-      eyebrow: "Performance",
-      title: "Analytics",
-      subtitle: "See the patterns behind your net earnings, time, mileage, and allocations."
-    },
-    calendar: {
-      eyebrow: "Planning",
-      title: "Calendar",
-      subtitle: "Review your driving rhythm and open any day for a complete breakdown."
-    },
-    vehicle: {
-      eyebrow: "Vehicle",
-      title: "Vehicle center",
-      subtitle: "Track your maintenance fund, service history, odometer, and upcoming work."
-    },
-    goals: {
-      eyebrow: "Planning",
-      title: "Goals",
-      subtitle: "Turn spendable driving income into clear, funded targets."
-    },
-    settings: {
-      eyebrow: "System",
-      title: "Settings & data",
-      subtitle: "Control allocations, mileage rates, vehicle defaults, backups, and appearance."
-    }
+    overview: { eyebrow: "Command center", title: "Overview", subtitle: "Your shift, money, and vehicle at a glance." },
+    shifts: { eyebrow: "Operations", title: "Shift ledger", subtitle: "Review, edit, and manage every driving session." },
+    analytics: { eyebrow: "Money directions", title: "Money plan", subtitle: "See exactly what to move, invest, and keep." },
+    calendar: { eyebrow: "Daily history", title: "Calendar", subtitle: "Open any date for its earnings and money breakdown." },
+    vehicle: { eyebrow: "Vehicle", title: "Vehicle center", subtitle: "Track your reserve, mileage, and service costs." },
+    goals: { eyebrow: "Planning", title: "Goals", subtitle: "Build targets from the money you keep available." },
+    settings: { eyebrow: "System", title: "Settings & data", subtitle: "Manage preferences, backups, and local storage." }
   };
 
   const NAV_ITEMS = [
-    { route: "overview", label: "Overview", icon: "overview", section: "Command" },
-    { route: "shifts", label: "Shifts", icon: "shifts" },
-    { route: "analytics", label: "Analytics", icon: "analytics" },
+    { route: "overview", label: "Overview", icon: "home", section: "Command" },
+    { route: "shifts", label: "Shifts", icon: "receipt" },
+    { route: "analytics", label: "Money plan", icon: "wallet" },
     { route: "calendar", label: "Calendar", icon: "calendar" },
-    { route: "vehicle", label: "Vehicle", icon: "vehicle", section: "Planning" },
-    { route: "goals", label: "Goals", icon: "goal" },
+    { route: "vehicle", label: "Vehicle", icon: "car", section: "Planning" },
+    { route: "goals", label: "Goals", icon: "target" },
     { route: "settings", label: "Settings & data", icon: "settings" }
   ];
 
   const MOBILE_NAV_ITEMS = [
-    { route: "overview", label: "Home", icon: "overview" },
-    { route: "shifts", label: "Shifts", icon: "shifts" },
-    { route: "analytics", label: "Analytics", icon: "analytics" },
-    { route: "calendar", label: "Calendar", icon: "calendar" },
+    { route: "overview", label: "Home", icon: "home" },
+    { route: "shifts", label: "Shifts", icon: "receipt" },
+    { route: "analytics", label: "Money", icon: "wallet" },
+    { route: "vehicle", label: "Vehicle", icon: "car" },
     { route: "more", label: "More", icon: "more" }
   ];
 
-  const MAINTENANCE_TYPES = [
-    "Oil Change",
-    "Tire Rotation",
-    "Tires",
-    "Brakes",
-    "Car Wash",
-    "Inspection",
-    "Registration",
-    "Repair",
-    "Other"
-  ];
-
   const PLATFORM_OPTIONS = ["Uber", "Lyft", "Uber + Lyft", "DoorDash", "Other"];
-  const DAILY_INVESTMENT_RATE = 25;
+  const MAINTENANCE_TYPES = ["Oil Change", "Tire Rotation", "Tires", "Brakes", "Car Wash", "Inspection", "Registration", "Repair", "Other"];
 
   const ICONS = {
-    overview: '<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
-    shifts: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
-    analytics: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/>',
+    home: '<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+    receipt: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
+    wallet: '<path d="M4 6h14a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 11h6v4h-6a2 2 0 0 1 0-4Z"/>',
     calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/>',
-    vehicle: '<path d="M5 17h14l2-6-3-5H6l-3 5 2 6Z"/><path d="M7 17v2M17 17v2M6 11h12"/><circle cx="7.5" cy="14" r="1"/><circle cx="16.5" cy="14" r="1"/>',
-    goal: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/><path d="m16 8 5-5M17 3h4v4"/>',
-    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.8 7.8 0 0 0 .1-6l2-1.5-2-3.4-2.4 1a8 8 0 0 0-5.2-3L11.5 0h-4l-.4 2.1a8 8 0 0 0-5.2 3l-2.4-1-2 3.4L.5 9a7.8 7.8 0 0 0 .1 6l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 5.2 3l.4 2.1h4l.4-2.1a8 8 0 0 0 5.2-3l2.4 1 2-3.4-2-1.5Z" transform="translate(2.5 0) scale(.78)"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>',
-    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.41M17.66 6.34l1.41-1.41"/>',
+    car: '<path d="M5 17h14l2-6-3-5H6l-3 5 2 6Z"/><path d="M7 17v2M17 17v2M6 11h12"/><circle cx="7.5" cy="14" r="1"/><circle cx="16.5" cy="14" r="1"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/><path d="m16 8 5-5M17 3h4v4"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.8 7.8 0 0 0 .1-6l2-1.5-2-3.4-2.4 1a8 8 0 0 0-5.2-3L11.5 2h-4L7 4.1a8 8 0 0 0-5.2 3l-2.4-1-2 3.4 2 1.5a7.8 7.8 0 0 0 .1 6l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 5.2 3l.4 2.1h4l.4-2.1a8 8 0 0 0 5.2-3l2.4 1 2-3.4-2-1.5Z" transform="translate(2.5 0) scale(.78)"/>',
+    more: '<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>',
     play: '<path d="m8 5 11 7-11 7V5Z"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
-    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"/>',
-    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>',
-    trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/>',
-    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>',
-    upload: '<path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/>',
-    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
-    chevronRight: '<path d="m9 18 6-6-6-6"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    resume: '<path d="m8 5 11 7-11 7V5Z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    dollar: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>',
     route: '<path d="M5 19c0-4 5-4 5-8s-5-4-5-8M19 5c0 4-5 4-5 8s5 4 5 8"/><circle cx="5" cy="3" r="1.5"/><circle cx="19" cy="21" r="1.5"/>',
-    trend: '<path d="m3 17 6-6 4 4 8-10"/><path d="M15 5h6v6"/>',
+    dollar: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>',
     fuel: '<path d="M5 21V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17M7 8h8"/><path d="M17 7h2l2 3v8a2 2 0 0 1-2 2h-2"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
-    more: '<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>',
+    chart: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/>',
+    stock: '<path d="m3 17 6-6 4 4 8-10"/><path d="M15 5h6v6"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M9 8.5h4.5a2.5 2.5 0 0 1 0 5H9m3-7v11m-3-4h5a2.5 2.5 0 0 1 0 5H9"/>',
+    wrench: '<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-3 3-3-3 3-3Z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"/>',
+    trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/>',
+    eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
     warning: '<path d="M10.3 3.2 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/><path d="M12 8v4M12 16h.01"/>',
-    wrench: '<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-3 3-3-3 3-3Z"/>',
-    wallet: '<path d="M4 6h14a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 11h6v4h-6a2 2 0 0 1 0-4Z"/>',
-    tax: '<path d="M5 3h14v18H5zM8 7h8M8 11h3M13 11h3M8 15h3M13 15h3"/>',
-    arrowUp: '<path d="m6 15 6-6 6 6"/>',
-    arrowDown: '<path d="m6 9 6 6 6-6"/>',
-    spark: '<path d="m12 2 1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z"/>',
-    receipt: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
-    filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
-    refresh: '<path d="M20 11a8 8 0 1 0 2 5"/><path d="M20 4v7h-7"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
-    file: '<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+    chevronRight: '<path d="m9 18 6-6-6-6"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.41M17.66 6.34l1.41-1.41"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>',
+    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>',
+    upload: '<path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/>',
     database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/>',
-    lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-    archive: '<rect x="3" y="5" width="18" height="4" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
-    contribution: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/>',
-    car: '<path d="M5 16h14l2-5-3-5H6l-3 5 2 5Z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
-    calendarAdd: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M12 12v6M9 15h6"/>'
+    archive: '<path d="M3 4h18v5H3zM5 9v11h14V9M10 13h4"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>',
+    spark: '<path d="m12 2 1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z"/>'
+  };
+
+  const dom = {
+    sidebarNav: document.getElementById("sidebarNav"),
+    mobileNav: document.getElementById("mobileNav"),
+    main: document.getElementById("mainContent"),
+    pageEyebrow: document.getElementById("pageEyebrow"),
+    pageTitle: document.getElementById("pageTitle"),
+    pageSubtitle: document.getElementById("pageSubtitle"),
+    themeToggle: document.getElementById("themeToggle"),
+    topbarShiftIcon: document.getElementById("topbarShiftIcon"),
+    topbarShiftLabel: document.getElementById("topbarShiftLabel"),
+    modalRoot: document.getElementById("modalRoot"),
+    toastRoot: document.getElementById("toastRoot"),
+    importFileInput: document.getElementById("importFileInput"),
+    versionLabel: document.getElementById("versionLabel")
   };
 
   function icon(name, className) {
     return `<svg class="${className || "icon"}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.info}</svg>`;
   }
 
-  const dom = {
-    main: document.getElementById("mainContent"),
-    sidebarNav: document.getElementById("sidebarNav"),
-    mobileNav: document.getElementById("mobileNav"),
-    pageEyebrow: document.getElementById("pageEyebrow"),
-    pageTitle: document.getElementById("pageTitle"),
-    pageSubtitle: document.getElementById("pageSubtitle"),
-    modalRoot: document.getElementById("modalRoot"),
-    toastRoot: document.getElementById("toastRoot"),
-    themeToggle: document.getElementById("themeToggle"),
-    versionLabel: document.getElementById("versionLabel"),
-    topbarAddIcon: document.getElementById("topbarAddIcon"),
-    topbarAddButton: document.querySelector(".topbar-add"),
-    connectionPill: document.getElementById("connectionPill"),
-    importFileInput: document.getElementById("importFileInput")
-  };
-
-  let state = loadState();
-  const ui = {
-    route: initialRoute(),
-    analyticsPeriod: "month",
-    analyticsView: "trend",
-    shiftVisibleCount: 5,
-    shiftManageMode: false,
-    shiftFilters: {
-      search: "",
-      range: "30",
-      platform: "all",
-      sort: "dateDesc"
-    },
-    selectedShiftIds: new Set(),
-    vehicleView: "status",
-    maintenanceVisibleCount: 5,
-    vehicleFilters: {
-      search: "",
-      type: "all"
-    },
-    goalView: "active",
-    goalVisibleCount: 3,
-    calendarCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    calendarSelected: Core.localISODate(),
-    modal: null,
-    pendingImport: null,
-    pendingImportFilename: "",
-    toastCounter: 0
-  };
-
-  let liveTimer = null;
-  let filterInputTimer = null;
-  let modalReturnFocus = null;
-
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>'"]/g, (char) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      "'": "&#039;",
-      '"': "&quot;"
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;"
     })[char]);
   }
 
@@ -211,17 +123,10 @@
   function formatMoney(value, options) {
     const opts = options || {};
     const number = Core.safeNumber(value);
-    if (opts.compact && Math.abs(number) >= 1000) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        notation: "compact",
-        maximumFractionDigits: 1
-      }).format(number);
-    }
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
+      notation: opts.compact && Math.abs(number) >= 1000 ? "compact" : "standard",
       minimumFractionDigits: opts.noCents ? 0 : 2,
       maximumFractionDigits: opts.noCents ? 0 : 2
     }).format(number);
@@ -234,172 +139,119 @@
     }).format(Core.safeNumber(value));
   }
 
-  function formatMileage(value) {
-    const number = Core.safeNumber(value);
-    return `${formatNumber(number, Number.isInteger(number) ? 0 : 1)} mi`;
-  }
-
   function formatDate(value, options) {
     const date = Core.parseISODate(value);
     if (!date) return "—";
-    return new Intl.DateTimeFormat("en-US", options || {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    }).format(date);
-  }
-
-  function formatShortDate(value) {
-    return formatDate(value, { month: "short", day: "numeric" });
-  }
-
-  function formatWeekday(value, short) {
-    return formatDate(value, { weekday: short ? "short" : "long" });
+    return new Intl.DateTimeFormat("en-US", options || { month: "short", day: "numeric", year: "numeric" }).format(date);
   }
 
   function formatTime(value) {
-    if (!value) return "—";
-    const match = /^(\d{1,2}):(\d{2})/.exec(value);
-    if (!match) return value;
+    const match = /^(\d{1,2}):(\d{2})/.exec(String(value || ""));
+    if (!match) return "—";
     const date = new Date(2000, 0, 1, Number(match[1]), Number(match[2]));
     return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
   }
 
-  function currentTimeValue() {
-    const now = new Date();
+  function currentTimeValue(value) {
+    const now = value instanceof Date ? value : new Date();
     return `${Core.pad(now.getHours())}:${Core.pad(now.getMinutes())}`;
   }
 
-  function formatDuration(hours, includeSeconds) {
-    const totalSeconds = Math.max(0, Math.floor(Core.safeNumber(hours) * 3600));
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    if (includeSeconds) return `${Core.pad(h)}:${Core.pad(m)}:${Core.pad(s)}`;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
+  function formatDuration(milliseconds, includeSeconds) {
+    const totalSeconds = Math.max(0, Math.floor(Core.safeNumber(milliseconds) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    return includeSeconds ? `${Core.pad(hours)}:${Core.pad(minutes)}:${Core.pad(seconds)}` : `${hours}h ${Core.pad(minutes)}m`;
   }
 
-  function activeDurationHours() {
-    if (!state.activeShift || !state.activeShift.date || !state.activeShift.startTime) return 0;
-    const start = new Date(`${state.activeShift.date}T${state.activeShift.startTime}:00`);
-    if (Number.isNaN(start.getTime())) return 0;
-    return Math.max(0, (Date.now() - start.getTime()) / 3600000);
+  function dateTimeFromLocal(dateValue, timeValue) {
+    const date = Core.parseISODate(dateValue);
+    const match = /^(\d{1,2}):(\d{2})/.exec(String(timeValue || ""));
+    if (!date || !match) return null;
+    date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    return date;
   }
 
-  function isCompactViewport() {
-    return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches;
-  }
+  const memoryStorage = new Map();
 
-  function sortedShifts(list) {
-    return (list || state.shifts).slice().sort((a, b) => {
-      const dateCompare = String(b.date).localeCompare(String(a.date));
-      if (dateCompare) return dateCompare;
-      return String(b.startTime || "").localeCompare(String(a.startTime || ""));
-    });
-  }
-
-  function getShift(id) {
-    return state.shifts.find((shift) => String(shift.id) === String(id));
-  }
-
-  function getMaintenance(id) {
-    return state.maintenance.find((item) => String(item.id) === String(id));
-  }
-
-  function getGoal(id) {
-    return state.goals.find((goal) => String(goal.id) === String(id));
-  }
-
-  function parseStored(key, fallback) {
+  function safeStorageGet(key) {
     try {
-      const raw = localStorage.getItem(key);
+      const value = window.localStorage.getItem(key);
+      return value == null && memoryStorage.has(key) ? memoryStorage.get(key) : value;
+    } catch (error) {
+      return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+    }
+  }
+
+  function safeStorageSet(key, value) {
+    const text = String(value);
+    memoryStorage.set(key, text);
+    try { window.localStorage.setItem(key, text); return true; } catch (error) { return false; }
+  }
+
+  function safeStorageRemove(key) {
+    memoryStorage.delete(key);
+    try { window.localStorage.removeItem(key); } catch (error) {}
+  }
+
+  function parseStoredJSON(key, fallback) {
+    try {
+      const raw = safeStorageGet(key);
       return raw ? JSON.parse(raw) : fallback;
     } catch (error) {
       return fallback;
     }
   }
 
-  function storedNumber(key, fallback) {
-    const raw = localStorage.getItem(key);
-    return raw == null || String(raw).trim() === "" ? fallback : Core.safeNumber(raw, fallback);
-  }
-
-  function migrateSettingsForVersion(rawSettings, storedVersion) {
-    const candidate = Core.clone(rawSettings || {});
-    const allocations = candidate && candidate.allocations;
-    const isLegacyDefault = allocations
-      && Math.abs(Core.safeNumber(allocations.investment) - 10) < 0.0001
-      && Math.abs(Core.safeNumber(allocations.savings) - 10) < 0.0001
-      && Math.abs(Core.safeNumber(allocations.vehicle) - 5) < 0.0001;
-    if (isLegacyDefault && String(storedVersion || "") !== Core.APP_VERSION) {
-      candidate.allocations.investment = DAILY_INVESTMENT_RATE;
-    }
-    return candidate;
+  function loadLegacyState() {
+    const readFirst = (keys, fallback) => {
+      for (const key of keys) {
+        const value = parseStoredJSON(key, null);
+        if (value != null) return value;
+      }
+      return fallback;
+    };
+    const shifts = readFirst(LEGACY_KEYS.shifts, []);
+    const maintenance = readFirst(LEGACY_KEYS.maintenance, []);
+    const goals = readFirst(LEGACY_KEYS.goals, []);
+    const activeShift = readFirst(LEGACY_KEYS.activeShift, null);
+    const clockIn = safeStorageGet(LEGACY_KEYS.clockIn[0]);
+    if (activeShift && clockIn && !activeShift.startedAt) activeShift.startedAt = clockIn;
+    return { shifts, maintenance, goals, activeShift, settings: {} };
   }
 
   function loadState() {
-    const stored = parseStored(STORAGE_KEY, null);
-    if (stored && typeof stored === "object") {
-      const settings = Core.normalizeSettings(migrateSettingsForVersion(stored.settings, stored.version));
-      return {
-        version: Core.APP_VERSION,
-        shifts: Array.isArray(stored.shifts) ? stored.shifts.map((item) => Core.normalizeShift(item, settings)) : [],
-        maintenance: Array.isArray(stored.maintenance) ? stored.maintenance.map(Core.normalizeMaintenance) : [],
-        goals: Array.isArray(stored.goals) ? stored.goals.map(Core.normalizeGoal) : [],
-        settings,
-        activeShift: stored.activeShift ? Core.normalizeShift(stored.activeShift, settings) : null
-      };
-    }
-
-    const legacyShifts = parseStored(LEGACY_KEYS.shifts, []);
-    const legacyMaintenance = parseStored(LEGACY_KEYS.maintenance, []);
-    const legacyGoals = parseStored(LEGACY_KEYS.goals, []);
-    const legacyDraft = parseStored(LEGACY_KEYS.activeDraft, null);
-
-    const settings = Core.normalizeSettings(migrateSettingsForVersion({
-      theme: localStorage.getItem("dashboardTheme") || "dark",
-      allocations: {
-        investment: storedNumber("investmentPct", DAILY_INVESTMENT_RATE),
-        savings: storedNumber("savingsPct", 10),
-        vehicle: storedNumber("vehiclePct", 5)
-      },
-      monthlyNetGoal: storedNumber("monthlyNetGoal", 0)
-    }, "legacy"));
-
-    let activeShift = null;
-    const legacyClockIn = localStorage.getItem(LEGACY_KEYS.clockIn) || (legacyDraft && (legacyDraft.clockInTime || legacyDraft.manualClockIn));
-    const legacyClockOut = localStorage.getItem(LEGACY_KEYS.clockOut) || (legacyDraft && (legacyDraft.clockOutTime || legacyDraft.manualClockOut));
-    if (legacyClockIn && !legacyClockOut) {
-      activeShift = Core.normalizeShift({
-        id: Core.uid("active"),
-        date: (legacyDraft && legacyDraft.date) || Core.localISODate(),
-        platform: (legacyDraft && legacyDraft.platform) || settings.defaultPlatform,
-        startTime: legacyClockIn,
-        gross: legacyDraft && legacyDraft.gross,
-        fuel: legacyDraft && legacyDraft.gas,
-        startOdometer: legacyDraft && legacyDraft.startMiles,
-        endOdometer: legacyDraft && legacyDraft.endMiles,
-        notes: legacyDraft && legacyDraft.notes,
-        allocationRates: settings.allocations,
-        createdAt: new Date().toISOString()
-      }, settings);
-    }
-
-    return {
-      version: Core.APP_VERSION,
-      shifts: Array.isArray(legacyShifts) ? legacyShifts.map((item) => Core.normalizeShift(item, settings)) : [],
-      maintenance: Array.isArray(legacyMaintenance) ? legacyMaintenance.map(Core.normalizeMaintenance) : [],
-      goals: Array.isArray(legacyGoals) ? legacyGoals.map(Core.normalizeGoal) : [],
-      settings,
-      activeShift
-    };
+    let source = parseStoredJSON(Core.STORAGE_KEY, null);
+    if (source && source.state && typeof source.state === "object") source = source.state;
+    if (!source) source = loadLegacyState();
+    if (!Array.isArray(source.shifts) && Array.isArray(source.entries)) source.shifts = source.entries;
+    const normalized = Core.normalizeState(source);
+    // This release intentionally locks future shifts to Bobby's 5/10/10 plan.
+    normalized.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
+    return normalized;
   }
+
+  let state = loadState();
+  const ui = {
+    route: initialRoute(),
+    moneyPeriod: "day",
+    moneyAnchor: new Date(),
+    shiftFilter: "30",
+    shiftSearch: "",
+    calendarCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    calendarSelected: Core.localISODate(),
+    modalMeta: null,
+    modalReturnFocus: null,
+    pendingImport: null,
+    pendingImportName: "",
+    toastCounter: 0
+  };
 
   function serializeState() {
     return {
-      version: Core.APP_VERSION,
-      exportedAt: new Date().toISOString(),
+      schemaVersion: Core.APP_VERSION,
+      appVersion: Core.APP_VERSION,
       shifts: state.shifts,
       maintenance: state.maintenance,
       goals: state.goals,
@@ -408,58 +260,24 @@
     };
   }
 
-  function saveState(options) {
-    const opts = options || {};
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
-      localStorage.setItem(LEGACY_KEYS.shifts, JSON.stringify(state.shifts.map((shift) => Core.toLegacyShift(shift, state.settings))));
-      localStorage.setItem(LEGACY_KEYS.maintenance, JSON.stringify(state.maintenance));
-      localStorage.setItem(LEGACY_KEYS.goals, JSON.stringify(state.goals.map((goal) => ({
-        id: goal.id,
-        name: goal.name,
-        amount: goal.target,
-        saved: Core.goalSaved(goal),
-        targetDate: goal.targetDate,
-        note: goal.note,
-        archived: goal.archived,
-        contributions: goal.contributions
-      }))));
-      localStorage.setItem("investmentPct", String(state.settings.allocations.investment));
-      localStorage.setItem("savingsPct", String(state.settings.allocations.savings));
-      localStorage.setItem("vehiclePct", String(state.settings.allocations.vehicle));
-      localStorage.setItem("monthlyNetGoal", String(state.settings.monthlyNetGoal || ""));
-      localStorage.setItem("dashboardTheme", state.settings.theme);
-
-      if (state.activeShift) {
-        localStorage.setItem(LEGACY_KEYS.clockIn, state.activeShift.startTime || "");
-        localStorage.removeItem(LEGACY_KEYS.clockOut);
-        localStorage.setItem(LEGACY_KEYS.activeDraft, JSON.stringify({
-          date: state.activeShift.date,
-          platform: state.activeShift.platform,
-          manualClockIn: state.activeShift.startTime,
-          manualClockOut: "",
-          gross: state.activeShift.gross,
-          gas: state.activeShift.fuel,
-          startMiles: state.activeShift.startOdometer,
-          endMiles: state.activeShift.endOdometer,
-          notes: state.activeShift.notes,
-          clockInTime: state.activeShift.startTime,
-          savedAt: new Date().toISOString()
-        }));
-      } else {
-        localStorage.removeItem(LEGACY_KEYS.clockIn);
-        localStorage.removeItem(LEGACY_KEYS.clockOut);
-        localStorage.removeItem(LEGACY_KEYS.activeDraft);
-      }
-      return true;
-    } catch (error) {
-      if (!opts.silent) showToast("Your browser could not save the latest change.", "error");
-      return false;
+  function saveState() {
+    const snapshot = JSON.stringify(serializeState());
+    const persisted = safeStorageSet(Core.STORAGE_KEY, snapshot);
+    safeStorageSet("uberEntries", JSON.stringify(state.shifts));
+    safeStorageSet("uberMaintenance", JSON.stringify(state.maintenance));
+    safeStorageSet("uberSpendingGoals", JSON.stringify(state.goals));
+    if (state.activeShift) {
+      safeStorageSet("activeShiftDraft", JSON.stringify(state.activeShift));
+      safeStorageSet("clockInTime", state.activeShift.startedAt || "");
+    } else {
+      safeStorageRemove("activeShiftDraft");
+      safeStorageRemove("clockInTime");
     }
+    return persisted;
   }
 
   function initialRoute() {
-    const hash = window.location.hash.replace("#", "");
+    const hash = window.location.hash.replace(/^#/, "");
     if (ROUTES.includes(hash)) return hash;
     const stored = state && state.settings && state.settings.lastRoute;
     return ROUTES.includes(stored) ? stored : "overview";
@@ -467,34 +285,41 @@
 
   function applyTheme() {
     document.documentElement.dataset.theme = state.settings.theme;
-    const themeIcon = state.settings.theme === "dark" ? "sun" : "moon";
-    dom.themeToggle.innerHTML = icon(themeIcon);
+    dom.themeToggle.innerHTML = icon(state.settings.theme === "dark" ? "sun" : "moon");
     dom.themeToggle.setAttribute("aria-label", state.settings.theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) themeMeta.setAttribute("content", state.settings.theme === "dark" ? "#080a0b" : "#f3f6f4");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", state.settings.theme === "dark" ? "#07110c" : "#eff4f0");
+  }
+
+  function setRoute(route, options) {
+    const opts = options || {};
+    const next = ROUTES.includes(route) ? route : "overview";
+    ui.route = next;
+    state.settings.lastRoute = next;
+    if (window.location.hash !== `#${next}`) history.replaceState(null, "", `#${next}`);
+    saveState({ silent: true });
+    closeModal(false);
+    renderApp();
+    if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (opts.focus !== false) dom.main.focus({ preventScroll: true });
   }
 
   function renderNavigation() {
     let section = "";
     dom.sidebarNav.innerHTML = NAV_ITEMS.map((item) => {
-      const sectionMarkup = item.section && item.section !== section
-        ? `<div class="nav-section-label">${escapeHtml(item.section)}</div>`
-        : "";
+      const heading = item.section && item.section !== section ? `<div class="nav-section">${escapeHtml(item.section)}</div>` : "";
       if (item.section) section = item.section;
       const active = ui.route === item.route;
-      const liveBadge = item.route === "shifts" && state.activeShift ? '<span class="nav-badge">LIVE</span>' : "";
-      return `${sectionMarkup}<button class="nav-item${active ? " is-active" : ""}" type="button" data-route="${item.route}">
-        ${icon(item.icon)}<span>${escapeHtml(item.label)}</span>${liveBadge}
-      </button>`;
+      let badge = "";
+      if (item.route === "shifts" && state.activeShift) badge = `<span class="nav-badge${state.activeShift.pauseStartedAt ? " is-paused" : ""}">${state.activeShift.pauseStartedAt ? "PAUSED" : "LIVE"}</span>`;
+      return `${heading}<button class="nav-item${active ? " is-active" : ""}" type="button" data-route="${item.route}">${icon(item.icon)}<span>${escapeHtml(item.label)}</span>${badge}</button>`;
     }).join("");
 
-    const routeIsMore = ["vehicle", "goals", "settings"].includes(ui.route);
+    const moreActive = ["calendar", "goals", "settings"].includes(ui.route);
     dom.mobileNav.innerHTML = MOBILE_NAV_ITEMS.map((item) => {
-      const active = item.route === "more" ? routeIsMore : ui.route === item.route;
+      const active = item.route === "more" ? moreActive : ui.route === item.route;
       const attrs = item.route === "more" ? 'data-action="open-more"' : `data-route="${item.route}"`;
-      return `<button class="mobile-nav-item${active ? " is-active" : ""}" type="button" ${attrs}>
-        ${icon(item.icon)}<span>${escapeHtml(item.label)}</span>
-      </button>`;
+      return `<button class="mobile-nav-item${active ? " is-active" : ""}" type="button" ${attrs}>${icon(item.icon)}<span>${escapeHtml(item.label)}</span></button>`;
     }).join("");
   }
 
@@ -504,975 +329,306 @@
     dom.pageTitle.textContent = meta.title;
     dom.pageSubtitle.textContent = meta.subtitle;
     document.title = `${meta.title} · Driver Command`;
-
-    if (dom.topbarAddButton) {
-      const routeAction = ui.route === "vehicle"
-        ? { action: "open-maintenance", label: "Log service" }
-        : ui.route === "goals"
-          ? { action: "open-goal", label: "New goal" }
-          : { action: "open-add-shift", label: "Add shift" };
-      dom.topbarAddButton.dataset.action = routeAction.action;
-      dom.topbarAddButton.setAttribute("aria-label", routeAction.label);
-      dom.topbarAddButton.title = routeAction.label;
-      const label = dom.topbarAddButton.querySelector("span:last-child");
-      if (label) label.textContent = routeAction.label;
+    if (state.activeShift) {
+      dom.topbarShiftIcon.innerHTML = icon("stop", "icon icon-sm");
+      dom.topbarShiftLabel.textContent = "End shift";
+    } else {
+      dom.topbarShiftIcon.innerHTML = icon("play", "icon icon-sm");
+      dom.topbarShiftLabel.textContent = "Start shift";
     }
-  }
-
-  function setRoute(route, options) {
-    if (!ROUTES.includes(route)) route = "overview";
-    const opts = options || {};
-    ui.route = route;
-    state.settings.lastRoute = route;
-    if (window.location.hash !== `#${route}`) history.replaceState(null, "", `#${route}`);
-    saveState({ silent: true });
-    closeModal(false);
-    renderApp();
-    if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: "smooth" });
-    if (opts.focus !== false) dom.main.focus({ preventScroll: true });
-  }
-
-  function renderApp() {
-    applyTheme();
-    renderNavigation();
-    renderHeader();
-    renderCurrentRoute();
-    updateConnectionStatus();
-    updateLiveElements();
-  }
-
-  function renderCurrentRoute() {
-    switch (ui.route) {
-      case "shifts":
-        dom.main.innerHTML = renderShiftsPage();
-        updateShiftResults();
-        break;
-      case "analytics":
-        dom.main.innerHTML = renderAnalyticsPage();
-        break;
-      case "calendar":
-        dom.main.innerHTML = renderCalendarPage();
-        break;
-      case "vehicle":
-        dom.main.innerHTML = renderVehiclePage();
-        updateVehicleResults();
-        break;
-      case "goals":
-        dom.main.innerHTML = renderGoalsPage();
-        break;
-      case "settings":
-        dom.main.innerHTML = renderSettingsPage();
-        updateAllocationTotal();
-        break;
-      case "overview":
-      default:
-        dom.main.innerHTML = renderOverviewPage();
-        break;
-    }
-  }
-
-  function updateConnectionStatus() {
-    if (!dom.connectionPill) return;
-    const online = navigator.onLine;
-    dom.connectionPill.classList.toggle("is-offline", !online);
-    dom.connectionPill.innerHTML = `<span></span><b>${online ? "Local" : "Offline"}</b>`;
-    dom.connectionPill.title = online
-      ? "Data is stored locally; internet connection available"
-      : "Offline mode; your local dashboard remains available";
   }
 
   function showToast(message, type, duration) {
-    if (!dom.toastRoot) return;
     const id = `toast_${++ui.toastCounter}`;
     const kind = type || "info";
-    const toastIcon = kind === "success" ? "check" : kind === "error" || kind === "warning" ? "warning" : "info";
-    const element = document.createElement("div");
-    element.className = `toast is-${kind}`;
-    element.id = id;
-    element.innerHTML = `<div class="toast-icon">${icon(toastIcon, "icon icon-sm")}</div>
-      <div class="toast-message">${escapeHtml(message)}</div>
-      <button class="toast-close" type="button" data-action="close-toast" data-toast-id="${id}" aria-label="Dismiss notification">${icon("close", "icon icon-sm")}</button>`;
-    dom.toastRoot.appendChild(element);
-    window.setTimeout(() => closeToast(id), duration || 3600);
+    const toastIcon = kind === "error" ? "warning" : kind === "warning" ? "warning" : "check";
+    const node = document.createElement("div");
+    node.className = `toast${kind === "error" ? " is-error" : kind === "warning" ? " is-warning" : ""}`;
+    node.dataset.toastId = id;
+    node.innerHTML = `<span class="toast-icon">${icon(toastIcon, "icon icon-sm")}</span><p>${escapeHtml(message)}</p><button type="button" data-action="dismiss-toast" data-id="${id}" aria-label="Dismiss">${icon("close", "icon icon-sm")}</button>`;
+    dom.toastRoot.appendChild(node);
+    window.setTimeout(() => {
+      const current = dom.toastRoot.querySelector(`[data-toast-id="${id}"]`);
+      if (current) current.remove();
+    }, duration || 4300);
   }
 
-  function closeToast(id) {
-    const element = document.getElementById(id);
-    if (!element) return;
-    element.style.opacity = "0";
-    element.style.transform = "translateY(8px)";
-    window.setTimeout(() => element.remove(), 170);
-  }
-
-  function periodList(period, anchor) {
-    if (period === "all") return state.shifts.slice();
-    const range = Core.rangeForPeriod(period, anchor || new Date(), state.settings.weekStartsOn);
-    return Core.filterShiftsByDate(state.shifts, range.start, range.end);
-  }
-
-  function previousPeriodList(period, anchor) {
-    if (period === "all") return [];
-    const range = Core.previousRange(period, anchor || new Date(), state.settings.weekStartsOn);
-    return Core.filterShiftsByDate(state.shifts, range.start, range.end);
-  }
-
-  function trendBadge(current, previous, suffix) {
-    const percent = Core.comparePercent(current, previous);
-    if (percent == null) {
-      return `<span class="trend-badge">${icon("arrowUp", "icon icon-sm")} New</span>`;
-    }
-    if (Math.abs(percent) < 0.05) {
-      return '<span class="trend-badge is-neutral">No change</span>';
-    }
-    const down = percent < 0;
-    return `<span class="trend-badge${down ? " is-down" : ""}>${icon(down ? "arrowDown" : "arrowUp", "icon icon-sm")}${Math.abs(percent).toFixed(1)}%${suffix || ""}</span>`;
-  }
-
-  function metricCard(config) {
-    return `<article class="metric-card">
-      <div class="metric-head">
-        <div class="metric-icon ${config.iconClass || ""}">${icon(config.icon || "trend", "icon icon-sm")}</div>
-        ${config.badge || ""}
-      </div>
-      <div class="metric-label">${escapeHtml(config.label)}</div>
-      <strong class="metric-value">${config.value}</strong>
-      <div class="metric-meta">${config.meta || "&nbsp;"}</div>
-    </article>`;
-  }
-
-  function summaryStrip(summary) {
-    return `<div class="summary-strip">
-      <div class="summary-stat"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div>
-      <div class="summary-stat"><span>Hours</span><strong>${formatNumber(summary.hours, 1)}</strong></div>
-      <div class="summary-stat"><span>Miles</span><strong>${formatNumber(summary.miles, 1)}</strong></div>
-      <div class="summary-stat"><span>Hourly</span><strong>${formatMoney(summary.hourly)}/hr</strong></div>
-      <div class="summary-stat"><span>Shifts</span><strong>${formatNumber(summary.count)}</strong></div>
-    </div>`;
-  }
-
-  function emptyState(config) {
-    return `<div class="empty-state">
-      <div>
-        <div class="empty-state-icon">${icon(config.icon || "spark", "icon icon-lg")}</div>
-        <h3>${escapeHtml(config.title)}</h3>
-        <p>${escapeHtml(config.body)}</p>
-        ${config.action ? `<button class="button button-primary" type="button" data-action="${config.action}">${icon(config.actionIcon || "plus", "icon icon-sm")}${escapeHtml(config.actionLabel || "Get started")}</button>` : ""}
-      </div>
-    </div>`;
-  }
-
-  function renderAreaChart(series, options) {
+  function openModal(options) {
     const opts = options || {};
-    if (!series || !series.length) return emptyState({ icon: "analytics", title: "No chart data yet", body: "Save a shift to start building your performance history." });
-    const width = 760;
-    const height = opts.height || 240;
-    const padding = { top: 24, right: 18, bottom: 38, left: 46 };
-    const values = series.map((item) => Core.safeNumber(item.value));
-    const maxValue = Math.max(1, ...values);
-    const minValue = Math.min(0, ...values);
-    const range = Math.max(1, maxValue - minValue);
-    const xStep = series.length > 1 ? (width - padding.left - padding.right) / (series.length - 1) : 0;
-    const yFor = (value) => padding.top + ((maxValue - value) / range) * (height - padding.top - padding.bottom);
-    const points = series.map((item, index) => ({
-      x: padding.left + index * xStep,
-      y: yFor(Core.safeNumber(item.value)),
-      item
-    }));
-    const line = points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
-    const zeroY = yFor(0);
-    const areaPath = `M ${points[0].x} ${zeroY} L ${points.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${points[points.length - 1].x} ${zeroY} Z`;
-    const gradientId = `areaGradient_${Math.random().toString(36).slice(2, 9)}`;
-    const gridValues = [maxValue, minValue + range / 2, minValue];
-    const labelEvery = Math.max(1, Math.ceil(series.length / 8));
-
-    return `<div class="chart-shell">
-      <svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttribute(opts.label || "Net earnings trend")}">
-        <defs>
-          <linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="currentColor" stop-opacity=".28"/>
-            <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        ${gridValues.map((value) => {
-          const y = yFor(value);
-          return `<line class="chart-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"/>
-            <text class="chart-axis-label" x="${padding.left - 8}" y="${y + 4}" text-anchor="end">${escapeHtml(formatMoney(value, { compact: true, noCents: true }))}</text>`;
-        }).join("")}
-        <path d="${areaPath}" fill="url(#${gradientId})"/>
-        <polyline class="chart-line" points="${line}"/>
-        ${points.map((point, index) => `<g>
-          <circle class="chart-dot" cx="${point.x}" cy="${point.y}" r="4"/>
-          ${(index % labelEvery === 0 || index === points.length - 1) ? `<text class="chart-axis-label" x="${point.x}" y="${height - 12}" text-anchor="middle">${escapeHtml(point.item.label)}</text>` : ""}
-        </g>`).join("")}
-      </svg>
+    ui.modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    ui.modalMeta = opts.meta || null;
+    dom.modalRoot.hidden = false;
+    document.body.style.overflow = "hidden";
+    dom.modalRoot.innerHTML = `<div class="modal-card ${escapeAttribute(opts.className || "")}" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header"><div><h2 id="modalTitle">${escapeHtml(opts.title || "")}</h2>${opts.subtitle ? `<p>${escapeHtml(opts.subtitle)}</p>` : ""}</div><button class="icon-button" type="button" data-action="close-modal" aria-label="Close">${icon("close", "icon icon-sm")}</button></div>
+      <div class="modal-body">${opts.body || ""}</div>
+      ${opts.footer === false ? "" : `<div class="modal-footer">${opts.footer || '<button class="button button-primary" type="button" data-action="close-modal">Done</button>'}</div>`}
     </div>`;
+    window.setTimeout(() => {
+      const focusTarget = dom.modalRoot.querySelector("[autofocus], input:not([type=hidden]), select, textarea, button");
+      if (focusTarget instanceof HTMLElement) focusTarget.focus({ preventScroll: true });
+    }, 0);
   }
 
-  function renderBarChart(series, options) {
+  function closeModal(returnFocus) {
+    if (dom.modalRoot.hidden) return;
+    dom.modalRoot.hidden = true;
+    dom.modalRoot.innerHTML = "";
+    document.body.style.overflow = "";
+    ui.modalMeta = null;
+    if (returnFocus !== false && ui.modalReturnFocus instanceof HTMLElement && document.contains(ui.modalReturnFocus)) ui.modalReturnFocus.focus({ preventScroll: true });
+    ui.modalReturnFocus = null;
+  }
+
+  function emptyState(options) {
     const opts = options || {};
-    if (!series || !series.length) return emptyState({ icon: "analytics", title: "No comparison data", body: "More shifts will reveal your strongest days and platforms." });
-    const width = 760;
-    const height = opts.height || 245;
-    const padding = { top: 28, right: 18, bottom: 42, left: 48 };
-    const values = series.map((item) => Core.safeNumber(item.value));
-    const maxValue = Math.max(0, ...values);
-    const minValue = Math.min(0, ...values);
-    const range = Math.max(1, maxValue - minValue);
-    const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
-    const slot = chartWidth / series.length;
-    const barWidth = Math.min(46, slot * 0.58);
-    const yFor = (value) => padding.top + ((maxValue - value) / range) * chartHeight;
-    const zeroY = yFor(0);
-    const gridValues = Array.from(new Set([maxValue, 0, minValue]));
-
-    return `<div class="chart-shell">
-      <svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttribute(opts.label || "Performance bar chart")}">
-        ${gridValues.map((value) => {
-          const y = yFor(value);
-          return `<line class="chart-grid-line${value === 0 ? " is-zero" : ""}" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"/>
-            <text class="chart-axis-label" x="${padding.left - 8}" y="${y + 4}" text-anchor="end">${escapeHtml(formatMoney(value, { compact: true, noCents: true }))}</text>`;
-        }).join("")}
-        ${series.map((item, index) => {
-          const value = Core.safeNumber(item.value);
-          const valueY = yFor(value);
-          const barHeight = Math.abs(valueY - zeroY);
-          const x = padding.left + index * slot + (slot - barWidth) / 2;
-          const y = Math.min(valueY, zeroY);
-          const negative = value < 0;
-          const labelY = negative ? y + barHeight - 8 : y + 16;
-          return `<rect class="chart-bar${item.secondary ? " is-secondary" : ""}${negative ? " is-negative" : ""}" x="${x}" y="${y}" width="${barWidth}" height="${Math.max(1, barHeight)}" rx="7"/>
-            ${barHeight > 28 ? `<text class="chart-value-label" x="${x + barWidth / 2}" y="${labelY}" text-anchor="middle">${escapeHtml(formatMoney(value, { compact: true, noCents: true }))}</text>` : ""}
-            <text class="chart-axis-label" x="${x + barWidth / 2}" y="${height - 14}" text-anchor="middle">${escapeHtml(item.label)}</text>`;
-        }).join("")}
-      </svg>
-    </div>`;
+    return `<div class="empty-state panel"><div class="empty-state-inner"><span class="empty-icon">${icon(opts.icon || "receipt", "icon icon-lg")}</span><h3>${escapeHtml(opts.title || "Nothing here yet")}</h3><p>${escapeHtml(opts.body || "Your information will appear here.")}</p>${opts.action ? `<button class="button button-primary" type="button" data-action="${escapeAttribute(opts.action)}">${opts.actionIcon ? icon(opts.actionIcon, "icon icon-sm") : ""}${escapeHtml(opts.actionLabel || "Add")}</button>` : ""}</div></div>`;
   }
 
-  function buildDailySeries(days, endDate) {
-    const end = Core.startOfDay(endDate || new Date());
-    const start = new Date(end);
-    start.setDate(start.getDate() - (days - 1));
-    const grouped = Core.groupShiftsByDate(state.shifts, state.settings);
-    const output = [];
-    for (let index = 0; index < days; index += 1) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-      const iso = Core.localISODate(date);
-      const summary = Core.summarizeShifts(grouped[iso] || [], state.settings);
-      output.push({
-        key: iso,
-        label: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date),
-        value: summary.net
-      });
+  function metricCard(options) {
+    const opts = options || {};
+    return `<article class="metric-card"><div class="metric-head"><span class="metric-icon ${escapeAttribute(opts.iconClass || "")}">${icon(opts.icon || "dollar", "icon icon-sm")}</span>${opts.badge || ""}</div><span class="metric-label">${escapeHtml(opts.label || "")}</span><strong class="metric-value">${opts.value || "—"}</strong><div class="metric-meta">${opts.meta || ""}</div></article>`;
+  }
+
+  function sortedShifts(list) {
+    return (Array.isArray(list) ? list : state.shifts).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.startTime || "").localeCompare(String(a.startTime || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  }
+
+  function findShift(id) {
+    return state.shifts.find((item) => item.id === id) || null;
+  }
+
+  function todayShifts() {
+    const today = Core.localISODate();
+    return state.shifts.filter((item) => item.date === today);
+  }
+
+  function renderActiveHero() {
+    const active = state.activeShift;
+    if (!active) {
+      const today = Core.summarizeShifts(todayShifts(), state.settings);
+      return `<section class="shift-hero panel"><div class="hero-content">
+        <div class="hero-top"><div><span class="hero-kicker">Shift control</span><span class="pill">Off duty</span></div><span class="metric-icon">${icon("car", "icon icon-lg")}</span></div>
+        <div class="hero-main"><h2>Ready when you are.</h2><p>Start with your current mileage. Driver Command will handle the timer, pauses, earnings, and your end-of-shift money directions.</p></div>
+        <div class="hero-actions"><button class="button button-primary" type="button" data-action="start-shift">${icon("play", "icon icon-sm")}Start shift</button><button class="button button-ghost" type="button" data-action="add-shift">${icon("plus", "icon icon-sm")}Add past shift</button></div>
+        <div class="hero-stats"><div class="hero-stat"><span>Today gross</span><strong>${formatMoney(today.gross)}</strong></div><div class="hero-stat"><span>Today net</span><strong>${formatMoney(today.net)}</strong></div><div class="hero-stat"><span>Move out</span><strong>${formatMoney(today.takeOut)}</strong></div></div>
+      </div></section>`;
     }
-    return output;
+
+    const paused = Boolean(active.pauseStartedAt);
+    const now = new Date();
+    const workMs = Core.activeDurationMs(active, now);
+    const pauseMs = Core.activePausedMs(active, now);
+    return `<section class="shift-hero panel"><div class="hero-content">
+      <div class="hero-top"><div><span class="hero-kicker">${escapeHtml(active.platform)} · ${escapeHtml(formatDate(active.date, { weekday: "short", month: "short", day: "numeric" }))}</span><span class="pill ${paused ? "pill-warning" : "pill-success"}">${paused ? "Paused" : "Live shift"}</span></div><span class="metric-icon ${paused ? "is-amber" : ""}">${icon(paused ? "pause" : "clock", "icon icon-lg")}</span></div>
+      <div class="hero-main"><h2 data-live-work>${formatDuration(workMs, true)}</h2><p>${paused ? "Work time is frozen. Resume when you are ready to drive again." : "Active driving time. Lunches and errands will not count after you pause."}</p></div>
+      <div class="hero-actions">
+        <button class="button ${paused ? "button-primary" : "button-warning"}" type="button" data-action="${paused ? "resume-shift" : "pause-shift"}">${icon(paused ? "resume" : "pause", "icon icon-sm")}${paused ? "Resume shift" : "Pause shift"}</button>
+        <button class="button button-secondary" type="button" data-action="end-shift">${icon("stop", "icon icon-sm")}End shift</button>
+        <button class="button button-ghost" type="button" data-action="cancel-active-shift">${icon("trash", "icon icon-sm")}Cancel shift</button>
+      </div>
+      <div class="hero-stats"><div class="hero-stat"><span>Started</span><strong>${formatTime(active.startTime)}</strong></div><div class="hero-stat"><span>Start mileage</span><strong>${formatNumber(active.startOdometer, 1)} mi</strong></div><div class="hero-stat"><span>Paused total</span><strong data-live-paused>${formatDuration(pauseMs, false)}</strong></div></div>
+    </div></section>`;
   }
 
-  function bestWeekdayInsight(list) {
-    const rows = Core.groupNetByWeekday(list || state.shifts, state.settings).filter((item) => item.count > 0);
-    if (!rows.length) return null;
-    rows.sort((a, b) => b.averageNet - a.averageNet);
-    const best = rows[0];
-    const day = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(2026, 0, 4 + best.day));
-    return { ...best, label: day };
+  function renderTodayPlan() {
+    const list = todayShifts();
+    const summary = Core.summarizeShifts(list, state.settings);
+    return `<section class="today-plan panel">
+      <div class="panel-header"><div><h2 class="panel-title">Today’s money move</h2><p class="panel-subtitle">Gas plus your 25% plan</p></div><button class="button button-ghost button-small" type="button" data-action="open-today-money">Details${icon("chevronRight", "icon icon-sm")}</button></div>
+      <div class="plan-total"><span>Take out / move</span><strong>${formatMoney(summary.takeOut)}</strong><p>${list.length ? `${formatMoney(summary.fuel)} gas + ${formatMoney(summary.allocated)} allocated` : "Finish a shift and your directions will appear here."}</p></div>
+      <div class="mini-plan-grid"><div class="mini-plan"><span>Vehicle 5%</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="mini-plan"><span>Stocks 10%</span><strong>${formatMoney(summary.stock)}</strong></div><div class="mini-plan"><span>Crypto 10%</span><strong>${formatMoney(summary.crypto)}</strong></div><div class="mini-plan"><span>Keep available</span><strong>${formatMoney(summary.spendable)}</strong></div></div>
+    </section>`;
   }
 
-  function vehicleFundSummary() {
-    const all = Core.summarizeShifts(state.shifts, state.settings);
-    const spent = state.maintenance.reduce((total, item) => total + Core.safeNumber(item.amount), 0);
-    return {
-      contributions: all.vehicleFund,
-      spent: Core.round(spent, 2),
-      balance: Core.round(all.vehicleFund - spent, 2)
-    };
+  function renderRecentShifts(limit) {
+    const list = sortedShifts().slice(0, limit || 5);
+    if (!list.length) return `<div class="empty-state" style="min-height:150px"><div class="empty-state-inner"><span class="empty-icon">${icon("receipt", "icon icon-lg")}</span><h3>No saved shifts yet</h3><p>Your completed shifts will show here.</p></div></div>`;
+    return `<div class="recent-list">${list.map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return `<div class="recent-row"><div class="recent-main"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))} · ${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)} · ${formatNumber(shift.miles, 1)} mi · ${formatNumber(shift.hours, 1)} hr</span></div><div class="recent-money"><strong>${formatMoney(shift.net)}</strong><span>${formatMoney(shift.takeOut)} move</span></div><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}" aria-label="View money plan">${icon("wallet", "icon icon-sm")}</button></div>`;
+    }).join("")}</div>`;
   }
 
   function renderOverviewPage() {
-    const currentWeek = periodList("week");
-    const previousWeek = previousPeriodList("week");
-    const week = Core.summarizeShifts(currentWeek, state.settings);
-    const prev = Core.summarizeShifts(previousWeek, state.settings);
-    const month = Core.summarizeShifts(periodList("month"), state.settings);
-    const all = Core.summarizeShifts(state.shifts, state.settings);
-    const projection = Core.monthlyProjection(state.shifts, state.settings, new Date());
-    const bestDay = bestWeekdayInsight(state.shifts);
-    const vehicle = vehicleFundSummary();
-    const recent = sortedShifts().slice(0, 4);
-    const weeklyGoal = Core.safeNumber(state.settings.weeklyNetGoal);
-    const weeklyProgress = weeklyGoal > 0 ? Math.min(100, Math.max(0, week.net / weeklyGoal * 100)) : 0;
-    const weeklyRemaining = Math.max(0, weeklyGoal - week.net);
-    const dailySeries = buildDailySeries(7);
-    const active = state.activeShift;
-    const activeMetrics = active ? Core.calculateShift({
-      ...active,
-      endTime: currentTimeValue(),
-      manualHours: activeDurationHours()
-    }, state.settings) : null;
-    const lastShift = recent.length ? Core.calculateShift(recent[0], state.settings) : null;
-    const setAside = week.investment + week.savings + week.vehicleFund;
-    const goalCopy = weeklyGoal > 0
-      ? (weeklyProgress >= 100
-        ? `${formatMoney(Math.max(0, week.net - weeklyGoal), { noCents: true })} above goal`
-        : `${formatMoney(weeklyRemaining, { noCents: true })} left of ${formatMoney(weeklyGoal, { noCents: true })}`)
-      : "Set a weekly target in Settings";
-
-    const commandCard = active ? `<section class="command-card is-live">
-      <div class="command-card-top">
-        <div class="command-status"><span class="live-dot is-live"></span><span>On duty · ${escapeHtml(active.platform)}</span></div>
-        <span class="command-date">Started ${escapeHtml(formatTime(active.startTime))}</span>
-      </div>
-      <div class="command-live-main">
-        <div><span class="command-overline">Live duration</span><strong class="command-timer" data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>
-        <div class="command-live-net"><span>Live net</span><strong>${formatMoney(activeMetrics.net)}</strong></div>
-      </div>
-      <div class="command-actions">
-        <button class="button button-primary" type="button" data-action="end-active-shift">${icon("stop", "icon icon-sm")}End shift</button>
-        <button class="button button-secondary" type="button" data-action="update-active-shift">${icon("edit", "icon icon-sm")}Update</button>
-      </div>
-      <div class="command-kpis" aria-label="Live shift summary">
-        <div><span>Gross</span><strong>${formatMoney(activeMetrics.gross)}</strong></div>
-        <div><span>Start mileage</span><strong>${formatNumber(active.startOdometer, 0)}</strong></div>
-        <div><span>Hourly</span><strong>${formatMoney(activeMetrics.hourly)}/hr</strong></div>
-      </div>
-    </section>` : `<section class="command-card">
-      <div class="command-card-top">
-        <div class="command-status"><span class="live-dot"></span><span>Off duty</span></div>
-        <span class="command-date">${escapeHtml(formatDate(Core.localISODate(), { weekday: "short", month: "short", day: "numeric" }))}</span>
-      </div>
-      <div class="command-week-main">
-        <div class="command-earnings">
-          <span class="command-overline">Net this week</span>
-          <strong>${formatMoney(week.net, { noCents: true })}</strong>
-          <span>${escapeHtml(goalCopy)}</span>
-        </div>
-        <div class="goal-dial" style="--goal-progress:${weeklyProgress.toFixed(2)}%" aria-label="${weeklyProgress.toFixed(0)} percent of weekly goal">
-          <div><strong>${weeklyGoal > 0 ? `${weeklyProgress.toFixed(0)}%` : "—"}</strong><span>${weeklyGoal > 0 ? "goal" : "target"}</span></div>
-        </div>
-      </div>
-      <div class="command-goal-line"><div class="progress"><div class="progress-fill" style="width:${weeklyProgress.toFixed(2)}%"></div></div><span>${week.count} shift${week.count === 1 ? "" : "s"}</span></div>
-      <div class="command-actions">
-        <button class="button button-primary" type="button" data-action="start-shift">${icon("play", "icon icon-sm")}Start shift</button>
-        <button class="button button-secondary" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add past</button>
-      </div>
-      <div class="command-kpis" aria-label="Weekly efficiency">
-        <div><span>Hourly</span><strong>${formatMoney(week.hourly)}/hr</strong></div>
-        <div><span>Hours</span><strong>${formatNumber(week.hours, 1)}</strong></div>
-        <div><span>Miles</span><strong>${formatNumber(week.miles, 0)}</strong></div>
-      </div>
-    </section>`;
-
-    const glance = `<section class="home-glance-strip" aria-label="At a glance">
-      <div><span>This month</span><strong>${formatMoney(month.net, { noCents: true, compact: true })}</strong></div>
-      <div><span>Spendable</span><strong>${formatMoney(week.spendable, { noCents: true, compact: true })}</strong></div>
-      <div><span>Set aside</span><strong>${formatMoney(setAside, { noCents: true, compact: true })}</strong></div>
-      <div><span>Last shift</span><strong>${lastShift ? formatMoney(lastShift.net, { noCents: true, compact: true }) : "—"}</strong></div>
-    </section>`;
-
-    const recentMarkup = recent.length ? `<div class="home-recent-list">${recent.map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      return `<button class="home-recent-row" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Open ${escapeAttribute(formatDate(shift.date))} shift">
-        <span class="home-recent-date"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))}</strong><small>${escapeHtml(shift.platform)} · ${formatNumber(shift.miles, 0)} mi</small></span>
-        <span class="home-recent-value"><strong class="${shift.net < 0 ? "text-red" : ""}">${formatMoney(shift.net)}</strong><small>${formatMoney(shift.hourly)}/hr</small></span>
-        ${icon("chevronRight", "icon icon-sm")}
-      </button>`;
-    }).join("")}</div>` : `<div class="home-empty-row"><span>${icon("shifts", "icon icon-sm")}</span><div><strong>No completed shifts yet</strong><small>Your first saved shift will appear here.</small></div><button class="button button-primary button-small" type="button" data-action="open-add-shift">Add shift</button></div>`;
-
-    const insightMarkup = [
-      `<article class="insight-card"><div class="insight-card-head"><div class="insight-card-icon">${icon("trend", "icon icon-sm")}</div><div><strong>Month projection</strong><p>${projection.current > 0 ? `${formatMoney(projection.projected, { noCents: true })} projected from ${formatMoney(projection.current, { noCents: true })} earned so far.` : "Save shifts this month to build a projection."}</p></div></div></article>`,
-      `<article class="insight-card"><div class="insight-card-head"><div class="insight-card-icon">${icon("spark", "icon icon-sm")}</div><div><strong>Best driving day</strong><p>${bestDay ? `${escapeHtml(bestDay.label)} averages ${formatMoney(bestDay.averageNet)} net across ${bestDay.count} shift${bestDay.count === 1 ? "" : "s"}.` : "More history will reveal your strongest weekday."}</p></div></div></article>`,
-      `<article class="insight-card"><div class="insight-card-head"><div class="insight-card-icon">${icon("vehicle", "icon icon-sm")}</div><div><strong>Vehicle fund</strong><p>${formatMoney(vehicle.balance)} remains after ${formatMoney(vehicle.spent)} in logged maintenance.</p></div></div></article>`
-    ].join("");
-
-    return `<div class="overview-stack focus-overview">
-      <div class="focus-overview-top">${commandCard}${glance}</div>
-      <section class="panel home-recent-panel">
-        <div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Tap a shift to review or edit it</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">View all${icon("chevronRight", "icon icon-sm")}</button></div>
-        ${recentMarkup}
+    const weekRange = Core.rangeForPeriod("week", new Date(), state.settings.weekStartsOn);
+    const weekList = Core.filterShiftsByDate(state.shifts, weekRange.start, weekRange.end);
+    const week = Core.summarizeShifts(weekList, state.settings);
+    const goal = Core.safeNumber(state.settings.weeklyNetGoal);
+    const goalPct = goal > 0 ? Math.min(100, Math.max(0, week.net / goal * 100)) : 0;
+    return `<div class="overview-stack">
+      <div class="overview-grid">${renderActiveHero()}${renderTodayPlan()}</div>
+      <section class="metric-strip" aria-label="This week">
+        ${metricCard({ icon: "dollar", label: "Week net", value: formatMoney(week.net), meta: `${formatMoney(week.gross)} gross · ${formatMoney(week.expenses)} expenses` })}
+        ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Net hourly", value: `${formatMoney(week.hourly)}/hr`, meta: `${formatNumber(week.hours, 1)} active hours` })}
+        ${metricCard({ icon: "wallet", iconClass: "is-violet", label: "Move out", value: formatMoney(week.takeOut), meta: `Gas + ${formatMoney(week.allocated)} plan` })}
+        ${metricCard({ icon: "target", iconClass: "is-amber", label: "Weekly goal", value: `${formatNumber(goalPct, 0)}%`, meta: goal ? `${formatMoney(Math.max(0, goal - week.net))} remaining` : "Set a goal in settings" })}
       </section>
-      <div class="home-desktop-extras">
-        <section class="chart-panel overview-chart-panel">
-          <div class="panel-header"><div><h2 class="panel-title">Last 7 days</h2><p class="panel-subtitle">Net earnings by day</p></div><div class="desktop-trend-badge">${trendBadge(week.net, prev.net)}</div></div>
-          ${renderAreaChart(dailySeries, { label: "Net earnings over the last seven days" })}
-        </section>
-        <aside class="insight-stack overview-insights">${insightMarkup}</aside>
-        <section class="panel home-lifetime-panel"><div class="panel-header"><div><h2 class="panel-title">Lifetime snapshot</h2><p class="panel-subtitle">All saved driving history</p></div></div><div class="home-lifetime-grid"><div><span>Net</span><strong>${formatMoney(all.net, { noCents: true })}</strong></div><div><span>Miles</span><strong>${formatNumber(all.miles, 0)}</strong></div><div><span>Hourly</span><strong>${formatMoney(all.hourly)}/hr</strong></div><div><span>Shifts</span><strong>${formatNumber(all.count)}</strong></div></div></section>
+      <div class="lower-grid">
+        <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Tap the wallet for exact directions</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">All shifts${icon("chevronRight", "icon icon-sm")}</button></div>${renderRecentShifts(5)}</section>
+        <aside class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Quick controls</h2><p class="panel-subtitle">The things you use most</p></div></div><div class="action-stack">
+          <button class="quick-action" type="button" data-action="${state.activeShift ? (state.activeShift.pauseStartedAt ? "resume-shift" : "pause-shift") : "start-shift"}"><span class="quick-action-icon">${icon(state.activeShift ? (state.activeShift.pauseStartedAt ? "resume" : "pause") : "play", "icon icon-sm")}</span><span><strong>${state.activeShift ? (state.activeShift.pauseStartedAt ? "Resume current shift" : "Pause current shift") : "Start a new shift"}</strong><span>${state.activeShift ? "Keep lunch and errands out of work time." : "Enter your starting mileage first."}</span></span>${icon("chevronRight", "icon icon-sm")}</button>
+          <button class="quick-action" type="button" data-action="open-today-money"><span class="quick-action-icon">${icon("wallet", "icon icon-sm")}</span><span><strong>Today’s money directions</strong><span>See gas, vehicle, stocks, crypto, and what stays available.</span></span>${icon("chevronRight", "icon icon-sm")}</button>
+          <button class="quick-action" type="button" data-action="export-backup"><span class="quick-action-icon">${icon("download", "icon icon-sm")}</span><span><strong>Back up the dashboard</strong><span>Download a complete local-data safety copy.</span></span>${icon("chevronRight", "icon icon-sm")}</button>
+        </div></aside>
       </div>
     </div>`;
   }
 
   function filteredShifts() {
-    const filters = ui.shiftFilters;
     let list = state.shifts.slice();
-    if (filters.range !== "all") {
-      const range = Core.rangeForPeriod(filters.range, new Date(), state.settings.weekStartsOn);
-      list = Core.filterShiftsByDate(list, range.start, range.end);
+    if (ui.shiftFilter !== "all") {
+      const days = Math.max(1, Core.safeNumber(ui.shiftFilter, 30));
+      const end = Core.endOfDay(new Date());
+      const start = Core.startOfDay(new Date());
+      start.setDate(start.getDate() - (days - 1));
+      list = Core.filterShiftsByDate(list, start, end);
     }
-    if (filters.platform !== "all") {
-      list = list.filter((shift) => shift.platform === filters.platform);
-    }
-
-    // Calculate each visible candidate once so metric sorts do not recalculate inside every comparison.
-    let prepared = list.map((raw) => ({ raw, shift: Core.calculateShift(raw, state.settings) }));
-    const query = filters.search.trim().toLowerCase();
+    const query = ui.shiftSearch.trim().toLowerCase();
     if (query) {
-      prepared = prepared.filter(({ shift }) => {
-        const haystack = [
-          shift.date,
-          formatDate(shift.date),
-          formatWeekday(shift.date),
-          shift.platform,
-          shift.notes,
-          shift.gross,
-          shift.net,
-          shift.miles,
-          shift.trips
-        ].join(" ").toLowerCase();
-        return haystack.includes(query);
+      list = list.filter((item) => {
+        const shift = Core.calculateShift(item, state.settings);
+        return [shift.date, shift.platform, shift.notes, shift.gross, shift.net, shift.miles].join(" ").toLowerCase().includes(query);
       });
     }
-    prepared.sort((a, b) => {
-      const left = a.shift;
-      const right = b.shift;
-      switch (filters.sort) {
-        case "dateAsc":
-          return `${left.date} ${left.startTime}`.localeCompare(`${right.date} ${right.startTime}`);
-        case "netDesc":
-          return right.net - left.net;
-        case "netAsc":
-          return left.net - right.net;
-        case "hourlyDesc":
-          return right.hourly - left.hourly;
-        case "milesDesc":
-          return right.miles - left.miles;
-        case "dateDesc":
-        default:
-          return `${right.date} ${right.startTime}`.localeCompare(`${left.date} ${left.startTime}`);
-      }
-    });
-    return prepared.map((item) => item.raw);
+    return sortedShifts(list);
+  }
+
+  function shiftTableRows(list) {
+    return list.map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return `<tr><td><span class="table-primary">${escapeHtml(formatDate(shift.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="table-secondary">${escapeHtml(shift.platform)} · ${formatTime(shift.startTime)}–${formatTime(shift.endTime)}</span></td><td class="table-number">${formatNumber(shift.hours, 1)} hr</td><td class="table-number">${formatNumber(shift.miles, 1)} mi</td><td class="table-number">${formatMoney(shift.gross)}</td><td class="table-number">${formatMoney(shift.expenses)}</td><td class="table-number">${formatMoney(shift.net)}</td><td class="table-number">${formatMoney(shift.takeOut)}</td><td class="table-number">${formatMoney(shift.spendable)}</td><td><div class="row-actions"><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}" aria-label="Money plan">${icon("wallet", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Edit">${icon("edit", "icon icon-sm")}</button><button class="icon-button is-danger" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete">${icon("trash", "icon icon-sm")}</button></div></td></tr>`;
+    }).join("");
+  }
+
+  function shiftMobileCards(list) {
+    return list.map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return `<article class="shift-card panel"><div class="shift-card-head"><div class="shift-card-title"><strong>${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))} · ${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)}${shift.pausedMs ? ` · ${formatDuration(shift.pausedMs, false)} paused` : ""}</span></div><strong class="shift-card-net">${formatMoney(shift.net)}</strong></div><div class="shift-card-grid"><div class="shift-mini"><span>Gross</span><strong>${formatMoney(shift.gross)}</strong></div><div class="shift-mini"><span>Miles</span><strong>${formatNumber(shift.miles, 1)}</strong></div><div class="shift-mini"><span>Move out</span><strong>${formatMoney(shift.takeOut)}</strong></div><div class="shift-mini"><span>Keep</span><strong>${formatMoney(shift.spendable)}</strong></div></div><div class="shift-card-actions"><button class="button button-primary button-small" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}Plan</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-danger button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></article>`;
+    }).join("");
   }
 
   function renderShiftsPage() {
-    const platforms = Array.from(new Set([...PLATFORM_OPTIONS, ...state.shifts.map((shift) => shift.platform)])).filter(Boolean);
-    const activeBanner = state.activeShift ? `<section class="shift-hero compact-live-banner is-active">
-      <div class="hero-topline">
-        <div class="hero-status"><span class="live-dot is-live"></span>Live shift · ${escapeHtml(state.activeShift.platform)}</div>
-        <span class="pill pill-success" data-live-duration>${formatDuration(activeDurationHours(), true)}</span>
-      </div>
-      <div class="compact-live-main"><div><span>Started mileage</span><strong>${formatNumber(state.activeShift.startOdometer, 0)} mi</strong></div><div><span>Gross so far</span><strong>${formatMoney(Core.calculateShift({ ...state.activeShift, endTime: currentTimeValue(), manualHours: activeDurationHours() }, state.settings).gross)}</strong></div></div>
-      <div class="hero-actions"><button class="button button-primary" type="button" data-action="end-active-shift">${icon("stop", "icon icon-sm")}End shift</button><button class="button button-secondary" type="button" data-action="update-active-shift">${icon("edit", "icon icon-sm")}Update</button></div>
-    </section>` : "";
-
-    return `<div class="page-stack shifts-page${ui.shiftManageMode ? " is-manage-mode" : ""}">
-      ${activeBanner}
-      <section class="toolbar ledger-toolbar" aria-label="Shift ledger controls">
-        <div class="toolbar-row">
-          <div><h2 class="panel-title">Completed shifts</h2><p class="panel-subtitle" id="shiftResultsMeta">Loading your ledger…</p></div>
-          <div class="bulk-actions">
-            <button class="button button-ghost button-small desktop-ledger-export" type="button" data-action="export-csv">${icon("download", "icon icon-sm")}Export</button>
-            <button class="button button-ghost button-small mobile-manage-toggle${ui.shiftManageMode ? " is-active" : ""}" type="button" data-action="toggle-shift-manage">${icon(ui.shiftManageMode ? "check" : "more", "icon icon-sm")}${ui.shiftManageMode ? "Done" : "Manage"}</button>
-            <button class="button button-primary button-small" type="button" data-action="open-add-shift">${icon("plus", "icon icon-sm")}Add shift</button>
-          </div>
-        </div>
-        <div class="shift-search-row"><div class="field"><label for="shiftSearch">Search shifts</label><div class="input-wrap">${icon("search", "input-icon")}<input id="shiftSearch" type="search" autocomplete="off" placeholder="Date, platform, notes…" value="${escapeAttribute(ui.shiftFilters.search)}" data-filter="shift-search"></div></div></div>
-        <details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Filters & sorting</span><span class="filter-disclosure-value">${ui.shiftFilters.range === "30" && ui.shiftFilters.platform === "all" && ui.shiftFilters.sort === "dateDesc" ? "Default" : "Customized"}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary">
-          <div class="field"><label for="shiftRange">Date range</label><select id="shiftRange" data-filter="shift-range">
-            <option value="all"${ui.shiftFilters.range === "all" ? " selected" : ""}>All time</option>
-            <option value="7"${ui.shiftFilters.range === "7" ? " selected" : ""}>Last 7 days</option>
-            <option value="30"${ui.shiftFilters.range === "30" ? " selected" : ""}>Last 30 days</option>
-            <option value="month"${ui.shiftFilters.range === "month" ? " selected" : ""}>This month</option>
-            <option value="year"${ui.shiftFilters.range === "year" ? " selected" : ""}>This year</option>
-          </select></div>
-          <div class="field"><label for="shiftPlatform">Platform</label><select id="shiftPlatform" data-filter="shift-platform"><option value="all">All platforms</option>${platforms.map((platform) => `<option value="${escapeAttribute(platform)}"${ui.shiftFilters.platform === platform ? " selected" : ""}>${escapeHtml(platform)}</option>`).join("")}</select></div>
-          <div class="field"><label for="shiftSort">Sort by</label><select id="shiftSort" data-filter="shift-sort">
-            <option value="dateDesc"${ui.shiftFilters.sort === "dateDesc" ? " selected" : ""}>Newest first</option>
-            <option value="dateAsc"${ui.shiftFilters.sort === "dateAsc" ? " selected" : ""}>Oldest first</option>
-            <option value="netDesc"${ui.shiftFilters.sort === "netDesc" ? " selected" : ""}>Highest net</option>
-            <option value="netAsc"${ui.shiftFilters.sort === "netAsc" ? " selected" : ""}>Lowest net</option>
-            <option value="hourlyDesc"${ui.shiftFilters.sort === "hourlyDesc" ? " selected" : ""}>Best hourly</option>
-            <option value="milesDesc"${ui.shiftFilters.sort === "milesDesc" ? " selected" : ""}>Most miles</option>
-          </select></div>
-        </div></details>
-      </section>
-      <div id="shiftSummary"></div>
-      <div id="shiftBulkBar"></div>
-      <div id="shiftTableWrap"></div>
-      <div id="shiftMobileList" class="mobile-record-list"></div>
-    </div>`;
-  }
-
-  function updateShiftResults() {
     const list = filteredShifts();
-    const visibleIds = new Set(list.map((shift) => String(shift.id)));
-    Array.from(ui.selectedShiftIds).forEach((id) => {
-      if (!state.shifts.some((shift) => String(shift.id) === String(id))) ui.selectedShiftIds.delete(id);
-    });
     const summary = Core.summarizeShifts(list, state.settings);
-    const selectedCount = Array.from(ui.selectedShiftIds).filter((id) => visibleIds.has(String(id))).length;
-    const allVisibleSelected = list.length > 0 && list.every((shift) => ui.selectedShiftIds.has(String(shift.id)));
-    const mobileLimit = Math.max(5, Core.safeNumber(ui.shiftVisibleCount, 5));
-    const mobileList = list.slice(0, mobileLimit);
-
-    const meta = document.getElementById("shiftResultsMeta");
-    const summaryRoot = document.getElementById("shiftSummary");
-    const bulkRoot = document.getElementById("shiftBulkBar");
-    const tableRoot = document.getElementById("shiftTableWrap");
-    const mobileRoot = document.getElementById("shiftMobileList");
-    if (!meta || !summaryRoot || !bulkRoot || !tableRoot || !mobileRoot) return;
-
-    meta.textContent = list.length > mobileLimit
-      ? `Showing ${mobileList.length} of ${list.length} matching shifts`
-      : `${list.length} of ${state.shifts.length} shift${state.shifts.length === 1 ? "" : "s"}`;
-    summaryRoot.innerHTML = summaryStrip(summary);
-    bulkRoot.innerHTML = ui.shiftManageMode
-      ? `<div class="bulk-bar compact-bulk-bar"><div><strong>${selectedCount}</strong> selected</div><div class="bulk-actions"><button class="button button-ghost button-small" type="button" data-action="clear-shift-selection">Clear</button><button class="button button-secondary button-small" type="button" data-action="${selectedCount ? "export-selected-shifts" : "export-csv"}">${icon("download", "icon icon-sm")}${selectedCount ? "Export" : "Export all"}</button>${selectedCount ? `<button class="button button-danger button-small" type="button" data-action="delete-selected-shifts">${icon("trash", "icon icon-sm")}Delete</button>` : ""}</div></div>`
-      : "";
-
-    if (!list.length) {
-      tableRoot.innerHTML = emptyState({
-        icon: "filter",
-        title: state.shifts.length ? "No shifts match these filters" : "No completed shifts yet",
-        body: state.shifts.length ? "Try a broader date range or clear the search." : "Add a completed shift or start a live one to build your ledger.",
-        action: state.shifts.length ? "clear-shift-filters" : "open-add-shift",
-        actionLabel: state.shifts.length ? "Clear filters" : "Add first shift",
-        actionIcon: state.shifts.length ? "refresh" : "plus"
-      });
-      mobileRoot.innerHTML = "";
-      return;
-    }
-
-    tableRoot.innerHTML = `<div class="data-table-wrap"><table class="data-table"><thead><tr>
-      <th><input class="table-check" type="checkbox" data-action="select-all-shifts" aria-label="Select every visible shift"${allVisibleSelected ? " checked" : ""}></th>
-      <th>Date / platform</th><th>Gross</th><th>Expenses</th><th>Net</th><th>Time</th><th>Miles</th><th>Efficiency</th><th>Spendable</th><th><span class="visually-hidden">Actions</span></th>
-    </tr></thead><tbody>${list.map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      const selected = ui.selectedShiftIds.has(String(shift.id));
-      return `<tr class="${selected ? "is-selected" : ""}">
-        <td><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift on ${escapeAttribute(formatDate(shift.date))}"${selected ? " checked" : ""}></td>
-        <td><span class="table-primary">${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric", year: "numeric" }))}</span><span class="table-secondary">${escapeHtml(shift.platform)} · ${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))}</span></td>
-        <td class="table-number">${formatMoney(shift.gross)}</td>
-        <td class="table-number">${formatMoney(shift.expenses)}</td>
-        <td class="table-number text-accent">${formatMoney(shift.net)}</td>
-        <td><span class="table-primary">${formatDuration(shift.hours)}</span><span class="table-secondary">${formatNumber(shift.trips)} trip${shift.trips === 1 ? "" : "s"}</span></td>
-        <td><span class="table-primary">${formatNumber(shift.miles, 1)}</span><span class="table-secondary">${formatMoney(shift.taxDeduction)} deduction</span></td>
-        <td><span class="table-primary">${formatMoney(shift.hourly)}/hr</span><span class="table-secondary">${formatMoney(shift.netPerMile)}/mi</span></td>
-        <td class="table-number">${formatMoney(shift.spendable)}</td>
-        <td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Edit shift">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="duplicate-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Duplicate shift">${icon("copy", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete shift">${icon("trash", "icon icon-sm")}</button></div></td>
-      </tr>`;
-    }).join("")}</tbody></table></div>`;
-
-    const rows = mobileList.map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      const selected = ui.selectedShiftIds.has(String(shift.id));
-      const timeLabel = shift.startTime || shift.endTime
-        ? `${formatTime(shift.startTime)}–${formatTime(shift.endTime)}`
-        : formatDuration(shift.hours);
-      const selectMarkup = ui.shiftManageMode
-        ? `<label class="compact-record-select"><input class="table-check" type="checkbox" data-action="toggle-shift-select" data-id="${escapeAttribute(shift.id)}" aria-label="Select shift on ${escapeAttribute(formatDate(shift.date))}"${selected ? " checked" : ""}></label>`
-        : "";
-      return `<article class="record-card compact-record-card${selected ? " is-selected" : ""}">
-        <div class="compact-record-shell${ui.shiftManageMode ? " has-select" : ""}">
-          ${selectMarkup}
-          <details class="record-card-disclosure">
-            <summary>
-              <span class="compact-record-summary">
-                <strong class="compact-record-date">${escapeHtml(formatDate(shift.date, { weekday: "short", month: "short", day: "numeric" }))}</strong>
-                <strong class="compact-record-net ${shift.net < 0 ? "text-red" : "text-accent"}">${formatMoney(shift.net)}</strong>
-                <span class="compact-record-meta">${escapeHtml(shift.platform)} · ${escapeHtml(timeLabel)}</span>
-                <span class="compact-record-efficiency">${formatMoney(shift.hourly)}/hr · ${formatNumber(shift.miles, 1)} mi</span>
-              </span>
-              ${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}
-            </summary>
-            <div class="record-card-disclosure-content">
-              <div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Gross</span><strong>${formatMoney(shift.gross)}</strong></div><div class="record-mini-stat"><span>Expenses</span><strong>${formatMoney(shift.expenses)}</strong></div><div class="record-mini-stat"><span>Spendable</span><strong>${formatMoney(shift.spendable)}</strong></div><div class="record-mini-stat"><span>Trips</span><strong>${formatNumber(shift.trips)}</strong></div></div>
-              ${shift.notes ? `<p class="compact-record-note">${escapeHtml(shift.notes)}</p>` : ""}
-              <div class="record-card-actions"><button class="button button-ghost button-small" type="button" data-action="duplicate-shift" data-id="${escapeAttribute(shift.id)}">${icon("copy", "icon icon-sm")}Duplicate</button><button class="button button-secondary button-small" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-shift" data-id="${escapeAttribute(shift.id)}" aria-label="Delete shift">${icon("trash", "icon icon-sm")}</button></div>
-            </div>
-          </details>
-        </div>
-      </article>`;
-    }).join("");
-    const moreCount = Math.max(0, list.length - mobileList.length);
-    const listControls = list.length > 5 ? `<div class="ledger-page-controls">${moreCount
-      ? `<button class="button button-secondary" type="button" data-action="show-more-shifts">Show ${Math.min(5, moreCount)} more<span>${mobileList.length} of ${list.length}</span></button>`
-      : `<button class="button button-ghost" type="button" data-action="show-fewer-shifts">Show recent 5<span>Back to the top</span></button>`}</div>` : "";
-    mobileRoot.innerHTML = `${rows}${listControls}`;
-  }
-
-  function analyticsPeriodLabel(period) {
-    return ({ day: "Today", week: "This week", month: "This month", year: "This year", all: "All time" })[period] || "This month";
-  }
-
-  function seriesForAnalytics(list, period) {
-    const grouped = {};
-    const currentYear = new Date().getFullYear();
-    if (period === "day") {
-      const calculated = sortedShifts(list).reverse().map((item) => Core.calculateShift(item, state.settings));
-      if (!calculated.length) {
-        return [{ key: Core.localISODate(), label: "Today", value: 0 }];
-      }
-      return calculated.map((shift, index) => ({
-        key: shift.id,
-        label: shift.startTime ? formatTime(shift.startTime) : `Shift ${index + 1}`,
-        value: shift.net
-      }));
-    }
-    if (period === "week" || period === "month") {
-      const range = Core.rangeForPeriod(period, new Date(), state.settings.weekStartsOn);
-      const cursor = new Date(range.start);
-      while (cursor <= range.end) {
-        const key = Core.localISODate(cursor);
-        grouped[key] = 0;
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      list.forEach((raw) => {
-        const shift = Core.calculateShift(raw, state.settings);
-        grouped[shift.date] = (grouped[shift.date] || 0) + shift.net;
-      });
-      return Object.keys(grouped).sort().map((key) => ({
-        key,
-        label: formatDate(key, period === "week" ? { weekday: "short" } : { month: "short", day: "numeric" }),
-        value: Core.round(grouped[key], 2)
-      }));
-    }
-    if (period === "year") {
-      for (let month = 0; month < 12; month += 1) {
-        const date = new Date(currentYear, month, 1);
-        const key = `${currentYear}-${Core.pad(month + 1)}`;
-        grouped[key] = 0;
-      }
-      list.forEach((raw) => {
-        const shift = Core.calculateShift(raw, state.settings);
-        const key = shift.date.slice(0, 7);
-        grouped[key] = (grouped[key] || 0) + shift.net;
-      });
-      return Object.keys(grouped).sort().map((key) => ({
-        key,
-        label: new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1)),
-        value: Core.round(grouped[key], 2)
-      }));
-    }
-    list.forEach((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      const key = shift.date.slice(0, 7);
-      grouped[key] = (grouped[key] || 0) + shift.net;
-    });
-    return Object.keys(grouped).sort().map((key) => ({
-      key,
-      label: new Intl.DateTimeFormat("en-US", { month: "short", year: "2-digit" }).format(new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1)),
-      value: Core.round(grouped[key], 2)
-    }));
-  }
-
-  function platformBreakdown(list) {
-    const map = {};
-    list.forEach((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      if (!map[shift.platform]) map[shift.platform] = { label: shift.platform, net: 0, gross: 0, count: 0, hours: 0 };
-      map[shift.platform].net += shift.net;
-      map[shift.platform].gross += shift.gross;
-      map[shift.platform].count += 1;
-      map[shift.platform].hours += shift.hours;
-    });
-    return Object.values(map).sort((a, b) => b.net - a.net);
-  }
-
-  function renderAnalyticsPage() {
-    const period = ui.analyticsPeriod;
-    const view = ui.analyticsView || "trend";
-    const list = periodList(period);
-    const previous = previousPeriodList(period);
-    const summary = Core.summarizeShifts(list, state.settings);
-    const prev = Core.summarizeShifts(previous, state.settings);
-    const series = seriesForAnalytics(list, period);
-    const weekdays = Core.groupNetByWeekday(list, state.settings);
-    const weekdaySeries = weekdays.map((row) => ({
-      label: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(2026, 0, 4 + row.day)),
-      value: row.net
-    }));
-    const platforms = platformBreakdown(list);
-    const maxPlatform = Math.max(1, ...platforms.map((row) => Math.abs(row.net)));
-    const spendableFlow = Math.max(0, summary.spendable);
-    const allocationTotal = Math.max(0, summary.investment + summary.savings + summary.vehicleFund + spendableFlow);
-    const parts = allocationTotal > 0 ? [summary.investment, summary.savings, summary.vehicleFund, spendableFlow] : [0, 0, 0, 1];
-    const degrees = parts.reduce((acc, value, index) => {
-      const previousDegree = index ? acc[index - 1] : 0;
-      acc.push(previousDegree + value / (allocationTotal || 1) * 360);
-      return acc;
-    }, []);
-    const bestDay = bestWeekdayInsight(list);
-    const bestShift = sortedShifts(list).map((item) => Core.calculateShift(item, state.settings)).sort((a, b) => b.net - a.net)[0];
-    const deductionRate = summary.miles ? summary.taxDeduction / summary.miles : Core.getMileageRate(Core.localISODate(), state.settings.taxRates).rate;
-    const expenseRatio = summary.gross ? summary.expenses / summary.gross * 100 : 0;
-    const transferPlan = Core.calculateTransferPlan(list, state.settings, DAILY_INVESTMENT_RATE);
-    const dailyTakeOutCard = period === "day" ? `<div class="daily-takeout-card">
-      <div class="daily-takeout-main"><span>${icon("wallet", "icon icon-sm")}Take out today</span><strong>${formatMoney(transferPlan.takeOut)}</strong><small>Gas + ${formatNumber(transferPlan.rate)}% of positive net earnings</small></div>
-      <div class="daily-takeout-breakdown"><div><span>Gas</span><strong>${formatMoney(transferPlan.fuel)}</strong></div><div><span>Invest ${formatNumber(transferPlan.rate)}%</span><strong>${formatMoney(transferPlan.investment)}</strong></div><div class="is-remaining"><span>Keep available</span><strong>${formatMoney(transferPlan.remaining)}</strong></div></div>
-    </div>` : "";
-
-    const trendView = `<section class="panel analytics-view-panel analytics-trend-view">
-      <div class="panel-header"><div><h2 class="panel-title">Net earnings trend</h2><p class="panel-subtitle">${escapeHtml(analyticsPeriodLabel(period))} at a glance</p></div><span class="pill pill-info">${formatMoney(summary.net, { noCents: true })}</span></div>
-      ${renderAreaChart(series, { height: 230, label: `Net earnings for ${analyticsPeriodLabel(period)}` })}
-      <div class="analytics-signal-row"><div><span>Best weekday</span><strong>${bestDay ? escapeHtml(bestDay.label) : "—"}</strong></div><div><span>Best shift</span><strong>${bestShift ? formatMoney(bestShift.net) : "—"}</strong></div><button class="button button-ghost button-small" type="button" data-action="analytics-view" data-view="compare">See patterns${icon("chevronRight", "icon icon-sm")}</button></div>
-    </section>`;
-
-    const moneyView = `<section class="panel analytics-view-panel analytics-money-view">
-      <div class="panel-header"><div><h2 class="panel-title">Money flow</h2><p class="panel-subtitle">${period === "day" ? "Today's transfer and allocation breakdown" : "Where positive net earnings went"}</p></div><span class="pill">${formatMoney(summary.spendable, { noCents: true })} spendable</span></div>
-      ${dailyTakeOutCard}
-      <div class="analytics-money-layout">
-        <div class="donut-layout"><div class="donut" style="--donut-a:${degrees[0] || 0}deg;--donut-b:${degrees[1] || 0}deg;--donut-c:${degrees[2] || 0}deg"><div class="donut-center"><strong>${formatMoney(summary.spendable, { compact: true })}</strong><span>Spendable</span></div></div><div class="legend-list"><div class="legend-item"><span class="legend-dot"></span><span>Investment</span><strong>${formatMoney(summary.investment)}</strong></div><div class="legend-item"><span class="legend-dot is-blue"></span><span>Savings</span><strong>${formatMoney(summary.savings)}</strong></div><div class="legend-item"><span class="legend-dot is-violet"></span><span>Vehicle fund</span><strong>${formatMoney(summary.vehicleFund)}</strong></div><div class="legend-item"><span class="legend-dot is-amber"></span><span>Spendable</span><strong>${formatMoney(summary.spendable)}</strong></div></div></div>
-        <div class="analytics-deduction-card"><span>${icon("route", "icon icon-sm")}Mileage estimate</span><strong>${formatMoney(summary.taxDeduction)}</strong><p>${formatNumber(summary.miles, 1)} miles · average ${formatMoney(deductionRate)}/mile</p><small>Recordkeeping estimate only.</small></div>
-      </div>
-    </section>`;
-
-    const compareView = `<section class="panel analytics-view-panel analytics-compare-view">
-      <div class="panel-header"><div><h2 class="panel-title">Performance patterns</h2><p class="panel-subtitle">Platforms, weekdays, and efficiency signals</p></div></div>
-      <div class="analytics-compare-layout">
-        <div class="analytics-platform-block"><h3>Platform mix</h3>${platforms.length ? `<div class="bar-list">${platforms.map((row, index) => `<div class="bar-row"><div class="bar-row-head"><span>${escapeHtml(row.label)} · ${row.count}</span><strong>${formatMoney(row.net)}</strong></div><div class="bar-track"><div class="bar-fill ${row.net < 0 ? "is-negative" : index % 3 === 1 ? "is-blue" : index % 3 === 2 ? "is-violet" : ""}" style="width:${Math.max(2, Math.abs(row.net) / maxPlatform * 100)}%"></div></div></div>`).join("")}</div>` : `<p class="panel-subtitle">Save shifts to compare platforms.</p>`}</div>
-        <div class="analytics-pattern-block"><h3>Weekday contribution</h3>${renderBarChart(weekdaySeries, { height: 210, label: "Net earnings by weekday" })}</div>
-      </div>
-      <div class="insight-grid analytics-compact-insights"><div class="compact-insight"><span>Expense ratio</span><strong>${summary.gross ? `${expenseRatio.toFixed(1)}%` : "—"}</strong></div><div class="compact-insight"><span>Net per trip</span><strong>${summary.trips ? formatMoney(summary.net / summary.trips) : "—"}</strong></div><div class="compact-insight"><span>Average shift</span><strong>${formatMoney(summary.averageShift)}</strong></div><div class="compact-insight"><span>Total trips</span><strong>${formatNumber(summary.trips)}</strong></div></div>
-    </section>`;
-
-    const currentView = view === "money" ? moneyView : view === "compare" ? compareView : trendView;
-
-    return `<div class="page-stack analytics-focus">
-      <section class="analytics-focus-hero panel${summary.net < 0 ? " is-negative" : ""}">
-        <div class="analytics-focus-top"><div><span>${escapeHtml(analyticsPeriodLabel(period))}</span><strong>${formatMoney(summary.net)}</strong><small>${formatMoney(summary.gross)} gross · ${formatMoney(summary.expenses)} expenses</small></div>${period === "all" ? `<span class="pill">All history</span>` : trendBadge(summary.net, prev.net)}</div>
-        <div class="analytics-focus-kpis"><div><span>Hourly</span><strong>${formatMoney(summary.hourly)}/hr</strong></div><div><span>Per mile</span><strong>${formatMoney(summary.netPerMile)}/mi</strong></div><div><span>Shifts</span><strong>${formatNumber(summary.count)}</strong></div><div><span>Hours</span><strong>${formatNumber(summary.hours, 1)}</strong></div></div>
+    const chips = [["7", "7 days"], ["30", "30 days"], ["90", "90 days"], ["365", "Year"], ["all", "All"]];
+    return `<div class="page-stack">
+      <section class="toolbar panel"><div class="toolbar-row"><div class="search-field">${icon("search", "icon icon-sm")}<input type="search" data-input="shift-search" value="${escapeAttribute(ui.shiftSearch)}" placeholder="Search shifts, notes, or amounts" aria-label="Search shifts"></div><button class="button button-primary" type="button" data-action="add-shift">${icon("plus", "icon icon-sm")}Add shift</button></div><div class="toolbar-row"><div class="filter-chips">${chips.map(([value, label]) => `<button class="filter-chip${ui.shiftFilter === value ? " is-active" : ""}" type="button" data-action="shift-filter" data-value="${value}">${label}</button>`).join("")}</div><span class="pill">${list.length} result${list.length === 1 ? "" : "s"}</span></div></section>
+      <section class="metric-strip">
+        ${metricCard({ icon: "dollar", label: "Net", value: formatMoney(summary.net), meta: `${formatMoney(summary.gross)} gross` })}
+        ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Hours", value: formatNumber(summary.hours, 1), meta: `${formatMoney(summary.hourly)}/hr net` })}
+        ${metricCard({ icon: "route", iconClass: "is-violet", label: "Miles", value: formatNumber(summary.miles, 1), meta: `${formatMoney(summary.netPerMile)}/mi net` })}
+        ${metricCard({ icon: "wallet", iconClass: "is-amber", label: "Move out", value: formatMoney(summary.takeOut), meta: `${formatMoney(summary.spendable)} left available` })}
       </section>
-      <section class="analytics-control-deck" aria-label="Analytics controls">
-        <div class="period-switch analytics-period-switch" aria-label="Analytics period">${[
-          ["day", "Day"], ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]
-        ].map(([value, label]) => `<button class="segment-button${period === value ? " is-active" : ""}" type="button" data-action="analytics-period" data-period="${value}">${label}</button>`).join("")}</div>
-        <div class="period-switch analytics-view-switch" aria-label="Analytics view">${[
-          ["trend", "Trend", "trend"], ["money", "Money", "wallet"], ["compare", "Patterns", "analytics"]
-        ].map(([value, label, iconName]) => `<button class="segment-button${view === value ? " is-active" : ""}" type="button" data-action="analytics-view" data-view="${value}">${icon(iconName, "icon icon-sm")}<span>${label}</span></button>`).join("")}</div>
-      </section>
-      ${currentView}
+      ${list.length ? `<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Shift</th><th>Hours</th><th>Miles</th><th>Gross</th><th>Expenses</th><th>Net</th><th>Move out</th><th>Keep</th><th></th></tr></thead><tbody>${shiftTableRows(list)}</tbody></table></div><div class="mobile-shift-list">${shiftMobileCards(list)}</div>` : emptyState({ icon: "receipt", title: "No matching shifts", body: "Start a shift or add a past one to build your ledger.", action: "start-shift", actionIcon: "play", actionLabel: "Start shift" })}
     </div>`;
   }
 
-  function calendarMonthData(cursor) {
+  function moneyRange() {
+    return Core.rangeForPeriod(ui.moneyPeriod, ui.moneyAnchor, state.settings.weekStartsOn);
+  }
+
+  function moneyPeriodLabel() {
+    const range = moneyRange();
+    if (ui.moneyPeriod === "all") return "All recorded shifts";
+    if (ui.moneyPeriod === "day") return formatDate(Core.localISODate(range.start), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    if (ui.moneyPeriod === "week") return `${formatDate(Core.localISODate(range.start), { month: "short", day: "numeric" })} – ${formatDate(Core.localISODate(range.end), { month: "short", day: "numeric", year: "numeric" })}`;
+    if (ui.moneyPeriod === "month") return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(range.start);
+    return new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(range.start);
+  }
+
+  function moneyList() {
+    const range = moneyRange();
+    return Core.filterShiftsByDate(state.shifts, range.start, range.end);
+  }
+
+  function dailyMoneyRows(list) {
+    const groups = Core.groupShiftsByDate(list);
+    const dates = Object.keys(groups).sort().reverse();
+    if (!dates.length) return `<div class="empty-state" style="min-height:150px"><div class="empty-state-inner"><span class="empty-icon">${icon("wallet", "icon icon-lg")}</span><h3>No money directions here yet</h3><p>Complete a shift in this period to create the breakdown.</p></div></div>`;
+    return `<div class="daily-list">${dates.map((date) => {
+      const summary = Core.summarizeShifts(groups[date], state.settings);
+      return `<button class="daily-row" type="button" data-action="open-money-day" data-date="${date}"><span class="daily-date"><strong>${escapeHtml(formatDate(date, { weekday: "short", month: "short", day: "numeric" }))}</strong><span>${summary.count} shift${summary.count === 1 ? "" : "s"} · ${formatNumber(summary.hours, 1)} hr</span></span><span class="daily-metric"><span>Net</span><strong>${formatMoney(summary.net)}</strong></span><span class="daily-metric"><span>Gas</span><strong>${formatMoney(summary.fuel)}</strong></span><span class="daily-metric"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></span></button>`;
+    }).join("")}</div>`;
+  }
+
+  function renderMoneyPage() {
+    const list = moneyList();
+    const summary = Core.summarizeShifts(list, state.settings);
+    const periods = [["day", "Day"], ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]];
+    return `<div class="page-stack">
+      <section class="period-toolbar panel"><div class="segmented">${periods.map(([value, label]) => `<button class="segment${ui.moneyPeriod === value ? " is-active" : ""}" type="button" data-action="money-period" data-value="${value}">${label}</button>`).join("")}</div><div class="date-nav"><button class="icon-button" type="button" data-action="money-prev" aria-label="Previous period" ${ui.moneyPeriod === "all" ? "disabled" : ""}>${icon("chevronLeft", "icon icon-sm")}</button><button class="button button-ghost button-small date-nav-label" type="button" data-action="money-today">${escapeHtml(moneyPeriodLabel())}</button><button class="icon-button" type="button" data-action="money-next" aria-label="Next period" ${ui.moneyPeriod === "all" ? "disabled" : ""}>${icon("chevronRight", "icon icon-sm")}</button></div></section>
+      <div class="money-layout">
+        <section class="money-hero panel"><div class="money-hero-top"><div><span class="money-hero-label">Take out / move</span><strong class="money-hero-value">${formatMoney(summary.takeOut)}</strong><p class="money-hero-copy">${formatMoney(summary.fuel)} gas + ${formatMoney(summary.allocated)} from the allocation plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="allocation-cards"><div class="allocation-card"><span>Gas replacement</span><strong>${formatMoney(summary.fuel)}</strong><small>Add back what you spent</small></div><div class="allocation-card"><span>Vehicle fund · 5%</span><strong>${formatMoney(summary.vehicleFund)}</strong><small>From positive net</small></div><div class="allocation-card"><span>Stocks · 10%</span><strong>${formatMoney(summary.stock)}</strong><small>From positive net</small></div><div class="allocation-card"><span>Crypto · 10%</span><strong>${formatMoney(summary.crypto)}</strong><small>Split below</small></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and allocations</p></div><strong>${formatMoney(summary.spendable)}</strong></div></section>
+        <aside class="money-side"><section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Crypto directions</h2><p class="panel-subtitle">Inside the 10% crypto bucket</p></div><span class="pill pill-blue">${formatMoney(summary.crypto)}</span></div><div class="crypto-grid"><div class="crypto-coin"><span>Bitcoin</span><strong>${formatMoney(summary.bitcoin)}</strong><small>55% of crypto</small></div><div class="crypto-coin"><span>Solana</span><strong>${formatMoney(summary.solana)}</strong><small>25% of crypto</small></div><div class="crypto-coin"><span>Ethereum</span><strong>${formatMoney(summary.ethereum)}</strong><small>15% of crypto</small></div><div class="crypto-coin"><span>AAVE</span><strong>${formatMoney(summary.aave)}</strong><small>5% of crypto</small></div></div></section>
+        <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Period totals</h2><p class="panel-subtitle">How the money was calculated</p></div></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Gross earnings</span><strong>${formatMoney(summary.gross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>All expenses</span><strong>−${formatMoney(summary.expenses)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Net after expenses</span><strong>${formatMoney(summary.net)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>25% allocation</span><strong>−${formatMoney(summary.allocated)}</strong></div>${summary.legacyInvestment ? `<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Includes older saved allocation</span><strong>${formatMoney(summary.legacyInvestment)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Keep available</span><strong>${formatMoney(summary.spendable)}</strong></div></div></section></aside>
+      </div>
+      <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Day-by-day breakdown</h2><p class="panel-subtitle">Tap a day to isolate it</p></div><span class="pill">${list.length} shift${list.length === 1 ? "" : "s"}</span></div>${dailyMoneyRows(list)}</section>
+      <div class="notice">${icon("info", "icon icon-sm")}<p>The 5% vehicle, 10% stock, and 10% crypto amounts use positive earnings after all logged expenses. “Take out” adds your gas back on top. This is your custom money-management plan, not investment or tax advice.</p></div>
+    </div>`;
+  }
+
+  function calendarData() {
+    const cursor = ui.calendarCursor;
     const year = cursor.getFullYear();
     const month = cursor.getMonth();
     const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0);
-    const weekStart = state.settings.weekStartsOn;
-    const leading = (monthStart.getDay() - weekStart + 7) % 7;
+    const leading = (monthStart.getDay() - state.settings.weekStartsOn + 7) % 7;
     const gridStart = new Date(year, month, 1 - leading);
-    const groups = Core.groupShiftsByDate(state.shifts, state.settings);
-    const monthShifts = Core.filterShiftsByDate(state.shifts, Core.startOfMonth(cursor), Core.endOfMonth(cursor));
-    const maxNet = Math.max(1, ...Object.keys(groups).filter((key) => key.slice(0, 7) === Core.localISODate(monthStart).slice(0, 7)).map((key) => Core.summarizeShifts(groups[key], state.settings).net));
+    const groups = Core.groupShiftsByDate(state.shifts);
+    const monthList = Core.filterShiftsByDate(state.shifts, monthStart, Core.endOfMonth(cursor));
+    const monthSummary = Core.summarizeShifts(monthList, state.settings);
+    const maxNet = Math.max(1, ...Object.keys(groups).filter((key) => key.slice(0, 7) === Core.localISODate(monthStart).slice(0, 7)).map((key) => Math.max(0, Core.summarizeShifts(groups[key], state.settings).net)));
     const days = [];
     for (let index = 0; index < 42; index += 1) {
       const date = new Date(gridStart);
       date.setDate(gridStart.getDate() + index);
       const iso = Core.localISODate(date);
-      const shifts = groups[iso] || [];
-      const summary = Core.summarizeShifts(shifts, state.settings);
-      let heat = 0;
-      if (summary.net > 0) heat = Math.min(4, Math.max(1, Math.ceil(summary.net / maxNet * 4)));
-      days.push({ date, iso, shifts, summary, outside: date.getMonth() !== month, heat });
+      const summary = Core.summarizeShifts(groups[iso] || [], state.settings);
+      const heat = summary.net > 0 ? Math.min(4, Math.max(1, Math.ceil(summary.net / maxNet * 4))) : 0;
+      days.push({ date, iso, outside: date.getMonth() !== month, summary, heat });
     }
-    return { year, month, monthStart, monthEnd, monthShifts, summary: Core.summarizeShifts(monthShifts, state.settings), days };
-  }
-
-  function openCalendarDayModal(dateValue) {
-    const iso = Core.parseISODate(dateValue || "") ? dateValue : ui.calendarSelected;
-    const selectedDate = Core.parseISODate(iso);
-    const selectedList = state.shifts.filter((shift) => shift.date === iso);
-    const summary = Core.summarizeShifts(selectedList, state.settings);
-    const rows = selectedList.length ? `<div class="calendar-sheet-list">${sortedShifts(selectedList).map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      return `<button class="calendar-sheet-row" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}"><span><strong>${escapeHtml(shift.platform)}</strong><small>${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))} · ${formatNumber(shift.miles, 1)} mi</small></span><span><strong class="${shift.net < 0 ? "text-red" : "text-accent"}">${formatMoney(shift.net)}</strong><small>${formatMoney(shift.hourly)}/hr</small></span>${icon("chevronRight", "icon icon-sm")}</button>`;
-    }).join("")}</div>` : `<div class="calendar-sheet-empty"><span>${icon("calendarAdd", "icon icon-lg")}</span><strong>No shift saved</strong><p>Add a completed shift for this date when you are ready.</p></div>`;
-    const body = `<div class="calendar-day-sheet"><div class="detail-summary-grid"><div class="detail-summary-item"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div><div class="detail-summary-item"><span>Gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="detail-summary-item"><span>Hours</span><strong>${formatNumber(summary.hours, 1)}</strong></div><div class="detail-summary-item"><span>Miles</span><strong>${formatNumber(summary.miles, 1)}</strong></div></div>${rows}</div>`;
-    openModal({
-      title: selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate) : "Selected day",
-      subtitle: selectedList.length ? `${selectedList.length} shift${selectedList.length === 1 ? "" : "s"} recorded` : "No driving recorded yet",
-      body,
-      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Close</button><button class="button button-primary" type="button" data-action="add-shift-on-date" data-date="${escapeAttribute(iso)}">${icon("plus", "icon icon-sm")}Add shift</button>`,
-      className: "calendar-day-modal",
-      meta: { type: "calendar-day", date: iso }
-    });
+    return { year, month, monthStart, days, monthSummary, groups };
   }
 
   function renderCalendarPage() {
-    const data = calendarMonthData(ui.calendarCursor);
-    const selectedList = state.shifts.filter((shift) => shift.date === ui.calendarSelected);
-    const selectedSummary = Core.summarizeShifts(selectedList, state.settings);
-    const weekDays = [];
-    for (let index = 0; index < 7; index += 1) {
-      const date = new Date(2026, 0, 4 + ((state.settings.weekStartsOn + index) % 7));
-      weekDays.push(new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date));
+    const data = calendarData();
+    const selected = data.groups[ui.calendarSelected] || [];
+    const summary = Core.summarizeShifts(selected, state.settings);
+    const weekdays = [];
+    for (let i = 0; i < 7; i += 1) {
+      const date = new Date(2026, 0, 4 + ((state.settings.weekStartsOn + i) % 7));
+      weekdays.push(new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date));
     }
-    const monthlyGoal = Core.safeNumber(state.settings.monthlyNetGoal);
-    const progress = monthlyGoal > 0 ? Math.min(100, Math.max(0, data.summary.net / monthlyGoal * 100)) : 0;
-    const selectedDate = Core.parseISODate(ui.calendarSelected);
-    const selectedLabel = selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(selectedDate) : "Choose a day";
-
-    return `<div class="page-stack calendar-focus-page">
-      <div class="calendar-layout">
-        <section class="calendar-panel panel">
-          <div class="calendar-toolbar"><div class="calendar-nav-actions"><button class="icon-button" type="button" data-action="calendar-prev" aria-label="Previous month">${icon("chevronLeft", "icon icon-sm")}</button><button class="button button-ghost button-small" type="button" data-action="calendar-today">Today</button></div><div class="calendar-title"><strong>${new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(data.monthStart)}</strong><span>${data.summary.count} shift${data.summary.count === 1 ? "" : "s"} recorded</span></div><div class="calendar-nav-actions"><button class="icon-button" type="button" data-action="calendar-next" aria-label="Next month">${icon("chevronRight", "icon icon-sm")}</button></div></div>
-          <div class="calendar-summary"><div class="calendar-summary-item"><span>Net</span><strong>${formatMoney(data.summary.net, { noCents: true })}</strong></div><div class="calendar-summary-item"><span>Hours</span><strong>${formatNumber(data.summary.hours, 1)}</strong></div><div class="calendar-summary-item"><span>Miles</span><strong>${formatNumber(data.summary.miles, 0)}</strong></div><div class="calendar-summary-item calendar-goal-summary"><span>Goal</span><strong>${monthlyGoal ? `${progress.toFixed(0)}%` : "—"}</strong></div></div>
-          <div class="calendar-grid">${weekDays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}" aria-label="${escapeAttribute(formatDate(day.iso, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${day.summary.count} shifts, ${formatMoney(day.summary.net)} net"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span>` : ""}</button>`).join("")}</div>
-          <button class="calendar-mobile-peek" type="button" data-action="open-calendar-day" data-date="${escapeAttribute(ui.calendarSelected)}"><span class="calendar-peek-date"><strong>${escapeHtml(selectedLabel)}</strong><small>${selectedList.length ? `${selectedList.length} shift${selectedList.length === 1 ? "" : "s"} · ${formatNumber(selectedSummary.hours, 1)} hr` : "No shift recorded"}</small></span><span class="calendar-peek-value"><strong class="${selectedSummary.net < 0 ? "text-red" : "text-accent"}">${formatMoney(selectedSummary.net)}</strong><small>${formatNumber(selectedSummary.miles, 1)} mi</small></span>${icon("chevronRight", "icon icon-sm")}</button>
-        </section>
-        <aside class="calendar-detail calendar-desktop-detail panel">
-          <div class="eyebrow">Selected day</div><h2 class="detail-date">${selectedDate ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate) : "Choose a date"}</h2>
-          <div class="detail-summary-grid"><div class="detail-summary-item"><span>Net</span><strong>${formatMoney(selectedSummary.net)}</strong></div><div class="detail-summary-item"><span>Gross</span><strong>${formatMoney(selectedSummary.gross)}</strong></div><div class="detail-summary-item"><span>Hours</span><strong>${formatNumber(selectedSummary.hours, 1)}</strong></div><div class="detail-summary-item"><span>Miles</span><strong>${formatNumber(selectedSummary.miles, 1)}</strong></div></div>
-          ${selectedList.length ? `<div class="detail-shift-list">${sortedShifts(selectedList).map((raw) => { const shift = Core.calculateShift(raw, state.settings); return `<button class="detail-shift" type="button" data-action="edit-shift" data-id="${escapeAttribute(shift.id)}"><div class="detail-shift-top"><strong>${escapeHtml(shift.platform)}</strong><strong class="text-accent">${formatMoney(shift.net)}</strong></div><div class="detail-shift-meta">${escapeHtml(formatTime(shift.startTime))}–${escapeHtml(formatTime(shift.endTime))} · ${formatDuration(shift.hours)} · ${formatNumber(shift.miles, 1)} mi</div></button>`; }).join("")}</div>` : `<p class="panel-subtitle" style="margin:18px 0">No shifts recorded on this date.</p><button class="button button-primary button-wide" type="button" data-action="add-shift-on-date" data-date="${escapeAttribute(ui.calendarSelected)}">${icon("calendarAdd", "icon icon-sm")}Add shift on this date</button>`}
-          <div class="divider"></div>
-          <div class="panel-header"><div><h3 class="panel-title">Monthly goal</h3><p class="panel-subtitle">${monthlyGoal ? `${formatMoney(data.summary.net, { noCents: true })} of ${formatMoney(monthlyGoal, { noCents: true })}` : "No monthly goal set"}</p></div><span class="pill ${progress >= 100 ? "pill-success" : "pill-info"}">${progress.toFixed(0)}%</span></div><div class="progress progress-lg"><div class="progress-fill" style="width:${progress.toFixed(2)}%"></div></div><div style="margin-top:12px"><button class="button button-ghost button-small" type="button" data-route="settings">${icon("settings", "icon icon-sm")}Adjust goal</button></div>
-        </aside>
-      </div>
-    </div>`;
+    return `<div class="page-stack"><div class="calendar-layout"><section class="calendar-panel panel"><div class="calendar-toolbar"><button class="icon-button" type="button" data-action="calendar-prev">${icon("chevronLeft", "icon icon-sm")}</button><div class="calendar-title"><strong>${new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(data.monthStart)}</strong><span>${data.monthSummary.count} shifts · ${formatMoney(data.monthSummary.net)} net</span></div><div style="display:flex;gap:5px"><button class="button button-ghost button-small" type="button" data-action="calendar-today">Today</button><button class="icon-button" type="button" data-action="calendar-next">${icon("chevronRight", "icon icon-sm")}</button></div></div><div class="calendar-grid">${weekdays.map((day) => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join("")}${data.days.map((day) => `<button class="calendar-day${day.outside ? " is-outside" : ""}${day.iso === Core.localISODate() ? " is-today" : ""}${day.iso === ui.calendarSelected ? " is-selected" : ""}${day.heat ? ` heat-${day.heat}` : ""}" type="button" data-action="calendar-select" data-date="${day.iso}"><span class="calendar-day-number">${day.date.getDate()}</span>${day.summary.count ? `<span class="calendar-day-net">${formatMoney(day.summary.net, { compact: true })}</span><span class="calendar-day-move">${formatMoney(day.summary.takeOut, { compact: true })} move</span>` : ""}</button>`).join("")}</div></section><aside class="calendar-detail panel"><div class="panel-header"><div><h2 class="detail-date">${escapeHtml(formatDate(ui.calendarSelected, { weekday: "long", month: "long", day: "numeric" }))}</h2><p class="panel-subtitle">${summary.count} completed shift${summary.count === 1 ? "" : "s"}</p></div><button class="button button-primary button-small" type="button" data-action="add-shift-for-date" data-date="${ui.calendarSelected}">${icon("plus", "icon icon-sm")}Add</button></div><div class="detail-summary"><div class="detail-stat"><span>Gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="detail-stat"><span>Net</span><strong>${formatMoney(summary.net)}</strong></div><div class="detail-stat"><span>Move out</span><strong>${formatMoney(summary.takeOut)}</strong></div><div class="detail-stat"><span>Keep</span><strong>${formatMoney(summary.spendable)}</strong></div></div>${selected.length ? `<div class="recent-list">${sortedShifts(selected).map((raw) => { const shift = Core.calculateShift(raw, state.settings); return `<div class="recent-row"><div class="recent-main"><strong>${escapeHtml(shift.platform)}</strong><span>${formatTime(shift.startTime)}–${formatTime(shift.endTime)} · ${formatNumber(shift.miles, 1)} mi</span></div><div class="recent-money"><strong>${formatMoney(shift.net)}</strong><span>${formatMoney(shift.takeOut)} move</span></div><button class="icon-button" type="button" data-action="view-money-plan" data-id="${escapeAttribute(shift.id)}">${icon("wallet", "icon icon-sm")}</button></div>`; }).join("")}</div>` : `<div class="empty-state" style="min-height:160px"><div class="empty-state-inner"><span class="empty-icon">${icon("calendar", "icon icon-lg")}</span><h3>No shift saved</h3><p>Add one for this date or choose another day.</p></div></div>`}</aside></div></div>`;
   }
 
-  function sortedMaintenance(list) {
-    return (list || state.maintenance).slice().sort((a, b) => {
-      const dateCompare = String(b.date).localeCompare(String(a.date));
-      if (dateCompare) return dateCompare;
-      return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
-    });
+  function vehicleFundSummary() {
+    const total = Core.summarizeShifts(state.shifts, state.settings);
+    const spent = Core.round(state.maintenance.reduce((sum, item) => sum + Core.safeNumber(item.amount), 0), 2);
+    return { contributions: total.vehicleFund, spent, balance: Core.round(total.vehicleFund - spent, 2) };
   }
 
-  function filteredMaintenance() {
-    const search = ui.vehicleFilters.search.trim().toLowerCase();
-    return sortedMaintenance().filter((item) => {
-      if (ui.vehicleFilters.type !== "all" && item.type !== ui.vehicleFilters.type) return false;
-      if (!search) return true;
-      return [item.date, formatDate(item.date), item.type, item.note, item.amount, item.odometer, item.nextDueOdometer].join(" ").toLowerCase().includes(search);
-    });
-  }
-
-  function latestMaintenanceMatching(pattern) {
-    return state.maintenance
-      .filter((item) => pattern.test(item.type))
-      .slice()
-      .sort((a, b) => Core.safeNumber(b.odometer) - Core.safeNumber(a.odometer) || String(b.date).localeCompare(String(a.date)))[0] || null;
-  }
-
-  function serviceReminder(label, pattern, interval, currentOdometer) {
-    const latest = latestMaintenanceMatching(pattern);
-    if (!latest) {
-      return {
-        label,
-        status: "Not tracked",
-        detail: "Log the service once to start mileage-based reminders.",
-        className: "",
-        dueAt: 0
-      };
-    }
-    const dueAt = Core.safeNumber(latest.nextDueOdometer) || (Core.safeNumber(latest.odometer) + Core.safeNumber(interval));
-    if (!dueAt) {
-      return { label, status: "Interval needed", detail: `Last logged ${formatShortDate(latest.date)}.`, className: "", dueAt: 0 };
-    }
-    const remaining = dueAt - currentOdometer;
-    const soonThreshold = Math.max(500, Core.safeNumber(interval) * 0.15);
-    return {
-      label,
-      status: remaining <= 0 ? `${formatNumber(Math.abs(remaining), 0)} mi overdue` : `${formatNumber(remaining, 0)} mi remaining`,
-      detail: `Due at ${formatNumber(dueAt, 0)} mi · last logged ${formatShortDate(latest.date)}`,
-      className: remaining <= 0 ? "is-due" : remaining <= soonThreshold ? "is-soon" : "",
-      dueAt
-    };
-  }
-
-  function renderReminderCard(reminder, iconName) {
-    return `<article class="reminder-card panel ${reminder.className}"><div class="reminder-head"><div class="reminder-icon">${icon(iconName || "wrench", "icon icon-sm")}</div>${reminder.className === "is-due" ? '<span class="pill pill-danger">Due</span>' : reminder.className === "is-soon" ? '<span class="pill pill-warning">Soon</span>' : '<span class="pill">Tracked</span>'}</div><h3>${escapeHtml(reminder.label)}</h3><strong>${escapeHtml(reminder.status)}</strong><p>${escapeHtml(reminder.detail)}</p></article>`;
+  function renderMaintenanceList() {
+    const list = state.maintenance.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || Core.safeNumber(b.odometer) - Core.safeNumber(a.odometer));
+    if (!list.length) return `<div class="empty-state" style="min-height:160px"><div class="empty-state-inner"><span class="empty-icon">${icon("wrench", "icon icon-lg")}</span><h3>No maintenance logged</h3><p>Add oil changes, tires, repairs, and other vehicle costs.</p></div></div>`;
+    return `<div class="maintenance-list">${list.map((item) => `<div class="maintenance-row"><div class="maintenance-main"><strong>${escapeHtml(item.type)}</strong><span>${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}${item.odometer ? ` · ${formatNumber(item.odometer, 0)} mi` : ""}${item.note ? ` · ${escapeHtml(item.note)}` : ""}</span></div><strong class="maintenance-amount">${formatMoney(item.amount)}</strong><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}">${icon("edit", "icon icon-sm")}</button><button class="icon-button is-danger" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}">${icon("trash", "icon icon-sm")}</button></div></div>`).join("")}</div>`;
   }
 
   function renderVehiclePage() {
     const fund = vehicleFundSummary();
     const odometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
-    const oil = serviceReminder("Oil change", /oil/i, state.settings.vehicle.oilInterval, odometer);
-    const tires = serviceReminder("Tire rotation", /tire rotation/i, state.settings.vehicle.tireInterval, odometer);
-    const explicitUpcoming = state.maintenance
-      .filter((item) => Core.safeNumber(item.nextDueOdometer) > 0)
-      .map((item) => ({ item, remaining: Core.safeNumber(item.nextDueOdometer) - odometer }))
-      .sort((a, b) => a.remaining - b.remaining)[0];
-    const nextReminder = explicitUpcoming ? {
-      label: explicitUpcoming.item.type,
-      status: explicitUpcoming.remaining <= 0 ? `${formatNumber(Math.abs(explicitUpcoming.remaining), 0)} mi overdue` : `${formatNumber(explicitUpcoming.remaining, 0)} mi remaining`,
-      detail: `Due at ${formatNumber(explicitUpcoming.item.nextDueOdometer, 0)} mi${explicitUpcoming.item.note ? ` · ${explicitUpcoming.item.note}` : ""}`,
-      className: explicitUpcoming.remaining <= 0 ? "is-due" : explicitUpcoming.remaining <= 750 ? "is-soon" : "",
-      dueAt: Core.safeNumber(explicitUpcoming.item.nextDueOdometer)
-    } : {
-      label: "Next custom service",
-      status: "Nothing scheduled",
-      detail: "Add a next-due mileage when logging maintenance.",
-      className: "",
-      dueAt: 0
-    };
-    const types = Array.from(new Set([...MAINTENANCE_TYPES, ...state.maintenance.map((item) => item.type)])).filter(Boolean);
-    const reminders = [[oil, "fuel"], [tires, "route"]];
-    const nextReminderKey = `${String(nextReminder.label).toLowerCase()}|${Core.safeNumber(nextReminder.dueAt) || String(nextReminder.detail).toLowerCase()}`;
-    const trackedKeys = new Set(reminders.map(([reminder]) => `${String(reminder.label).toLowerCase()}|${Core.safeNumber(reminder.dueAt) || String(reminder.detail).toLowerCase()}`));
-    if (!trackedKeys.has(nextReminderKey)) reminders.push([nextReminder, "wrench"]);
-    const reminderRows = reminders
-      .map(([reminder, iconName]) => `<div class="service-status-row ${reminder.className}"><span class="service-status-icon">${icon(iconName, "icon icon-sm")}</span><span class="service-status-copy"><strong>${escapeHtml(reminder.label)}</strong><small>${escapeHtml(reminder.detail)}</small></span><span class="service-status-value">${escapeHtml(reminder.status)}</span></div>`)
-      .join("");
-
-    const statusView = `<div class="vehicle-status-view">
-      <section class="vehicle-command-card">
-        <div class="vehicle-command-head"><div><span>${escapeHtml(state.settings.vehicle.name)}</span><strong>Vehicle status</strong></div><button class="icon-button" type="button" data-route="settings" aria-label="Open vehicle settings">${icon("settings", "icon icon-sm")}</button></div>
-        <div class="vehicle-command-stats"><div><span>Reserve</span><strong class="${fund.balance < 0 ? "text-red" : "text-accent"}">${formatMoney(fund.balance, { noCents: true })}</strong><small>${formatMoney(fund.contributions, { noCents: true })} in · ${formatMoney(fund.spent, { noCents: true })} out</small></div><div><span>Odometer</span><strong>${formatNumber(odometer, 0)}</strong><small>miles on record</small></div></div>
-        <div class="vehicle-command-actions"><button class="button button-primary" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Log service</button><button class="button button-secondary" type="button" data-action="vehicle-view" data-view="history">View history</button></div>
-      </section>
-      <section class="panel service-status-panel"><div class="panel-header"><div><h2 class="panel-title">Service reminders</h2><p class="panel-subtitle">Mileage-based status from your records</p></div></div><div class="service-status-list">${reminderRows}</div></section>
-    </div>`;
-
-    const historyView = `<div class="vehicle-history-view">
-      <section class="toolbar maintenance-toolbar"><div class="toolbar-row"><div><h2 class="panel-title">Maintenance history</h2><p class="panel-subtitle" id="maintenanceResultsMeta">Loading service history…</p></div><button class="button button-primary button-small" type="button" data-action="open-maintenance">${icon("plus", "icon icon-sm")}Add record</button></div><div class="shift-search-row"><div class="field"><label for="maintenanceSearch">Search history</label><div class="input-wrap">${icon("search", "input-icon")}<input id="maintenanceSearch" type="search" placeholder="Service, note, date…" value="${escapeAttribute(ui.vehicleFilters.search)}" data-filter="maintenance-search"></div></div></div><details class="filter-disclosure mobile-collapse-control"><summary><span>${icon("filter", "icon icon-sm")}Service filter</span><span class="filter-disclosure-value">${ui.vehicleFilters.type === "all" ? "All types" : escapeHtml(ui.vehicleFilters.type)}</span>${icon("chevronRight", "filter-disclosure-chevron icon icon-sm")}</summary><div class="filter-grid filter-grid-secondary filter-grid-single"><div class="field"><label for="maintenanceType">Service type</label><select id="maintenanceType" data-filter="maintenance-type"><option value="all">All service types</option>${types.map((type) => `<option value="${escapeAttribute(type)}"${ui.vehicleFilters.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div></div></details></section>
-      <div id="maintenanceResults"></div>
-    </div>`;
-
-    return `<div class="page-stack vehicle-focus-page">
-      <section class="focus-view-switch"><div class="period-switch" aria-label="Vehicle view"><button class="segment-button${ui.vehicleView === "status" ? " is-active" : ""}" type="button" data-action="vehicle-view" data-view="status">${icon("vehicle", "icon icon-sm")}<span>Status</span></button><button class="segment-button${ui.vehicleView === "history" ? " is-active" : ""}" type="button" data-action="vehicle-view" data-view="history">${icon("wrench", "icon icon-sm")}<span>History</span></button></div></section>
-      ${ui.vehicleView === "history" ? historyView : statusView}
-    </div>`;
-  }
-
-  function updateVehicleResults() {
-    const root = document.getElementById("maintenanceResults");
-    const meta = document.getElementById("maintenanceResultsMeta");
-    if (!root || !meta) return;
-    const list = filteredMaintenance();
-    const total = list.reduce((sum, item) => sum + Core.safeNumber(item.amount), 0);
-    const limit = Math.max(5, Core.safeNumber(ui.maintenanceVisibleCount, 5));
-    const mobileList = list.slice(0, limit);
-    meta.textContent = list.length > limit
-      ? `Showing ${mobileList.length} of ${list.length} · ${formatMoney(total)} total`
-      : `${list.length} of ${state.maintenance.length} record${state.maintenance.length === 1 ? "" : "s"} · ${formatMoney(total)}`;
-    if (!list.length) {
-      root.innerHTML = emptyState({
-        icon: "wrench",
-        title: state.maintenance.length ? "No maintenance matches" : "Build a vehicle service history",
-        body: state.maintenance.length ? "Try another service type or clear your search." : "Record oil changes, tires, repairs, washes, and scheduled mileage in one ledger.",
-        action: state.maintenance.length ? "clear-maintenance-filters" : "open-maintenance",
-        actionLabel: state.maintenance.length ? "Clear filters" : "Log first service",
-        actionIcon: state.maintenance.length ? "refresh" : "plus"
-      });
-      return;
-    }
-    const desktop = `<div class="data-table-wrap"><table class="data-table" style="min-width:760px"><thead><tr><th>Date</th><th>Service</th><th>Cost</th><th>Odometer</th><th>Next due</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${list.map((item) => `<tr><td><span class="table-primary">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span></td><td><span class="platform-pill">${escapeHtml(item.type)}</span></td><td class="table-number">${formatMoney(item.amount)}</td><td class="table-number">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</td><td class="table-number">${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</td><td><span class="table-secondary" style="margin:0;max-width:260px;white-space:normal">${escapeHtml(item.note || "—")}</span></td><td><div class="row-actions"><button class="icon-button" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Edit maintenance record">${icon("edit", "icon icon-sm")}</button><button class="icon-button" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}" aria-label="Delete maintenance record">${icon("trash", "icon icon-sm")}</button></div></td></tr>`).join("")}</tbody></table></div>`;
-    const mobile = `<div class="mobile-record-list maintenance-mobile-list">${mobileList.map((item) => `<article class="record-card compact-record-card maintenance-record-card"><details class="record-card-disclosure"><summary><span class="maintenance-record-icon">${icon("wrench", "icon icon-sm")}</span><span class="compact-record-summary maintenance-record-summary"><strong class="compact-record-date">${escapeHtml(item.type)}</strong><strong class="compact-record-net">${formatMoney(item.amount)}</strong><span class="compact-record-meta">${escapeHtml(formatDate(item.date, { month: "short", day: "numeric", year: "numeric" }))}</span><span class="compact-record-efficiency">${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "No mileage"}</span></span>${icon("chevronRight", "record-card-disclosure-chevron icon icon-sm")}</summary><div class="record-card-disclosure-content"><div class="record-card-grid compact-record-stats"><div class="record-mini-stat"><span>Odometer</span><strong>${item.odometer ? `${formatNumber(item.odometer, 0)} mi` : "—"}</strong></div><div class="record-mini-stat"><span>Next due</span><strong>${item.nextDueOdometer ? `${formatNumber(item.nextDueOdometer, 0)} mi` : "—"}</strong></div></div>${item.note ? `<p class="compact-record-note">${escapeHtml(item.note)}</p>` : ""}<div class="record-card-actions"><button class="button button-secondary button-small" type="button" data-action="edit-maintenance" data-id="${escapeAttribute(item.id)}">${icon("edit", "icon icon-sm")}Edit</button><button class="button button-ghost button-small" type="button" data-action="delete-maintenance" data-id="${escapeAttribute(item.id)}">${icon("trash", "icon icon-sm")}Delete</button></div></div></details></article>`).join("")}</div>`;
-    const remaining = Math.max(0, list.length - mobileList.length);
-    const controls = list.length > 5 ? `<div class="ledger-page-controls">${remaining ? `<button class="button button-secondary" type="button" data-action="show-more-maintenance">Show ${Math.min(5, remaining)} more<span>${mobileList.length} of ${list.length}</span></button>` : `<button class="button button-ghost" type="button" data-action="show-fewer-maintenance">Show recent 5<span>Back to the top</span></button>`}</div>` : "";
-    root.innerHTML = `${desktop}${mobile}${controls}`;
+    const latest = state.maintenance.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+    return `<div class="page-stack"><div class="vehicle-grid"><section class="vehicle-fund panel"><div class="panel-header"><div><h2 class="panel-title">Vehicle reserve</h2><p class="panel-subtitle">5% from every new positive-net shift</p></div><span class="pill pill-success">Fund</span></div><strong class="vehicle-fund-value">${formatMoney(fund.balance)}</strong><p class="vehicle-fund-copy">Reserve balance after subtracting all logged maintenance costs.</p><div class="vehicle-mini-grid"><div class="vehicle-mini"><span>Contributed</span><strong>${formatMoney(fund.contributions)}</strong></div><div class="vehicle-mini"><span>Spent</span><strong>${formatMoney(fund.spent)}</strong></div><div class="vehicle-mini"><span>New rate</span><strong>5%</strong></div></div></section><section class="odometer-card panel"><div class="panel-header"><div><h2 class="panel-title">Current odometer</h2><p class="panel-subtitle">Highest mileage in your records</p></div><span class="metric-icon is-blue">${icon("route", "icon icon-sm")}</span></div><strong class="odometer-value">${formatNumber(odometer, 1)}</strong><p class="odometer-copy">${escapeHtml(state.settings.vehicle.name)}${latest ? ` · Last service ${formatDate(latest.date, { month: "short", day: "numeric" })}` : " · Add maintenance to build service history"}</p><button class="button button-secondary button-wide" style="margin-top:15px" type="button" data-action="update-odometer">${icon("edit", "icon icon-sm")}Update odometer</button></section></div><section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Maintenance & vehicle expenses</h2><p class="panel-subtitle">These costs reduce the displayed vehicle reserve</p></div><button class="button button-primary button-small" type="button" data-action="add-maintenance">${icon("plus", "icon icon-sm")}Add service</button></div>${renderMaintenanceList()}</section></div>`;
   }
 
   function goalTiming(goal) {
-    if (!goal.targetDate) return "No target date";
+    if (!goal.targetDate) return "No deadline";
     const target = Core.parseISODate(goal.targetDate);
-    if (!target) return "No target date";
     const today = Core.startOfDay(new Date());
+    if (!target) return "No deadline";
     const days = Math.ceil((target.getTime() - today.getTime()) / 86400000);
-    if (days < 0) return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} past target`;
+    if (days < 0) return `${Math.abs(days)} days past target`;
     if (days === 0) return "Target is today";
     return `${days} day${days === 1 ? "" : "s"} remaining`;
   }
@@ -1481,735 +637,653 @@
     const saved = Core.goalSaved(goal);
     const percent = goal.target > 0 ? Math.min(100, Math.max(0, saved / goal.target * 100)) : 0;
     const complete = goal.target > 0 && saved >= goal.target;
-    const remaining = Math.max(0, goal.target - saved);
-    const latest = goal.contributions.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
-    const primaryAction = goal.archived
-      ? `<button class="button button-primary button-small" type="button" data-action="archive-goal" data-id="${escapeAttribute(goal.id)}">${icon("refresh", "icon icon-sm")}Restore</button>`
-      : `<button class="button button-primary button-small" type="button" data-action="add-contribution" data-id="${escapeAttribute(goal.id)}">${icon("contribution", "icon icon-sm")}Add funds</button>`;
-    return `<article class="goal-row-card panel${complete ? " is-complete" : ""}">
-      <div class="goal-row-top"><div><h3>${escapeHtml(goal.name)}</h3><p>${escapeHtml(goal.archived ? "Archived goal" : goalTiming(goal))}</p></div><span class="goal-percent">${percent.toFixed(0)}%</span></div>
-      <div class="goal-row-money"><strong>${formatMoney(saved, { noCents: true })}</strong><span>of ${formatMoney(goal.target, { noCents: true })}</span><small>${complete ? "Funded" : `${formatMoney(remaining, { noCents: true })} to go`}</small></div>
-      <div class="progress"><div class="progress-fill" style="width:${percent.toFixed(2)}%"></div></div>
-      <div class="goal-row-actions">${primaryAction}<button class="button button-secondary button-small" type="button" data-action="edit-goal" data-id="${escapeAttribute(goal.id)}">${icon("edit", "icon icon-sm")}Edit</button><details class="goal-row-more"><summary aria-label="More goal options">${icon("more", "icon icon-sm")}</summary><div class="goal-row-more-menu">${goal.note ? `<p>${escapeHtml(goal.note)}</p>` : ""}${latest ? `<span>Latest: ${formatMoney(latest.amount)} · ${formatShortDate(latest.date)}</span>` : `<span>No contributions yet</span>`}${goal.archived ? "" : `<button class="button button-ghost button-small" type="button" data-action="archive-goal" data-id="${escapeAttribute(goal.id)}">${icon("archive", "icon icon-sm")}Archive</button>`}</div></details></div>
-    </article>`;
+    return `<article class="goal-card panel${complete ? " is-complete" : ""}"><div class="goal-card-top"><div style="min-width:0"><h3>${escapeHtml(goal.name)}</h3><p>${escapeHtml(goal.archived ? "Archived" : goalTiming(goal))}</p></div><span class="goal-percent">${formatNumber(percent, 0)}%</span></div><div class="goal-money"><strong>${formatMoney(saved, { noCents: true })}</strong><span>of ${formatMoney(goal.target, { noCents: true })}</span></div><div style="margin-top:10px"><div class="progress"><div class="progress-fill" style="width:${percent.toFixed(2)}%"></div></div></div>${goal.note ? `<p style="margin-top:10px">${escapeHtml(goal.note)}</p>` : ""}<div class="goal-actions"><button class="button button-primary button-small" type="button" data-action="add-contribution" data-id="${escapeAttribute(goal.id)}">${icon("plus", "icon icon-sm")}Add funds</button><button class="icon-button" type="button" data-action="edit-goal" data-id="${escapeAttribute(goal.id)}" aria-label="Edit goal">${icon("edit", "icon icon-sm")}</button><button class="icon-button ${goal.archived ? "" : "is-danger"}" type="button" data-action="${goal.archived ? "restore-goal" : "archive-goal"}" data-id="${escapeAttribute(goal.id)}" aria-label="${goal.archived ? "Restore" : "Archive"} goal">${icon(goal.archived ? "copy" : "archive", "icon icon-sm")}</button></div></article>`;
   }
 
   function renderGoalsPage() {
     const goals = state.goals.slice().sort((a, b) => Number(a.archived) - Number(b.archived) || String(a.targetDate || "9999").localeCompare(String(b.targetDate || "9999")) || String(a.name).localeCompare(String(b.name)));
     const active = goals.filter((goal) => !goal.archived);
-    const archived = goals.filter((goal) => goal.archived);
-    const target = active.reduce((sum, goal) => sum + goal.target, 0);
+    const target = active.reduce((sum, goal) => sum + Core.safeNumber(goal.target), 0);
     const saved = active.reduce((sum, goal) => sum + Core.goalSaved(goal), 0);
     const completed = active.filter((goal) => goal.target > 0 && Core.goalSaved(goal) >= goal.target).length;
-    const portfolioPercent = target > 0 ? Math.min(100, Math.max(0, saved / target * 100)) : 0;
-    const selected = ui.goalView === "archived" ? archived : active;
-    const limit = Math.max(3, Core.safeNumber(ui.goalVisibleCount, 3));
-    const visible = selected.slice(0, limit);
-    const remaining = Math.max(0, selected.length - visible.length);
-    const empty = ui.goalView === "archived"
-      ? `<div class="compact-empty-panel"><span>${icon("archive", "icon icon-lg")}</span><strong>No archived goals</strong><p>Goals you archive will stay available here.</p></div>`
-      : emptyState({ icon: "goal", title: "Give your earnings a destination", body: "Create a goal, set a target, and add contributions without changing your shift history.", action: "open-goal", actionLabel: "Create first goal" });
-    const controls = selected.length > 3 ? `<div class="ledger-page-controls">${remaining ? `<button class="button button-secondary" type="button" data-action="show-more-goals">Show ${Math.min(3, remaining)} more<span>${visible.length} of ${selected.length}</span></button>` : `<button class="button button-ghost" type="button" data-action="show-fewer-goals">Show first 3<span>Back to the top</span></button>`}</div>` : "";
-
-    return `<div class="page-stack goals-focus-page">
-      <section class="goal-portfolio-card">
-        <div class="goal-portfolio-head"><div><span>Goal portfolio</span><strong>${formatMoney(saved, { noCents: true })}</strong><small>of ${formatMoney(target, { noCents: true })} across ${active.length} active goal${active.length === 1 ? "" : "s"}</small></div><button class="button button-primary button-small" type="button" data-action="open-goal">${icon("plus", "icon icon-sm")}New goal</button></div>
-        <div class="goal-portfolio-progress"><div class="progress"><div class="progress-fill" style="width:${portfolioPercent.toFixed(2)}%"></div></div><span>${portfolioPercent.toFixed(0)}% funded</span><span>${completed} complete</span></div>
-      </section>
-      <section class="focus-view-switch goals-view-switch"><div class="period-switch" aria-label="Goal view"><button class="segment-button${ui.goalView === "active" ? " is-active" : ""}" type="button" data-action="goal-view" data-view="active">Active <span class="segment-count">${active.length}</span></button><button class="segment-button${ui.goalView === "archived" ? " is-active" : ""}" type="button" data-action="goal-view" data-view="archived">Archived <span class="segment-count">${archived.length}</span></button></div></section>
-      <section class="goal-list-section"><div class="section-header"><div><h2 class="section-title">${ui.goalView === "archived" ? "Archived goals" : "Active goals"}</h2><p class="section-subtitle">${selected.length ? `${selected.length} goal${selected.length === 1 ? "" : "s"}` : "Nothing here yet"}</p></div></div>${selected.length ? `<div class="goals-grid compact-goals-grid">${visible.map(renderGoalCard).join("")}</div>${controls}` : empty}</section>
-    </div>`;
-  }
-
-  function renderTaxRateRows() {
-    return state.settings.taxRates.map((rate) => `<div class="rate-row" data-rate-row data-rate-id="${escapeAttribute(rate.id)}"><div class="field"><label>Effective date</label><input type="date" name="rateEffective" value="${escapeAttribute(rate.effective)}" required></div><div class="field"><label>Rate per mile</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" name="rateAmount" value="${escapeAttribute(rate.rate)}" min="0" step="0.001" required></div></div><div class="field"><label>Label</label><input type="text" name="rateLabel" value="${escapeAttribute(rate.label)}" maxlength="60" required></div><button class="icon-button rate-delete" type="button" data-action="delete-tax-rate" aria-label="Remove mileage rate">${icon("trash", "icon icon-sm")}</button></div>`).join("");
+    return `<div class="page-stack"><section class="goals-summary"><article class="goal-summary-card panel"><span>Active goals</span><strong>${active.length}</strong></article><article class="goal-summary-card panel"><span>Total saved</span><strong>${formatMoney(saved, { noCents: true })}</strong></article><article class="goal-summary-card panel"><span>Completed</span><strong>${completed}</strong></article></section><div class="section-heading"><div><h2>Your goals</h2><p>Use the money left available after the shift plan.</p></div><button class="button button-primary" type="button" data-action="add-goal">${icon("plus", "icon icon-sm")}New goal</button></div>${goals.length ? `<section class="goals-grid">${goals.map(renderGoalCard).join("")}</section>` : emptyState({ icon: "target", title: "No goals yet", body: "Create a target for something you want to fund.", action: "add-goal", actionIcon: "plus", actionLabel: "Create goal" })}${target ? `<div class="notice">${icon("info", "icon icon-sm")}<p>You have ${formatMoney(Math.max(0, target - saved))} left across active goals.</p></div>` : ""}</div>`;
   }
 
   function formatBytes(bytes) {
-    const value = Math.max(0, Core.safeNumber(bytes));
-    if (value < 1024) return `${value} B`;
-    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    const number = Math.max(0, Core.safeNumber(bytes));
+    if (number < 1024) return `${formatNumber(number, 0)} B`;
+    if (number < 1024 ** 2) return `${formatNumber(number / 1024, 1)} KB`;
+    return `${formatNumber(number / 1024 ** 2, 1)} MB`;
   }
 
   function renderSettingsPage() {
-    const settings = state.settings;
+    const plan = state.settings.moneyPlan;
     const serializedBytes = new Blob([JSON.stringify(serializeState())]).size;
-    const allocationTotal = settings.allocations.investment + settings.allocations.savings + settings.allocations.vehicle;
-    const preferencesSection = pageDisclosure({
-      title: "Dashboard preferences",
-      subtitle: "Appearance, default platform, and week grouping",
-      value: settings.theme === "dark" ? "Dark" : "Light",
-      open: true,
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure",
-      content: `<div class="settings-grid is-three settings-grid-compact"><div class="field"><label for="settingTheme">Appearance</label><select id="settingTheme" name="theme"><option value="dark"${settings.theme === "dark" ? " selected" : ""}>Dark</option><option value="light"${settings.theme === "light" ? " selected" : ""}>Light</option></select></div><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${platformOptionMarkup(settings.defaultPlatform)}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="1"${settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option><option value="0"${settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="6"${settings.weekStartsOn === 6 ? " selected" : ""}>Saturday</option></select></div></div>`
-    });
-    const allocationSection = pageDisclosure({
-      title: "Money allocation & targets",
-      subtitle: "Set-asides and weekly or monthly net goals",
-      value: `${formatNumber(allocationTotal, 1)}% allocated`,
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure",
-      content: `<div class="settings-content-heading"><p>Percentages apply to positive net earnings on new shifts. Historical shifts keep their saved rates.</p><span class="pill" id="allocationTotal">${formatNumber(allocationTotal, 1)}% allocated</span></div><div class="settings-grid is-three settings-grid-compact"><div class="field"><label for="investmentPct">Investment</label><div class="input-suffix-wrap"><input id="investmentPct" type="number" inputmode="decimal" name="investmentPct" value="${escapeAttribute(settings.allocations.investment)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="savingsPct">Savings</label><div class="input-suffix-wrap"><input id="savingsPct" type="number" inputmode="decimal" name="savingsPct" value="${escapeAttribute(settings.allocations.savings)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="vehiclePct">Vehicle fund</label><div class="input-suffix-wrap"><input id="vehiclePct" type="number" inputmode="decimal" name="vehiclePct" value="${escapeAttribute(settings.allocations.vehicle)}" min="0" max="100" step="0.1" data-allocation><span class="input-suffix">%</span></div></div><div class="field"><label for="weeklyGoal">Weekly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="weeklyGoal" type="number" inputmode="decimal" name="weeklyNetGoal" value="${settings.weeklyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label for="monthlyGoal">Monthly net goal</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input id="monthlyGoal" type="number" inputmode="decimal" name="monthlyNetGoal" value="${settings.monthlyNetGoal || ""}" min="0" step="1" placeholder="0"></div></div><div class="field"><label>Unallocated / spendable</label><div class="control settings-readonly" id="spendableAllocation">${formatNumber(100 - allocationTotal, 1)}%</div></div></div><p class="field-help" id="allocationHelp">The combined allocation must not exceed 100%.</p>`
-    });
-    const ratesSection = pageDisclosure({
-      title: "Business mileage rates",
-      subtitle: "Date-based deduction schedule",
-      value: `${settings.taxRates.length} rate${settings.taxRates.length === 1 ? "" : "s"}`,
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure",
-      content: `<div class="settings-inline-actions"><p>Rates are selected by shift date. Add historical or future periods without changing saved mileage.</p><button class="button button-ghost button-small" type="button" data-action="add-tax-rate">${icon("plus", "icon icon-sm")}Add rate</button></div><div class="rate-list" id="taxRateList">${renderTaxRateRows()}</div><div class="settings-secondary-actions"><button class="button button-ghost button-small" type="button" data-action="restore-default-rates">${icon("refresh", "icon icon-sm")}Restore built-in schedule</button></div><p class="field-help">Mileage figures are recordkeeping estimates only. Confirm current rules and eligibility with a qualified tax professional.</p>`
-    });
-    const vehicleSection = pageDisclosure({
-      title: "Vehicle profile",
-      subtitle: "Odometer and service intervals",
-      value: `${formatNumber(settings.vehicle.currentOdometer, 0)} mi`,
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure",
-      content: `<div class="settings-grid settings-grid-compact"><div class="field"><label for="vehicleName">Vehicle label</label><input id="vehicleName" type="text" name="vehicleName" value="${escapeAttribute(settings.vehicle.name)}" maxlength="80"></div><div class="field"><label for="vehicleOdometer">Current odometer</label><div class="input-suffix-wrap"><input id="vehicleOdometer" type="number" inputmode="decimal" name="vehicleOdometer" value="${escapeAttribute(settings.vehicle.currentOdometer)}" min="0" step="1"><span class="input-suffix">mi</span></div></div><div class="field"><label for="oilInterval">Oil-change interval</label><div class="input-suffix-wrap"><input id="oilInterval" type="number" inputmode="numeric" name="oilInterval" value="${escapeAttribute(settings.vehicle.oilInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div><div class="field"><label for="tireInterval">Tire-rotation interval</label><div class="input-suffix-wrap"><input id="tireInterval" type="number" inputmode="numeric" name="tireInterval" value="${escapeAttribute(settings.vehicle.tireInterval)}" min="0" step="100"><span class="input-suffix">mi</span></div></div></div>`
-    });
-    const dataSection = pageDisclosure({
-      title: "Data controls",
-      subtitle: "Back up, import, export, or reset local records",
-      value: formatBytes(serializedBytes),
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure data-disclosure",
-      content: `<div class="data-actions"><button class="data-action-card" type="button" data-action="export-backup"><span class="data-icon">${icon("download", "icon icon-sm")}</span><h3>Full backup</h3><p>Download shifts, settings, goals, maintenance, and any active shift as JSON.</p><span class="button button-ghost button-small">Download JSON</span></button><button class="data-action-card" type="button" data-action="import-data"><span class="data-icon">${icon("upload", "icon icon-sm")}</span><h3>Import data</h3><p>Merge or replace data from a dashboard JSON backup or a shift CSV file.</p><span class="button button-ghost button-small">Choose file</span></button><button class="data-action-card" type="button" data-action="reset-data"><span class="data-icon data-icon-danger">${icon("trash", "icon icon-sm")}</span><h3>Reset dashboard</h3><p>Erase all locally stored dashboard data and return settings to defaults.</p><span class="button button-danger button-small">Reset local data</span></button></div><div class="storage-meter"><div class="storage-item"><span>Shifts</span><strong>${state.shifts.length}</strong></div><div class="storage-item"><span>Maintenance</span><strong>${state.maintenance.length}</strong></div><div class="storage-item"><span>Goals</span><strong>${state.goals.length}</strong></div><div class="storage-item"><span>Backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div>`
-    });
-    const privacySection = pageDisclosure({
-      title: "Privacy & version",
-      subtitle: "Local-first storage with no account or tracking",
-      value: `v${Core.APP_VERSION}`,
-      surfaceClass: "settings-section panel",
-      className: "settings-disclosure privacy-disclosure",
-      content: `<p class="settings-privacy-copy">Driver Command has no account, server database, ad tracking, or cloud sync. Browser storage is the source of truth, so regular backups are recommended.</p><div class="summary-strip"><div class="summary-stat"><span>Version</span><strong>${escapeHtml(Core.APP_VERSION)}</strong></div><div class="summary-stat"><span>Storage</span><strong>Local</strong></div><div class="summary-stat"><span>Offline</span><strong>Ready</strong></div><div class="summary-stat"><span>Legacy data</span><strong>Compatible</strong></div><div class="summary-stat"><span>Build</span><strong>Premium</strong></div></div>`
-    });
-
-    return `<div class="settings-layout compact-settings-layout"><form class="settings-form" data-form="settings" novalidate>${preferencesSection}${allocationSection}${ratesSection}${vehicleSection}<div class="settings-save-bar"><span>${icon("lock", "icon icon-sm")}Changes stay on this device</span><button class="button button-primary" type="submit">${icon("check", "icon icon-sm")}Save settings</button></div></form>${dataSection}${privacySection}</div>`;
+    return `<div class="settings-layout"><form class="settings-stack" data-form="settings"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Dashboard preferences</h2><p class="panel-subtitle">Defaults used for future entries</p></div><span class="pill">Local</span></div><div class="form-grid"><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${PLATFORM_OPTIONS.map((option) => `<option value="${escapeAttribute(option)}"${state.settings.defaultPlatform === option ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="0"${state.settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="1"${state.settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option></select></div><div class="field"><label for="settingWeeklyGoal">Weekly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingWeeklyGoal" name="weeklyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.weeklyNetGoal)}"></div></div><div class="field"><label for="settingMonthlyGoal">Monthly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingMonthlyGoal" name="monthlyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.monthlyNetGoal)}"></div></div><div class="field span-2"><label for="settingVehicleName">Vehicle name</label><input id="settingVehicleName" name="vehicleName" value="${escapeAttribute(state.settings.vehicle.name)}" maxlength="60"></div></div><button class="button button-primary button-wide" style="margin-top:12px" type="submit">${icon("check", "icon icon-sm")}Save preferences</button></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Your fixed 25% money plan</h2><p class="panel-subtitle">Applied to positive net earnings on new shifts</p></div><span class="pill pill-success">25%</span></div><div class="settings-plan-grid"><div class="settings-plan-item"><span>Vehicle fund</span><strong>${formatNumber(plan.vehiclePct, 0)}%</strong></div><div class="settings-plan-item"><span>Stocks</span><strong>${formatNumber(plan.stockPct, 0)}%</strong></div><div class="settings-plan-item"><span>Crypto</span><strong>${formatNumber(plan.cryptoPct, 0)}%</strong></div></div><div class="crypto-rules"><div class="crypto-rule"><span>Bitcoin</span><strong>${formatNumber(plan.cryptoMix.bitcoin, 0)}%</strong></div><div class="crypto-rule"><span>Solana</span><strong>${formatNumber(plan.cryptoMix.solana, 0)}%</strong></div><div class="crypto-rule"><span>Ethereum</span><strong>${formatNumber(plan.cryptoMix.ethereum, 0)}%</strong></div><div class="crypto-rule"><span>AAVE</span><strong>${formatNumber(plan.cryptoMix.aave, 0)}%</strong></div></div><div class="notice is-success" style="margin-top:10px">${icon("check", "icon icon-sm")}<p>The app also adds gas to the final “take out” number. Older shifts keep their previously saved allocation rather than being rewritten.</p></div></section></form><aside class="settings-stack"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Backups & exports</h2><p class="panel-subtitle">Protect the records stored on this device</p></div></div><div class="data-actions"><button class="data-action" type="button" data-action="export-backup"><span class="metric-icon">${icon("download", "icon icon-sm")}</span><strong>Full backup</strong><span>Download shifts, goals, maintenance, settings, and an active shift.</span></button><button class="data-action" type="button" data-action="import-data"><span class="metric-icon is-blue">${icon("upload", "icon icon-sm")}</span><strong>Import data</strong><span>Restore a JSON backup or import compatible shift CSV rows.</span></button><button class="data-action" type="button" data-action="export-csv"><span class="metric-icon is-violet">${icon("receipt", "icon icon-sm")}</span><strong>Export shifts</strong><span>Download a spreadsheet-friendly CSV with money-plan amounts.</span></button><button class="data-action" type="button" data-action="reset-data"><span class="metric-icon is-amber">${icon("trash", "icon icon-sm")}</span><strong>Reset dashboard</strong><span>Erase this dashboard’s locally stored data after confirmation.</span></button></div></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Storage & version</h2><p class="panel-subtitle">No account, server, or analytics</p></div><span class="pill pill-blue">v${Core.APP_VERSION}</span></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Saved shifts</span><strong>${state.shifts.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Maintenance records</span><strong>${state.maintenance.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Goals</span><strong>${state.goals.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Approx. backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div></section></aside></div>`;
   }
 
-  function updateAllocationTotal() {
-    const inputs = Array.from(document.querySelectorAll("[data-allocation]"));
-    const badge = document.getElementById("allocationTotal");
-    const spendable = document.getElementById("spendableAllocation");
-    const help = document.getElementById("allocationHelp");
-    if (!inputs.length || !badge || !spendable || !help) return;
-    const total = inputs.reduce((sum, input) => sum + Math.max(0, Core.safeNumber(input.value)), 0);
-    const remaining = 100 - total;
-    badge.textContent = `${formatNumber(total, 1)}% allocated`;
-    badge.className = `pill ${total > 100 ? "pill-danger" : total === 100 ? "pill-warning" : "pill-info"}`;
-    spendable.textContent = `${formatNumber(Math.max(0, remaining), 1)}%`;
-    help.textContent = total > 100 ? `Reduce allocations by ${formatNumber(total - 100, 1)} percentage points before saving.` : `${formatNumber(remaining, 1)}% of positive net earnings remains spendable.`;
-    help.className = `field-help ${total > 100 ? "text-red" : ""}`;
-    inputs.forEach((input) => input.setAttribute("aria-invalid", total > 100 ? "true" : "false"));
-  }
-
-  function modalShell(config) {
-    return `<div class="modal-backdrop" data-action="modal-backdrop"><section class="modal ${config.className || ""}" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><header class="modal-header"><div><h2 id="modalTitle">${escapeHtml(config.title)}</h2>${config.subtitle ? `<p>${escapeHtml(config.subtitle)}</p>` : ""}</div><button class="icon-button modal-close" type="button" data-action="close-modal" aria-label="Close dialog">${icon("close", "icon icon-sm")}</button></header><div class="modal-body">${config.body}</div>${config.footer ? `<footer class="modal-footer">${config.footer}</footer>` : ""}</section></div>`;
-  }
-
-  function openModal(config) {
-    if (!ui.modal) modalReturnFocus = document.activeElement || null;
-    if (dom.toastRoot && typeof dom.toastRoot.querySelectorAll === "function") {
-      dom.toastRoot.querySelectorAll(".toast").forEach((toast) => toast.remove());
-    }
-    ui.modal = config.meta || { type: "custom" };
-    dom.modalRoot.innerHTML = modalShell(config);
-    document.body.style.overflow = "hidden";
-    window.setTimeout(() => {
-      const target = dom.modalRoot.querySelector("[autofocus]")
-        || dom.modalRoot.querySelector("input:not([type=hidden]), select, textarea")
-        || dom.modalRoot.querySelector("button");
-      if (target) {
-        target.focus();
-        if (typeof target.select === "function" && target.matches && target.matches("input[type=number], input[type=text]")) target.select();
-      }
-      const form = dom.modalRoot.querySelector('[data-form="shift"]');
-      if (form) updateShiftPreview(form);
-      const mileageForm = dom.modalRoot.querySelector('[data-form="shift-mileage"]');
-      if (mileageForm) updateMileagePrompt(mileageForm);
-    }, 0);
-  }
-
-  function dismissModal() {
-    const onCancel = ui.modal && ui.modal.onCancel;
-    if (typeof onCancel === "function") onCancel();
-    else closeModal();
-  }
-
-  function trapModalFocus(event) {
-    if (!ui.modal || !dom.modalRoot) return;
-    const focusable = Array.from(dom.modalRoot.querySelectorAll(
-      'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    ));
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    const activeInside = typeof dom.modalRoot.contains === "function" ? dom.modalRoot.contains(active) : true;
-    if (event.shiftKey && (active === first || !activeInside)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (active === last || !activeInside)) {
-      event.preventDefault();
-      first.focus();
+  function renderCurrentRoute() {
+    switch (ui.route) {
+      case "shifts": dom.main.innerHTML = renderShiftsPage(); break;
+      case "analytics": dom.main.innerHTML = renderMoneyPage(); break;
+      case "calendar": dom.main.innerHTML = renderCalendarPage(); break;
+      case "vehicle": dom.main.innerHTML = renderVehiclePage(); break;
+      case "goals": dom.main.innerHTML = renderGoalsPage(); break;
+      case "settings": dom.main.innerHTML = renderSettingsPage(); break;
+      case "overview":
+      default: dom.main.innerHTML = renderOverviewPage(); break;
     }
   }
 
-  function closeModal(restoreFocus) {
-    if (!dom.modalRoot) return;
-    const returnTarget = modalReturnFocus;
-    modalReturnFocus = null;
-    dom.modalRoot.innerHTML = "";
-    document.body.style.overflow = "";
-    ui.modal = null;
-    if (restoreFocus !== false) {
-      if (returnTarget && typeof returnTarget.focus === "function") returnTarget.focus({ preventScroll: true });
-      else {
-        const fallback = document.querySelector('[data-action="open-add-shift"]');
-        if (fallback) fallback.focus({ preventScroll: true });
-      }
-    }
+  function renderApp() {
+    applyTheme();
+    renderNavigation();
+    renderHeader();
+    renderCurrentRoute();
   }
 
-  function platformOptionMarkup(selected) {
-    const options = Array.from(new Set([...PLATFORM_OPTIONS, selected].filter(Boolean)));
-    return options.map((platform) => `<option value="${escapeAttribute(platform)}"${platform === selected ? " selected" : ""}>${escapeHtml(platform)}</option>`).join("");
+  function platformOptions(selected) {
+    const current = selected || state.settings.defaultPlatform;
+    const options = PLATFORM_OPTIONS.includes(current) ? PLATFORM_OPTIONS : PLATFORM_OPTIONS.concat(current);
+    return options.map((option) => `<option value="${escapeAttribute(option)}"${option === current ? " selected" : ""}>${escapeHtml(option)}</option>`).join("");
   }
 
-  function numberField(config) {
-    const prefix = config.prefix ? `<span class="input-prefix">${escapeHtml(config.prefix)}</span>` : "";
-    const suffix = config.suffix ? `<span class="input-suffix">${escapeHtml(config.suffix)}</span>` : "";
-    const wrap = config.prefix ? "input-prefix-wrap" : config.suffix ? "input-suffix-wrap" : "";
-    const inputMode = config.inputMode || ((config.step || "0.01") === "1" ? "numeric" : "decimal");
-    return `<div class="field ${config.className || ""}"><label for="${escapeAttribute(config.id)}">${escapeHtml(config.label)}</label><div class="${wrap}">${prefix}<input id="${escapeAttribute(config.id)}" type="number" inputmode="${escapeAttribute(inputMode)}" name="${escapeAttribute(config.name)}" value="${config.value == null || config.value === 0 && config.blankZero ? "" : escapeAttribute(config.value)}" min="${config.min == null ? "0" : escapeAttribute(config.min)}" ${config.max == null ? "" : `max="${escapeAttribute(config.max)}"`} step="${escapeAttribute(config.step || "0.01")}" ${config.placeholder ? `placeholder="${escapeAttribute(config.placeholder)}"` : ""}>${suffix}</div>${config.help ? `<p class="field-help">${escapeHtml(config.help)}</p>` : ""}</div>`;
+  function moneyPreviewMarkup(shiftValue) {
+    const shift = Core.calculateShift(shiftValue, state.settings);
+    return `<div class="preview-strip"><div class="preview-item"><span>Net after expenses</span><strong data-preview-net>${formatMoney(shift.net)}</strong></div><div class="preview-item"><span>25% plan</span><strong data-preview-allocated>${formatMoney(shift.allocated)}</strong></div><div class="preview-item"><span>Take out + gas</span><strong data-preview-takeout>${formatMoney(shift.takeOut)}</strong></div><div class="preview-item"><span>Keep available</span><strong data-preview-keep>${formatMoney(shift.spendable)}</strong></div></div>`;
   }
 
-  function hiddenField(name, value) {
-    return `<input type="hidden" name="${escapeAttribute(name)}" value="${escapeAttribute(value == null ? "" : value)}">`;
-  }
-
-  function formDisclosure(config) {
-    const meta = config.meta ? `<span class="form-disclosure-meta">${escapeHtml(config.meta)}</span>` : "";
-    return `<details class="form-section form-disclosure ${config.className || ""}"${config.open ? " open" : ""}><summary><span class="form-section-title">${icon(config.icon || "info", "icon icon-sm")}${escapeHtml(config.title)}</span>${meta}${icon("chevronRight", "form-disclosure-chevron icon icon-sm")}</summary><div class="form-section-content">${config.content}</div></details>`;
-  }
-
-  function pageDisclosure(config) {
-    const value = config.value ? `<span class="page-disclosure-value">${config.value}</span>` : "";
-    return `<details class="${config.surfaceClass || "panel"} page-disclosure ${config.className || ""}"${config.open ? " open" : ""}><summary><div><h2 class="panel-title">${escapeHtml(config.title)}</h2>${config.subtitle ? `<p class="panel-subtitle">${escapeHtml(config.subtitle)}</p>` : ""}</div>${value}${icon("chevronRight", "page-disclosure-chevron icon icon-sm")}</summary><div class="page-disclosure-content">${config.content}</div></details>`;
-  }
-
-  function openMileagePrompt(kind, supplied) {
-    const isStart = kind === "start";
-    const activeSource = supplied || (!isStart ? state.activeShift : null);
-    if (!isStart && !activeSource) {
-      showToast("There is no active shift to finish.", "warning");
+  function openStartShiftModal() {
+    if (state.activeShift) {
+      showToast("A shift is already active.", "warning");
       return;
     }
-
-    const source = Core.clone(activeSource || {});
-    if (!isStart && !source.endTime) source.endTime = currentTimeValue();
+    const now = new Date();
     const currentOdometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
-    const startingMileage = isStart
-      ? Math.max(0, Core.safeNumber(source.startOdometer) || currentOdometer)
-      : Math.max(0, Core.safeNumber(source.startOdometer) || currentOdometer);
-    const savedEndingMileage = Math.max(0, Core.safeNumber(source.endOdometer));
-    const inputValue = isStart
-      ? (startingMileage > 0 ? startingMileage : "")
-      : (savedEndingMileage > 0 ? savedEndingMileage : "");
-    const platform = source.platform || state.settings.defaultPlatform;
-    const inputLabel = isStart ? "Starting mileage" : "Ending mileage";
-    const inputHelp = isStart
-      ? "Enter the number currently shown on your vehicle's odometer."
-      : "Enter the odometer reading from the moment you stopped driving.";
-    const startContext = `<div class="mileage-start-context">
-      <div class="mileage-context-item"><span class="mileage-context-icon">${icon("clock", "icon icon-sm")}</span><div><span>Timing</span><strong>Starts immediately</strong></div></div>
-      <div class="field mileage-platform-field"><label for="mileagePlatform">Driving on</label><select id="mileagePlatform" name="platform">${platformOptionMarkup(platform)}</select></div>
-    </div>`;
-    const endContext = `<div class="mileage-journey-card">
-      <div class="mileage-journey-point"><span>Started at</span><strong>${startingMileage > 0 ? escapeHtml(formatMileage(startingMileage)) : "Not recorded"}</strong></div>
-      <span class="mileage-journey-arrow">${icon("chevronRight", "icon icon-sm")}</span>
-      <div class="mileage-journey-point is-ending"><span>Ending at</span><strong data-ending-mileage-preview>${savedEndingMileage > 0 ? escapeHtml(formatMileage(savedEndingMileage)) : "—"}</strong></div>
-      <div class="mileage-distance-row"><span>Business miles</span><strong data-mileage-distance>${startingMileage > 0 && savedEndingMileage >= startingMileage ? escapeHtml(formatMileage(savedEndingMileage - startingMileage)) : "Enter ending mileage"}</strong></div>
-    </div>`;
-    const body = `<form id="shiftMileageForm" class="mileage-prompt-form" data-form="shift-mileage" data-kind="${escapeAttribute(kind)}" data-start-odometer="${escapeAttribute(startingMileage)}" novalidate>
-      <section class="mileage-focus-card">
-        <div class="mileage-focus-heading"><span class="mileage-focus-icon">${icon("route", "icon icon-md")}</span><div><span>${escapeHtml(inputLabel)}</span><strong>${isStart ? "Before you go online" : "Before final totals"}</strong></div></div>
-        <label class="visually-hidden" for="shiftMileageInput">${escapeHtml(inputLabel)}</label>
-        <div class="mileage-input-shell"><input id="shiftMileageInput" class="mileage-focus-input" type="number" inputmode="decimal" name="odometer" value="${escapeAttribute(inputValue)}" min="0.1" max="9999999.9" step="0.1" placeholder="0" aria-describedby="mileagePromptHelp" required autofocus><span>mi</span></div>
-        <p id="mileagePromptHelp">${escapeHtml(inputHelp)}</p>
-      </section>
-      ${isStart ? startContext : endContext}
-    </form>`;
+    const body = `<form data-form="start-shift"><div class="notice is-success">${icon("route", "icon icon-sm")}<p>Starting mileage comes first so the shift is ready before the timer begins.</p></div><div class="form-section" style="margin-top:11px"><div class="form-section-title">${icon("play", "icon icon-sm")}Start details</div><div class="form-grid"><div class="field"><label for="startPlatform">Platform</label><select id="startPlatform" name="platform">${platformOptions(state.settings.defaultPlatform)}</select></div><div class="field"><label for="startOdometer">Starting mileage</label><div class="input-shell has-suffix"><input id="startOdometer" name="startOdometer" type="number" min="0" step="0.1" value="${currentOdometer ? escapeAttribute(currentOdometer) : ""}" inputmode="decimal" autofocus required><span class="input-suffix">mi</span></div></div><div class="field"><label for="startDate">Date</label><input id="startDate" name="date" type="date" value="${Core.localISODate(now)}" required></div><div class="field"><label for="startTime">Start time</label><input id="startTime" name="startTime" type="time" value="${currentTimeValue(now)}" required></div><div class="field span-2"><label for="startNotes">Shift note <span style="color:var(--muted);font-weight:500">(optional)</span></label><input id="startNotes" name="notes" maxlength="160" placeholder="Airport run, evening shift, weekend drive…"></div></div></div></form>`;
     openModal({
-      title: isStart ? "Start shift" : "End shift",
-      subtitle: isStart ? "Starting mileage comes first. The timer begins when you confirm." : "Ending mileage comes first so your business miles are captured accurately.",
+      title: "Start shift",
+      subtitle: "Enter the odometer, then the work timer begins.",
       body,
-      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="submit" form="shiftMileageForm">${isStart ? icon("play", "icon icon-sm") : icon("chevronRight", "icon icon-sm")}${isStart ? "Start shift" : "Continue"}</button>`,
-      className: `modal-small mileage-prompt mileage-prompt-${escapeAttribute(kind)}`,
-      meta: { type: "shift-mileage", kind, draft: source }
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-start-shift">${icon("play", "icon icon-sm")}Start shift</button>`,
+      meta: { type: "start-shift" }
     });
   }
 
-  function updateMileagePrompt(form) {
+  function submitStartShift() {
+    const form = dom.modalRoot.querySelector('[data-form="start-shift"]');
     if (!form) return;
-    const input = form.elements.namedItem("odometer");
-    if (!input) return;
-    const raw = String(input.value || "").trim();
-    const value = Number(raw);
-    const kind = form.dataset.kind;
-    const start = Math.max(0, Core.safeNumber(form.dataset.startOdometer));
-    const endingPreview = form.querySelector("[data-ending-mileage-preview]");
-    const distancePreview = form.querySelector("[data-mileage-distance]");
-    input.removeAttribute("aria-invalid");
-    if (kind !== "end" || !endingPreview || !distancePreview) return;
-
-    endingPreview.textContent = raw && Number.isFinite(value) && value > 0 ? formatMileage(value) : "—";
-    distancePreview.classList.remove("is-error");
-    if (!raw) {
-      distancePreview.textContent = "Enter ending mileage";
+    const data = new FormData(form);
+    const date = String(data.get("date") || "");
+    const startTime = String(data.get("startTime") || "");
+    const mileageRaw = String(data.get("startOdometer") || "").trim();
+    if (!Core.parseISODate(date) || !startTime || mileageRaw === "") {
+      showToast("Add the date, time, and starting mileage.", "warning");
       return;
     }
-    if (!Number.isFinite(value) || value <= 0) {
-      distancePreview.textContent = "Check mileage";
-      distancePreview.classList.add("is-error");
-      input.setAttribute("aria-invalid", "true");
+    const started = dateTimeFromLocal(date, startTime);
+    if (!started) {
+      showToast("The shift start date or time is invalid.", "warning");
       return;
     }
-    if (start > 0 && value < start) {
-      distancePreview.textContent = "Below starting mileage";
-      distancePreview.classList.add("is-error");
-      input.setAttribute("aria-invalid", "true");
+    if (started.getTime() > Date.now() + 300000) {
+      showToast("The shift start cannot be in the future.", "warning");
       return;
     }
-    distancePreview.textContent = start > 0 ? formatMileage(value - start) : "Starting mileage unavailable";
-  }
-
-  function submitMileagePrompt(form) {
-    const input = form.elements.namedItem("odometer");
-    const raw = input ? String(input.value || "").trim() : "";
-    const mileage = Number(raw);
-    const kind = form.dataset.kind;
-    if (!raw || !Number.isFinite(mileage) || mileage <= 0) {
-      if (input) input.setAttribute("aria-invalid", "true");
-      showToast(`Enter a valid ${kind === "start" ? "starting" : "ending"} mileage.`, "error");
-      return;
-    }
-
-    if (kind === "start") {
-      if (state.activeShift) {
-        showToast("Finish the current live shift before starting another.", "warning");
-        return;
-      }
-      const platform = shiftFormValue(form, "platform") || state.settings.defaultPlatform;
-      const record = Core.normalizeShift({
-        date: Core.localISODate(),
-        platform,
-        startTime: currentTimeValue(),
-        endTime: "",
-        gross: 0,
-        fuel: 0,
-        tolls: 0,
-        otherExpenses: 0,
-        startOdometer: mileage,
-        endOdometer: 0,
-        manualMiles: 0,
-        manualHours: 0,
-        trips: 0,
-        notes: "",
-        allocationRates: state.settings.allocations,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }, state.settings);
-      state.activeShift = record;
-      saveState();
-      closeModal(false);
-      setRoute("overview", { focus: false });
-      showToast(`Shift started at ${formatMileage(mileage)}.`, "success");
-      return;
-    }
-
-    const draft = Core.clone((ui.modal && ui.modal.draft) || state.activeShift || {});
-    const fallbackStartingMileage = Math.max(0, Core.safeNumber(form.dataset.startOdometer));
-    const startingMileage = Math.max(0, Core.safeNumber(draft.startOdometer) || fallbackStartingMileage);
-    if (startingMileage > 0 && mileage < startingMileage) {
-      if (input) input.setAttribute("aria-invalid", "true");
-      showToast("Ending mileage cannot be lower than starting mileage.", "error");
-      return;
-    }
-    draft.startOdometer = startingMileage;
-    draft.endOdometer = mileage;
-    draft.endTime = draft.endTime || currentTimeValue();
-    draft.updatedAt = new Date().toISOString();
-    closeModal(false);
-    openShiftModal("end", draft);
-  }
-
-  function shiftModalCopy(mode) {
-    const map = {
-      add: ["Add completed shift", "Save the essentials first. Mileage, allocations, and notes stay neatly tucked away until needed.", "Save shift"],
-      edit: ["Edit shift", "Update this ledger entry without disturbing the rest of your history.", "Save changes"],
-      start: ["Start shift", "Enter the starting mileage shown on your odometer.", "Start shift"],
-      update: ["Update live shift", "Refresh the important numbers without stopping the timer.", "Save live draft"],
-      end: ["Finish shift", "Mileage is captured. Add the final totals and save this shift to your ledger.", "Finish & save"]
-    };
-    return map[mode] || map.add;
-  }
-
-  function openShiftModal(mode, supplied) {
-    if (mode === "start") {
-      openMileagePrompt("start", supplied);
-      return;
-    }
-    const source = supplied || (mode === "edit" ? getShift(ui.modal && ui.modal.id) : null) || ((mode === "update" || mode === "end") ? state.activeShift : null) || {};
-    const defaults = Core.normalizeShift({
-      date: source.date || Core.localISODate(),
-      platform: source.platform || state.settings.defaultPlatform,
-      startTime: source.startTime || (mode === "start" ? currentTimeValue() : ""),
-      endTime: source.endTime || (mode === "end" ? currentTimeValue() : ""),
-      gross: source.gross,
-      fuel: source.fuel,
-      tolls: source.tolls,
-      otherExpenses: source.otherExpenses,
-      startOdometer: source.startOdometer || Core.currentOdometer(state.shifts, state.maintenance, state.settings),
-      endOdometer: source.endOdometer,
-      manualMiles: source.manualMiles,
-      manualHours: source.manualHours,
-      trips: source.trips,
-      notes: source.notes,
-      allocationRates: source.allocationRates || state.settings.allocations,
-      id: source.id,
-      createdAt: source.createdAt
+    state.activeShift = Core.normalizeActiveShift({
+      id: Core.uid("active"),
+      date,
+      platform: String(data.get("platform") || state.settings.defaultPlatform),
+      startTime,
+      startedAt: started.toISOString(),
+      startOdometer: Math.max(0, Core.safeNumber(mileageRaw)),
+      pausedMs: 0,
+      pauseStartedAt: "",
+      pauseHistory: [],
+      notes: String(data.get("notes") || ""),
+      createdAt: new Date().toISOString()
     }, state.settings);
-    const copy = shiftModalCopy(mode);
-    const endTimeValue = mode === "end" && !defaults.endTime ? currentTimeValue() : defaults.endTime;
-    const allocation = defaults.allocationRates || state.settings.allocations;
-    const allocationFields = `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftInvestment", name: "allocationInvestment", label: "Investment", value: allocation.investment, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftSavings", name: "allocationSavings", label: "Savings", value: allocation.savings, suffix: "%", step: "0.1", max: "100" })}${numberField({ id: "shiftVehicle", name: "allocationVehicle", label: "Vehicle fund", value: allocation.vehicle, suffix: "%", step: "0.1", max: "100" })}</div><p class="field-help">Saved with this shift, so future settings changes never rewrite its history.</p>`;
-    const notesField = `<div class="field"><label for="shiftNotes">Optional context</label><textarea id="shiftNotes" name="notes" maxlength="1000" placeholder="Airport queue, surge window, route notes, unusual costs…">${escapeHtml(defaults.notes)}</textarea></div>`;
-    const preview = mode === "start" ? "" : `<div class="form-summary shift-form-summary" data-shift-preview></div>`;
-    const capturedMiles = defaults.endOdometer >= defaults.startOdometer && defaults.endOdometer > 0
-      ? defaults.endOdometer - defaults.startOdometer
-      : 0;
-    const mileageCapturedCard = `<div class="captured-mileage-card">
-      <div><span>Starting</span><strong>${escapeHtml(formatMileage(defaults.startOdometer))}</strong></div>
-      <span class="captured-mileage-arrow">${icon("chevronRight", "icon icon-sm")}</span>
-      <div><span>Ending</span><strong>${escapeHtml(formatMileage(defaults.endOdometer))}</strong></div>
-      <div class="captured-mileage-total"><span>Driven</span><strong>${escapeHtml(formatMileage(capturedMiles))}</strong></div>
-    </div>`;
-    let content = "";
-
-    if (mode === "start") {
-      content = `<div class="shift-quick-note"><span class="shift-quick-icon">${icon("play", "icon icon-sm")}</span><div><strong>Fast start</strong><span>The timer begins immediately. Only the four fields below are needed.</span></div></div>
-        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("calendar", "icon icon-sm")}Shift basics</h3><div class="form-grid shift-pair-grid">
-          <div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div>
-          <div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div>
-          <div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div>
-          <div class="field"><label for="shiftTrips">Trips now</label><input id="shiftTrips" type="number" inputmode="numeric" name="trips" value="${defaults.trips || ""}" min="0" step="1" placeholder="0"></div>
-        </div><div class="shift-timer-hint"><span>${icon("clock", "icon icon-sm")}Timer starts at</span><strong>${escapeHtml(formatTime(defaults.startTime))}</strong></div></section>
-        ${formDisclosure({ title: "Starting odometer & note", icon: "route", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true, className: "" })}<div class="field shift-note-field"><label for="shiftNotes">Quick note</label><input id="shiftNotes" type="text" name="notes" value="${escapeAttribute(defaults.notes)}" maxlength="1000" placeholder="Airport, event, surge…"></div></div>` })}
-        ${hiddenField("endTime", "")}${hiddenField("manualHours", 0)}${hiddenField("gross", defaults.gross)}${hiddenField("fuel", defaults.fuel)}${hiddenField("tolls", defaults.tolls)}${hiddenField("otherExpenses", defaults.otherExpenses)}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualMiles", defaults.manualMiles)}${hiddenField("allocationInvestment", allocation.investment)}${hiddenField("allocationSavings", allocation.savings)}${hiddenField("allocationVehicle", allocation.vehicle)}`;
-    } else if (mode === "update") {
-      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · live</span></div><strong data-live-duration>${formatDuration(activeDurationHours(), true)}</strong></div>${preview}
-        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("dollar", "icon icon-sm")}Live totals</h3><div class="form-grid shift-pair-grid">
-          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}
-          ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
-          ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
-          ${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}
-        </div></section>
-        ${formDisclosure({ title: "Shift setup", icon: "calendar", meta: `Started ${formatMileage(defaults.startOdometer)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div>${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Starting mileage", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}</div>` })}
-        ${formDisclosure({ title: "Other costs", icon: "receipt", meta: "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true, help: "Only used if ending mileage is unavailable." })}</div>` })}
-        ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
-        ${hiddenField("endTime", "")}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualHours", 0)}`;
-    } else if (mode === "end") {
-      content = `<div class="live-shift-strip"><div><span class="live-dot is-live"></span><span>${escapeHtml(defaults.platform)} · ready to finish</span></div><strong>${formatDuration(Core.durationHours(defaults.startTime, endTimeValue, 0), true)}</strong></div>${mileageCapturedCard}${preview}
-        <section class="form-section shift-essential-section"><h3 class="form-section-title">${icon("stop", "icon icon-sm")}Final numbers</h3><div class="form-grid shift-pair-grid">
-          ${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true, className: "shift-gross-focus" })}
-          ${numberField({ id: "shiftTrips", name: "trips", label: "Trips / deliveries", value: defaults.trips, step: "1", blankZero: true, inputMode: "numeric" })}
-          ${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}
-          <div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div>
-        </div></section>
-        ${formDisclosure({ title: "Extra costs", icon: "receipt", meta: defaults.tolls || defaults.otherExpenses ? "Added" : "Optional", content: `<div class="form-grid shift-pair-grid">${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
-        ${formDisclosure({ title: "Timing & platform", icon: "calendar", meta: `${formatDate(defaults.date, { month: "short", day: "numeric" })} · ${formatTime(defaults.startTime)}`, content: `<div class="form-grid shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}" required></div><div class="field span-2"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div></div>` })}
-        ${formDisclosure({ title: "Notes & allocation", icon: "wallet", meta: "Advanced", content: `${notesField}<div class="form-subdivider"></div>${allocationFields}` })}
-        ${hiddenField("startOdometer", defaults.startOdometer)}${hiddenField("endOdometer", defaults.endOdometer)}${hiddenField("manualMiles", defaults.manualMiles)}${hiddenField("manualHours", 0)}`;
-    } else {
-      content = `${preview}
-        ${formDisclosure({ title: "Shift timing", icon: "calendar", meta: mode === "edit" ? formatDate(defaults.date, { month: "short", day: "numeric", year: "numeric" }) : "Required", open: true, content: `<div class="form-grid is-three shift-pair-grid"><div class="field"><label for="shiftDate">Date</label><input id="shiftDate" type="date" name="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="shiftPlatformInput">Platform</label><select id="shiftPlatformInput" name="platform">${platformOptionMarkup(defaults.platform)}</select></div><div class="field"><label for="shiftTrips">Trips / deliveries</label><input id="shiftTrips" type="number" inputmode="numeric" name="trips" value="${defaults.trips || ""}" min="0" step="1" placeholder="0"></div><div class="field"><label for="shiftStartTime">Start time</label><input id="shiftStartTime" type="time" name="startTime" value="${escapeAttribute(defaults.startTime)}"></div><div class="field"><label for="shiftEndTime">End time</label><input id="shiftEndTime" type="time" name="endTime" value="${escapeAttribute(endTimeValue)}"></div><div class="field"><label for="shiftManualHours">Manual hours</label><div class="input-suffix-wrap"><input id="shiftManualHours" type="number" inputmode="decimal" name="manualHours" value="${defaults.manualHours || ""}" min="0" step="0.05" placeholder="If times are unknown"><span class="input-suffix">hr</span></div></div></div>` })}
-        ${formDisclosure({ title: "Earnings & direct costs", icon: "dollar", meta: "Core", open: true, content: `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftGross", name: "gross", label: "Gross earnings", value: defaults.gross, prefix: "$", blankZero: true })}${numberField({ id: "shiftFuel", name: "fuel", label: "Fuel", value: defaults.fuel, prefix: "$", blankZero: true })}${numberField({ id: "shiftTolls", name: "tolls", label: "Tolls / parking", value: defaults.tolls, prefix: "$", blankZero: true })}${numberField({ id: "shiftOther", name: "otherExpenses", label: "Other expenses", value: defaults.otherExpenses, prefix: "$", blankZero: true })}</div>` })}
-        ${formDisclosure({ title: "Mileage", icon: "route", meta: "Optional", content: `<div class="form-grid is-three shift-pair-grid">${numberField({ id: "shiftStartOdometer", name: "startOdometer", label: "Start odometer", value: defaults.startOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftEndOdometer", name: "endOdometer", label: "End odometer", value: defaults.endOdometer, suffix: "mi", step: "0.1", blankZero: true })}${numberField({ id: "shiftManualMiles", name: "manualMiles", label: "Manual business miles", value: defaults.manualMiles, suffix: "mi", step: "0.1", blankZero: true, help: "Used only when an odometer difference is unavailable." })}</div>` })}
-        ${formDisclosure({ title: "Allocation for this shift", icon: "wallet", meta: `${formatNumber(allocation.investment + allocation.savings + allocation.vehicle, 1)}% allocated`, content: allocationFields })}
-        ${formDisclosure({ title: "Notes", icon: "receipt", meta: defaults.notes ? "Added" : "Optional", content: notesField })}`;
-    }
-
-    const body = `<form class="shift-form mode-${escapeAttribute(mode)}" data-form="shift" data-mode="${escapeAttribute(mode)}" data-id="${escapeAttribute(defaults.id || "")}" novalidate>${content}</form>`;
-    const footer = mode === "end"
-      ? `<button class="button button-ghost shift-cancel-button" type="button" data-action="edit-end-mileage">${icon("edit", "icon icon-sm")}Edit mileage</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${icon("stop", "icon icon-sm")}${escapeHtml(copy[2])}</button>`
-      : `<button class="button button-ghost shift-cancel-button" type="button" data-action="close-modal">Cancel</button><button class="button button-primary shift-primary-button" type="button" data-action="submit-shift-form">${mode === "start" ? icon("play", "icon icon-sm") : icon("check", "icon icon-sm")}${escapeHtml(copy[2])}</button>`;
-    openModal({
-      title: copy[0],
-      subtitle: copy[1],
-      body,
-      footer,
-      className: `modal-wide shift-modal shift-modal-${escapeAttribute(mode)}`,
-      meta: { type: "shift", mode, id: defaults.id || "", supplied: supplied || null }
-    });
-  }
-
-  function shiftFormValue(form, name) {
-    const field = form.elements.namedItem(name);
-    return field ? field.value : "";
-  }
-
-  function shiftFromForm(form, preview) {
-    const mode = form.dataset.mode;
-    const existing = mode === "edit" ? getShift(form.dataset.id) : (mode === "update" || mode === "end") ? state.activeShift : null;
-    const livePreview = (mode === "start" || mode === "update") && preview;
-    const allocations = {
-      investment: Core.safeNumber(shiftFormValue(form, "allocationInvestment")),
-      savings: Core.safeNumber(shiftFormValue(form, "allocationSavings")),
-      vehicle: Core.safeNumber(shiftFormValue(form, "allocationVehicle"))
-    };
-    return Core.normalizeShift({
-      id: existing && existing.id ? existing.id : form.dataset.id || undefined,
-      date: shiftFormValue(form, "date"),
-      platform: shiftFormValue(form, "platform"),
-      startTime: shiftFormValue(form, "startTime"),
-      endTime: livePreview ? currentTimeValue() : shiftFormValue(form, "endTime"),
-      gross: shiftFormValue(form, "gross"),
-      fuel: shiftFormValue(form, "fuel"),
-      tolls: shiftFormValue(form, "tolls"),
-      otherExpenses: shiftFormValue(form, "otherExpenses"),
-      startOdometer: shiftFormValue(form, "startOdometer"),
-      endOdometer: shiftFormValue(form, "endOdometer"),
-      manualMiles: shiftFormValue(form, "manualMiles"),
-      manualHours: livePreview ? activeDurationHours() : shiftFormValue(form, "manualHours"),
-      trips: shiftFormValue(form, "trips"),
-      notes: shiftFormValue(form, "notes"),
-      allocationRates: allocations,
-      createdAt: existing && existing.createdAt ? existing.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }, state.settings);
-  }
-
-  function updateShiftPreview(form) {
-    const root = form && form.querySelector("[data-shift-preview]");
-    if (!root) return;
-    const shift = Core.calculateShift(shiftFromForm(form, true), state.settings);
-    root.innerHTML = `<div class="form-summary-item"><span>Net</span><strong>${formatMoney(shift.net)}</strong></div><div class="form-summary-item"><span>Hours</span><strong>${formatNumber(shift.hours, 1)}</strong></div><div class="form-summary-item"><span>Miles</span><strong>${formatNumber(shift.miles, 1)}</strong></div><div class="form-summary-item"><span>Spendable</span><strong>${formatMoney(shift.spendable)}</strong></div>`;
-  }
-
-  function validateShiftForm(form) {
-    const mode = form.dataset.mode;
-    const date = shiftFormValue(form, "date");
-    const start = shiftFormValue(form, "startTime");
-    const end = shiftFormValue(form, "endTime");
-    const manualHours = Core.safeNumber(shiftFormValue(form, "manualHours"));
-    const startOdometer = Core.safeNumber(shiftFormValue(form, "startOdometer"));
-    const endOdometer = Core.safeNumber(shiftFormValue(form, "endOdometer"));
-    const allocationTotal = ["allocationInvestment", "allocationSavings", "allocationVehicle"].reduce((sum, name) => sum + Core.safeNumber(shiftFormValue(form, name)), 0);
-    if (!date) return "Choose a shift date.";
-    if ((mode === "start" || mode === "update" || mode === "end") && !start) return "Enter the shift start time.";
-    if (mode !== "start" && mode !== "update" && !(start && end) && manualHours <= 0) return "Enter start and end times, or provide manual hours.";
-    if (startOdometer > 0 && endOdometer > 0 && endOdometer < startOdometer) return "End odometer cannot be lower than start odometer.";
-    if (allocationTotal > 100.0001) return "This shift's allocations exceed 100%.";
-    return "";
-  }
-
-  function submitShiftForm() {
-    const form = dom.modalRoot.querySelector('[data-form="shift"]');
-    if (!form) return;
-    const error = validateShiftForm(form);
-    if (error) {
-      showToast(error, "error");
-      return;
-    }
-    const mode = form.dataset.mode;
-    const record = shiftFromForm(form, false);
-    if (mode === "start") {
-      if (state.activeShift) {
-        showToast("Finish the current live shift before starting another.", "warning");
-        return;
-      }
-      record.endTime = "";
-      record.manualHours = 0;
-      state.activeShift = record;
-      saveState();
-      closeModal(false);
-      setRoute("overview", { focus: false });
-      showToast("Live shift started. Your draft will stay saved locally.", "success");
-      return;
-    }
-    if (mode === "update") {
-      record.endTime = "";
-      record.manualHours = 0;
-      state.activeShift = record;
-      saveState();
-      closeModal(false);
-      renderApp();
-      showToast("Live shift updated.", "success");
-      return;
-    }
-    if (mode === "end") {
-      state.shifts.push(record);
-      state.activeShift = null;
-      saveState();
-      closeModal(false);
-      setRoute("shifts", { focus: false });
-      showToast("Shift finished and added to your ledger.", "success");
-      return;
-    }
-    if (mode === "edit") {
-      const index = state.shifts.findIndex((shift) => String(shift.id) === String(record.id));
-      if (index >= 0) state.shifts[index] = record;
-      else state.shifts.push(record);
-      saveState();
-      closeModal(false);
-      renderApp();
-      showToast("Shift changes saved.", "success");
-      return;
-    }
-    state.shifts.push(record);
     saveState();
     closeModal(false);
-    setRoute("shifts", { focus: false });
-    showToast("Shift added to your ledger.", "success");
+    setRoute("overview", { focus: false });
+    showToast("Shift started. Your active timer is running.");
   }
 
-  function openMaintenanceModal(item) {
-    const record = Core.normalizeMaintenance(item || { date: Core.localISODate(), odometer: Core.currentOdometer(state.shifts, state.maintenance, state.settings) });
-    const types = Array.from(new Set([...MAINTENANCE_TYPES, record.type].filter(Boolean)));
-    const optional = formDisclosure({
-      title: "Reminder & notes",
-      icon: "route",
-      meta: record.nextDueOdometer || record.note ? "Saved details" : "Optional",
-      open: Boolean(item && (record.nextDueOdometer || record.note)),
-      className: "compact-entity-disclosure",
-      content: `<div class="form-grid">${numberField({ id: "maintenanceNextDue", name: "nextDueOdometer", label: "Next due odometer", value: record.nextDueOdometer, suffix: "mi", step: "1", blankZero: true, className: "span-2", help: "Use this for exact mileage reminders." })}<div class="field span-2"><label for="maintenanceNote">Notes</label><textarea id="maintenanceNote" name="note" maxlength="1000" placeholder="Brand, shop, work performed, warranty details…">${escapeHtml(record.note)}</textarea></div></div>`
+  function endPreviewFromForm(form) {
+    const data = new FormData(form);
+    return {
+      date: state.activeShift ? state.activeShift.date : Core.localISODate(),
+      gross: data.get("gross"),
+      fuel: data.get("fuel"),
+      tolls: data.get("tolls"),
+      otherExpenses: data.get("otherExpenses"),
+      moneyPlanRates: state.settings.moneyPlan,
+      startOdometer: state.activeShift ? state.activeShift.startOdometer : 0,
+      endOdometer: data.get("endOdometer"),
+      manualHours: state.activeShift ? Core.activeDurationMs(state.activeShift) / 3600000 : 0
+    };
+  }
+
+  function updateEndPreview() {
+    const form = dom.modalRoot.querySelector('[data-form="end-shift"]');
+    if (!form) return;
+    const shift = Core.calculateShift(endPreviewFromForm(form), state.settings);
+    const map = {
+      "[data-preview-net]": shift.net,
+      "[data-preview-allocated]": shift.allocated,
+      "[data-preview-takeout]": shift.takeOut,
+      "[data-preview-keep]": shift.spendable
+    };
+    Object.entries(map).forEach(([selector, value]) => {
+      const node = dom.modalRoot.querySelector(selector);
+      if (node) node.textContent = formatMoney(value);
     });
-    const body = `<form class="compact-entity-form" data-form="maintenance" data-id="${escapeAttribute(item ? record.id : "")}" novalidate><div class="form-section compact-entity-essential"><div class="form-section-title">${icon("wrench", "icon icon-sm")}Service details</div><div class="form-grid"><div class="field"><label for="maintenanceDateInput">Date</label><input id="maintenanceDateInput" type="date" name="date" value="${escapeAttribute(record.date)}" required autofocus></div><div class="field"><label for="maintenanceTypeInput">Service type</label><select id="maintenanceTypeInput" name="type">${types.map((type) => `<option value="${escapeAttribute(type)}"${record.type === type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div>${numberField({ id: "maintenanceAmount", name: "amount", label: "Cost", value: record.amount, prefix: "$", blankZero: true })}${numberField({ id: "maintenanceOdometer", name: "odometer", label: "Odometer", value: record.odometer, suffix: "mi", step: "1", blankZero: true })}</div></div>${optional}</form>`;
-    openModal({ title: item ? "Edit maintenance" : "Log maintenance", subtitle: "Capture the service now; reminders and notes stay optional.", body, footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-maintenance-form">${icon("check", "icon icon-sm")}${item ? "Save changes" : "Add record"}</button>`, className: "compact-entity-modal", meta: { type: "maintenance", id: item ? record.id : "" } });
   }
 
-  function submitMaintenanceForm() {
+  function openEndShiftModal() {
+    const active = state.activeShift;
+    if (!active) {
+      showToast("There is no active shift to end.", "warning");
+      return;
+    }
+    const now = new Date();
+    const paused = Boolean(active.pauseStartedAt);
+    const preview = {
+      gross: 0,
+      fuel: 0,
+      tolls: 0,
+      otherExpenses: 0,
+      moneyPlanRates: state.settings.moneyPlan,
+      manualHours: Core.activeDurationMs(active, now) / 3600000,
+      startOdometer: active.startOdometer,
+      endOdometer: active.startOdometer
+    };
+    const body = `<form data-form="end-shift"><div class="notice ${paused ? "is-warning" : "is-success"}">${icon(paused ? "pause" : "clock", "icon icon-sm")}<p>${paused ? "This shift is paused. Finishing it will close the current pause and keep paused time out of your work hours." : `Active work time: ${formatDuration(Core.activeDurationMs(active, now), false)}. Paused time: ${formatDuration(Core.activePausedMs(active, now), false)}.`}</p></div><div class="form-section" style="margin-top:11px"><div class="form-section-title">${icon("route", "icon icon-sm")}Ending mileage</div><div class="form-grid"><div class="field"><label>Starting mileage</label><input value="${escapeAttribute(active.startOdometer)}" disabled></div><div class="field"><label for="endOdometer">Ending mileage</label><div class="input-shell has-suffix"><input id="endOdometer" name="endOdometer" type="number" min="${escapeAttribute(active.startOdometer)}" step="0.1" value="${escapeAttribute(Math.max(active.startOdometer, Core.currentOdometer(state.shifts, state.maintenance, state.settings)))}" inputmode="decimal" autofocus required><span class="input-suffix">mi</span></div></div></div></div><div class="form-section"><div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings & expenses</div><div class="form-grid"><div class="field"><label for="endGross">Gross earnings</label><div class="input-shell"><span class="input-prefix">$</span><input id="endGross" name="gross" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required></div></div><div class="field"><label for="endFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="endFuel" name="fuel" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="endTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="endTolls" name="tolls" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="endOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="endOther" name="otherExpenses" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div></div>${moneyPreviewMarkup(preview)}</div><div class="form-section"><div class="form-section-title">${icon("receipt", "icon icon-sm")}Shift notes</div><div class="form-grid"><div class="field"><label for="endTrips">Trips / deliveries</label><input id="endTrips" name="trips" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div><div class="field"><label for="endNotes">Notes</label><input id="endNotes" name="notes" maxlength="220" value="${escapeAttribute(active.notes || "")}" placeholder="Optional"></div></div></div></form>`;
+    openModal({
+      title: "Finish shift",
+      subtitle: "Save the numbers, then get your exact money directions.",
+      body,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-end-shift">${icon("wallet", "icon icon-sm")}Finish & show money plan</button>`,
+      className: "modal-wide",
+      meta: { type: "end-shift" }
+    });
+  }
+
+  function submitEndShift() {
+    const form = dom.modalRoot.querySelector('[data-form="end-shift"]');
+    const activeOriginal = state.activeShift;
+    if (!form || !activeOriginal) return;
+    const data = new FormData(form);
+    const endRaw = String(data.get("endOdometer") || "").trim();
+    const grossRaw = String(data.get("gross") || "").trim();
+    const endOdometer = Core.safeNumber(endRaw);
+    if (endRaw === "" || endOdometer < Core.safeNumber(activeOriginal.startOdometer)) {
+      showToast("Ending mileage must be at least the starting mileage.", "warning");
+      return;
+    }
+    if (grossRaw === "" || Core.safeNumber(grossRaw) < 0) {
+      showToast("Enter the shift’s gross earnings.", "warning");
+      return;
+    }
+    const now = new Date();
+    const active = Core.finalizeActivePause(activeOriginal, now);
+    const workHours = Core.activeDurationMs(active, now) / 3600000;
+    const record = Core.normalizeShift({
+      id: Core.uid("shift"),
+      date: active.date,
+      platform: active.platform,
+      startTime: active.startTime,
+      endTime: currentTimeValue(now),
+      startedAt: active.startedAt,
+      endedAt: now.toISOString(),
+      gross: Math.max(0, Core.safeNumber(grossRaw)),
+      fuel: Math.max(0, Core.safeNumber(data.get("fuel"))),
+      tolls: Math.max(0, Core.safeNumber(data.get("tolls"))),
+      otherExpenses: Math.max(0, Core.safeNumber(data.get("otherExpenses"))),
+      startOdometer: active.startOdometer,
+      endOdometer,
+      manualHours: Core.round(workHours, 4),
+      pausedMs: active.pausedMs,
+      pauseHistory: active.pauseHistory,
+      trips: Math.max(0, Math.floor(Core.safeNumber(data.get("trips")))),
+      notes: String(data.get("notes") || ""),
+      moneyPlanRates: state.settings.moneyPlan,
+      moneyPlanVersion: 2,
+      createdAt: active.createdAt || now.toISOString(),
+      updatedAt: now.toISOString()
+    }, state.settings);
+    state.shifts.push(record);
+    state.settings.vehicle.currentOdometer = Math.max(Core.safeNumber(state.settings.vehicle.currentOdometer), endOdometer);
+    state.activeShift = null;
+    saveState();
+    renderApp();
+    openMoneyPlanModal(record.id, true);
+  }
+
+  function pauseShift() {
+    if (!state.activeShift) {
+      showToast("Start a shift before pausing.", "warning");
+      return;
+    }
+    if (state.activeShift.pauseStartedAt) {
+      showToast("The shift is already paused.", "warning");
+      return;
+    }
+    state.activeShift.pauseStartedAt = new Date().toISOString();
+    saveState();
+    renderApp();
+    showToast("Shift paused. Work time is no longer counting.");
+  }
+
+  function resumeShift() {
+    if (!state.activeShift || !state.activeShift.pauseStartedAt) {
+      showToast("The current shift is not paused.", "warning");
+      return;
+    }
+    state.activeShift = Core.finalizeActivePause(state.activeShift, new Date());
+    saveState();
+    renderApp();
+    showToast("Shift resumed. Work time is counting again.");
+  }
+
+  function moneyPlanMarkup(raw) {
+    const shift = Core.calculateShift(raw, state.settings);
+    if (!shift.isNewMoneyPlan) {
+      return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} saved historical allocation</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="money-instructions"><div class="instruction-card"><span class="instruction-number">1</span><span><span>Replace gas</span><strong>Put back what this shift used</strong></span><strong class="instruction-amount">${formatMoney(shift.fuel)}</strong></div><div class="instruction-card"><span class="instruction-number">2</span><span><span>Older allocation</span><strong>Preserved from the original shift</strong></span><strong class="instruction-amount">${formatMoney(shift.allocated)}</strong></div></div></div><div class="keep-box"><div><span>Keep available</span><p>After expenses and that saved allocation</p></div><strong>${formatMoney(shift.spendable)}</strong></div><div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>This is an older shift, so its original allocation is preserved instead of being retroactively split into stocks and crypto.</p></div>`;
+    }
+    return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} from the 25% plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div><div class="money-instructions"><div class="instruction-card"><span class="instruction-number">1</span><span><span>Replace gas</span><strong>Put back what the shift used</strong></span><strong class="instruction-amount">${formatMoney(shift.fuel)}</strong></div><div class="instruction-card"><span class="instruction-number">2</span><span><span>Vehicle fund · 5%</span><strong>Set aside for maintenance</strong></span><strong class="instruction-amount">${formatMoney(shift.vehicleFund)}</strong></div><div class="instruction-card"><span class="instruction-number">3</span><span><span>Stocks · 10%</span><strong>Move to the stock account</strong></span><strong class="instruction-amount">${formatMoney(shift.stock)}</strong></div><div class="instruction-card"><span class="instruction-number">4</span><span><span>Crypto · 10%</span><strong>Split across four coins</strong></span><strong class="instruction-amount">${formatMoney(shift.crypto)}</strong></div></div></div><div class="crypto-box"><div class="crypto-box-head"><strong>Split the ${formatMoney(shift.crypto)} crypto bucket</strong><span class="pill pill-blue">100%</span></div><div class="crypto-grid"><div class="crypto-coin"><span>Bitcoin</span><strong>${formatMoney(shift.cryptoBreakdown.bitcoin)}</strong><small>55%</small></div><div class="crypto-coin"><span>Solana</span><strong>${formatMoney(shift.cryptoBreakdown.solana)}</strong><small>25%</small></div><div class="crypto-coin"><span>Ethereum</span><strong>${formatMoney(shift.cryptoBreakdown.ethereum)}</strong><small>15%</small></div><div class="crypto-coin"><span>AAVE</span><strong>${formatMoney(shift.cryptoBreakdown.aave)}</strong><small>5%</small></div></div></div><div class="keep-box"><div><span>Keep available</span><p>After all expenses and the 25% plan</p></div><strong>${formatMoney(shift.spendable)}</strong></div><div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>The percentage base is ${formatMoney(shift.positiveNet)}—your positive earnings after gas, tolls, and other expenses.</p></div>`;
+  }
+
+  function openMoneyPlanModal(id, justFinished) {
+    const shift = findShift(id);
+    if (!shift) {
+      showToast("That shift could not be found.", "error");
+      return;
+    }
+    const calculated = Core.calculateShift(shift, state.settings);
+    openModal({
+      title: justFinished ? "Shift saved — here’s what to do" : "Shift money directions",
+      subtitle: `${formatDate(calculated.date, { weekday: "long", month: "long", day: "numeric" })} · ${calculated.platform} · ${formatMoney(calculated.gross)} gross`,
+      body: moneyPlanMarkup(shift),
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Done</button><button class="button button-primary" type="button" data-action="view-money-page" data-date="${escapeAttribute(calculated.date)}">${icon("wallet", "icon icon-sm")}Open money dashboard</button>`,
+      className: "modal-plan",
+      meta: { type: "money-plan", id }
+    });
+  }
+
+  function manualPreviewFromForm(form, existing) {
+    const data = new FormData(form);
+    const isLegacy = existing && !existing.moneyPlanRates;
+    return {
+      ...(existing || {}),
+      date: String(data.get("date") || Core.localISODate()),
+      startTime: String(data.get("startTime") || ""),
+      endTime: String(data.get("endTime") || ""),
+      pausedMs: Math.max(0, Core.safeNumber(data.get("pausedMinutes"))) * 60000,
+      manualHours: Math.max(0, Core.safeNumber(data.get("manualHours"))),
+      startOdometer: data.get("startOdometer"),
+      endOdometer: data.get("endOdometer"),
+      manualMiles: data.get("manualMiles"),
+      gross: data.get("gross"),
+      fuel: data.get("fuel"),
+      tolls: data.get("tolls"),
+      otherExpenses: data.get("otherExpenses"),
+      moneyPlanRates: isLegacy ? null : (existing && existing.moneyPlanRates ? existing.moneyPlanRates : state.settings.moneyPlan),
+      moneyPlanVersion: isLegacy ? existing.moneyPlanVersion : 2
+    };
+  }
+
+  function updateManualPreview() {
+    const form = dom.modalRoot.querySelector('[data-form="manual-shift"]');
+    if (!form) return;
+    const existing = form.dataset.id ? findShift(form.dataset.id) : null;
+    const shift = Core.calculateShift(manualPreviewFromForm(form, existing), state.settings);
+    const map = {
+      "[data-preview-net]": shift.net,
+      "[data-preview-allocated]": shift.allocated,
+      "[data-preview-takeout]": shift.takeOut,
+      "[data-preview-keep]": shift.spendable
+    };
+    Object.entries(map).forEach(([selector, value]) => {
+      const node = dom.modalRoot.querySelector(selector);
+      if (node) node.textContent = formatMoney(value);
+    });
+  }
+
+  function openManualShiftModal(id, suppliedDate) {
+    const existing = id ? findShift(id) : null;
+    if (id && !existing) {
+      showToast("That shift could not be found.", "error");
+      return;
+    }
+    const defaults = existing ? Core.calculateShift(existing, state.settings) : {
+      date: suppliedDate && Core.parseISODate(suppliedDate) ? suppliedDate : Core.localISODate(),
+      platform: state.settings.defaultPlatform,
+      startTime: "",
+      endTime: "",
+      pausedMs: 0,
+      manualHours: 0,
+      startOdometer: Core.currentOdometer(state.shifts, state.maintenance, state.settings),
+      endOdometer: 0,
+      manualMiles: 0,
+      gross: 0,
+      fuel: 0,
+      tolls: 0,
+      otherExpenses: 0,
+      trips: 0,
+      notes: "",
+      moneyPlanRates: state.settings.moneyPlan
+    };
+    const preview = existing || { ...defaults, moneyPlanRates: state.settings.moneyPlan };
+    const body = `<form data-form="manual-shift" data-id="${escapeAttribute(existing ? existing.id : "")}"><div class="form-section"><div class="form-section-title">${icon("calendar", "icon icon-sm")}Shift details</div><div class="form-grid is-three"><div class="field"><label for="manualDate">Date</label><input id="manualDate" name="date" type="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="manualPlatform">Platform</label><select id="manualPlatform" name="platform">${platformOptions(defaults.platform)}</select></div><div class="field"><label for="manualTrips">Trips</label><input id="manualTrips" name="trips" type="number" min="0" step="1" value="${defaults.trips || ""}" inputmode="numeric"></div><div class="field"><label for="manualStartTime">Start time</label><input id="manualStartTime" name="startTime" type="time" value="${escapeAttribute(defaults.startTime || "")}"></div><div class="field"><label for="manualEndTime">End time</label><input id="manualEndTime" name="endTime" type="time" value="${escapeAttribute(defaults.endTime || "")}"></div><div class="field"><label for="manualHours">Manual active hours</label><div class="input-shell has-suffix"><input id="manualHours" name="manualHours" type="number" min="0" step="0.01" value="${defaults.manualHours ? escapeAttribute(Core.round(defaults.manualHours, 2)) : ""}" inputmode="decimal"><span class="input-suffix">hr</span></div><p class="field-help">Overrides start/end time when entered.</p></div><div class="field"><label for="manualPause">Paused minutes</label><div class="input-shell has-suffix"><input id="manualPause" name="pausedMinutes" type="number" min="0" step="1" value="${defaults.pausedMs ? escapeAttribute(Core.round(defaults.pausedMs / 60000, 0)) : ""}" inputmode="numeric"><span class="input-suffix">min</span></div></div></div></div><div class="form-section"><div class="form-section-title">${icon("route", "icon icon-sm")}Mileage</div><div class="form-grid is-three"><div class="field"><label for="manualStartOdo">Start odometer</label><div class="input-shell has-suffix"><input id="manualStartOdo" name="startOdometer" type="number" min="0" step="0.1" value="${defaults.startOdometer ? escapeAttribute(defaults.startOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div><div class="field"><label for="manualEndOdo">End odometer</label><div class="input-shell has-suffix"><input id="manualEndOdo" name="endOdometer" type="number" min="0" step="0.1" value="${defaults.endOdometer ? escapeAttribute(defaults.endOdometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div><div class="field"><label for="manualMiles">Manual business miles</label><div class="input-shell has-suffix"><input id="manualMiles" name="manualMiles" type="number" min="0" step="0.1" value="${defaults.manualMiles ? escapeAttribute(defaults.manualMiles) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div><p class="field-help">Used when odometer values are unavailable.</p></div></div></div><div class="form-section"><div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings & expenses</div><div class="form-grid"><div class="field"><label for="manualGross">Gross earnings</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualGross" name="gross" type="number" min="0" step="0.01" value="${defaults.gross ? escapeAttribute(defaults.gross) : ""}" inputmode="decimal" required></div></div><div class="field"><label for="manualFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualFuel" name="fuel" type="number" min="0" step="0.01" value="${defaults.fuel ? escapeAttribute(defaults.fuel) : ""}" inputmode="decimal"></div></div><div class="field"><label for="manualTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualTolls" name="tolls" type="number" min="0" step="0.01" value="${defaults.tolls ? escapeAttribute(defaults.tolls) : ""}" inputmode="decimal"></div></div><div class="field"><label for="manualOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="manualOther" name="otherExpenses" type="number" min="0" step="0.01" value="${defaults.otherExpenses ? escapeAttribute(defaults.otherExpenses) : ""}" inputmode="decimal"></div></div></div>${moneyPreviewMarkup(preview)}</div><div class="form-section"><div class="form-section-title">${icon("receipt", "icon icon-sm")}Notes</div><div class="field"><label for="manualNotes">Notes</label><textarea id="manualNotes" name="notes" maxlength="500" placeholder="Optional">${escapeHtml(defaults.notes || "")}</textarea></div></div>${existing && !existing.moneyPlanRates ? `<div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>This older shift will keep its original saved allocation when edited.</p></div>` : ""}</form>`;
+    openModal({
+      title: existing ? "Edit shift" : "Add completed shift",
+      subtitle: existing ? "Update the record without changing its historical allocation plan." : "New entries use the 5% vehicle, 10% stock, and 10% crypto plan.",
+      body,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-manual-shift">${icon("check", "icon icon-sm")}${existing ? "Save changes" : "Save & show plan"}</button>`,
+      className: "modal-wide",
+      meta: { type: "manual-shift", id: existing ? existing.id : "" }
+    });
+  }
+
+  function submitManualShift() {
+    const form = dom.modalRoot.querySelector('[data-form="manual-shift"]');
+    if (!form) return;
+    const existing = form.dataset.id ? findShift(form.dataset.id) : null;
+    const data = new FormData(form);
+    const date = String(data.get("date") || "");
+    const grossRaw = String(data.get("gross") || "").trim();
+    if (!Core.parseISODate(date) || grossRaw === "") {
+      showToast("Add a valid date and gross earnings.", "warning");
+      return;
+    }
+    const startOdoRaw = String(data.get("startOdometer") || "").trim();
+    const endOdoRaw = String(data.get("endOdometer") || "").trim();
+    if (startOdoRaw && endOdoRaw && Core.safeNumber(endOdoRaw) < Core.safeNumber(startOdoRaw)) {
+      showToast("Ending mileage cannot be lower than starting mileage.", "warning");
+      return;
+    }
+    const now = new Date().toISOString();
+    const base = existing ? { ...existing } : {
+      id: Core.uid("shift"),
+      createdAt: now,
+      moneyPlanRates: state.settings.moneyPlan,
+      moneyPlanVersion: 2
+    };
+    const record = Core.normalizeShift({
+      ...base,
+      date,
+      platform: String(data.get("platform") || state.settings.defaultPlatform),
+      startTime: String(data.get("startTime") || ""),
+      endTime: String(data.get("endTime") || ""),
+      manualHours: Math.max(0, Core.safeNumber(data.get("manualHours"))),
+      pausedMs: Math.max(0, Core.safeNumber(data.get("pausedMinutes"))) * 60000,
+      startOdometer: Math.max(0, Core.safeNumber(data.get("startOdometer"))),
+      endOdometer: Math.max(0, Core.safeNumber(data.get("endOdometer"))),
+      manualMiles: Math.max(0, Core.safeNumber(data.get("manualMiles"))),
+      gross: Math.max(0, Core.safeNumber(grossRaw)),
+      fuel: Math.max(0, Core.safeNumber(data.get("fuel"))),
+      tolls: Math.max(0, Core.safeNumber(data.get("tolls"))),
+      otherExpenses: Math.max(0, Core.safeNumber(data.get("otherExpenses"))),
+      trips: Math.max(0, Math.floor(Core.safeNumber(data.get("trips")))),
+      notes: String(data.get("notes") || ""),
+      updatedAt: now
+    }, state.settings);
+    if (existing) state.shifts = state.shifts.map((item) => item.id === existing.id ? record : item);
+    else state.shifts.push(record);
+    state.settings.vehicle.currentOdometer = Math.max(Core.safeNumber(state.settings.vehicle.currentOdometer), Core.safeNumber(record.endOdometer));
+    saveState();
+    renderApp();
+    if (existing) {
+      closeModal(false);
+      showToast("Shift updated.");
+    } else {
+      openMoneyPlanModal(record.id, true);
+    }
+  }
+
+  function confirmDeleteShift(id) {
+    const shift = findShift(id);
+    if (!shift) return;
+    const calculated = Core.calculateShift(shift, state.settings);
+    openModal({
+      title: "Delete this shift?",
+      subtitle: `${formatDate(calculated.date)} · ${formatMoney(calculated.net)} net`,
+      body: `<div class="notice is-warning">${icon("warning", "icon icon-sm")}<p>This removes the shift from earnings, mileage, vehicle-fund, and money-plan totals. It cannot be undone unless you have a backup.</p></div>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Keep shift</button><button class="button button-danger" type="button" data-action="confirm-delete-shift" data-id="${escapeAttribute(id)}">${icon("trash", "icon icon-sm")}Delete shift</button>`,
+      meta: { type: "delete-shift", id }
+    });
+  }
+
+  function deleteShift(id) {
+    const before = state.shifts.length;
+    state.shifts = state.shifts.filter((item) => item.id !== id);
+    if (state.shifts.length === before) return;
+    saveState();
+    closeModal(false);
+    renderApp();
+    showToast("Shift deleted.");
+  }
+
+  function confirmCancelActiveShift() {
+    if (!state.activeShift) return;
+    openModal({
+      title: "Cancel the active shift?",
+      subtitle: "The unfinished timer and starting mileage will be removed.",
+      body: `<div class="notice is-warning">${icon("warning", "icon icon-sm")}<p>This does not save earnings, mileage, or pause history. Use End shift instead when the work is complete.</p></div>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Keep shift</button><button class="button button-danger" type="button" data-action="confirm-cancel-active">${icon("trash", "icon icon-sm")}Cancel shift</button>`,
+      meta: { type: "cancel-active" }
+    });
+  }
+
+  function cancelActiveShift() {
+    state.activeShift = null;
+    saveState();
+    closeModal(false);
+    renderApp();
+    showToast("Active shift canceled.");
+  }
+
+  function findMaintenance(id) {
+    return state.maintenance.find((item) => item.id === id) || null;
+  }
+
+  function openMaintenanceModal(id) {
+    const existing = id ? findMaintenance(id) : null;
+    if (id && !existing) return;
+    const defaults = existing || {
+      date: Core.localISODate(),
+      type: "Oil Change",
+      amount: 0,
+      odometer: Core.currentOdometer(state.shifts, state.maintenance, state.settings),
+      nextDueOdometer: 0,
+      note: ""
+    };
+    const body = `<form data-form="maintenance" data-id="${escapeAttribute(existing ? existing.id : "")}"><div class="form-grid"><div class="field"><label for="serviceDate">Date</label><input id="serviceDate" name="date" type="date" value="${escapeAttribute(defaults.date)}" required></div><div class="field"><label for="serviceType">Service / expense</label><select id="serviceType" name="type">${MAINTENANCE_TYPES.map((type) => `<option value="${escapeAttribute(type)}"${type === defaults.type ? " selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></div><div class="field"><label for="serviceAmount">Amount</label><div class="input-shell"><span class="input-prefix">$</span><input id="serviceAmount" name="amount" type="number" min="0" step="0.01" value="${defaults.amount ? escapeAttribute(defaults.amount) : ""}" inputmode="decimal" required></div></div><div class="field"><label for="serviceOdometer">Odometer</label><div class="input-shell has-suffix"><input id="serviceOdometer" name="odometer" type="number" min="0" step="0.1" value="${defaults.odometer ? escapeAttribute(defaults.odometer) : ""}" inputmode="decimal"><span class="input-suffix">mi</span></div></div><div class="field"><label for="serviceNext">Next due mileage</label><div class="input-shell has-suffix"><input id="serviceNext" name="nextDueOdometer" type="number" min="0" step="1" value="${defaults.nextDueOdometer ? escapeAttribute(defaults.nextDueOdometer) : ""}" inputmode="numeric"><span class="input-suffix">mi</span></div></div><div class="field"><label for="serviceNote">Note</label><input id="serviceNote" name="note" maxlength="220" value="${escapeAttribute(defaults.note || "")}" placeholder="Shop, parts, details…"></div></div></form>`;
+    openModal({
+      title: existing ? "Edit vehicle expense" : "Add vehicle expense",
+      subtitle: "Logged costs are subtracted from the vehicle reserve balance.",
+      body,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-maintenance">${icon("check", "icon icon-sm")}${existing ? "Save changes" : "Add record"}</button>`,
+      meta: { type: "maintenance", id: existing ? existing.id : "" }
+    });
+  }
+
+  function submitMaintenance() {
     const form = dom.modalRoot.querySelector('[data-form="maintenance"]');
     if (!form) return;
     const data = new FormData(form);
-    if (!data.get("date")) {
-      showToast("Choose a maintenance date.", "error");
+    const date = String(data.get("date") || "");
+    const amountRaw = String(data.get("amount") || "").trim();
+    if (!Core.parseISODate(date) || amountRaw === "") {
+      showToast("Add a valid date and amount.", "warning");
       return;
     }
-    const existing = form.dataset.id ? getMaintenance(form.dataset.id) : null;
+    const existing = form.dataset.id ? findMaintenance(form.dataset.id) : null;
+    const now = new Date().toISOString();
     const record = Core.normalizeMaintenance({
-      id: existing ? existing.id : undefined,
-      date: data.get("date"),
-      type: data.get("type"),
-      amount: data.get("amount"),
-      odometer: data.get("odometer"),
-      nextDueOdometer: data.get("nextDueOdometer"),
-      note: data.get("note"),
-      createdAt: existing ? existing.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      ...(existing || { id: Core.uid("maintenance"), createdAt: now }),
+      date,
+      type: String(data.get("type") || "Other"),
+      amount: Math.max(0, Core.safeNumber(amountRaw)),
+      odometer: Math.max(0, Core.safeNumber(data.get("odometer"))),
+      nextDueOdometer: Math.max(0, Core.safeNumber(data.get("nextDueOdometer"))),
+      note: String(data.get("note") || ""),
+      updatedAt: now
     });
-    if (existing) state.maintenance[state.maintenance.findIndex((item) => String(item.id) === String(existing.id))] = record;
+    if (existing) state.maintenance = state.maintenance.map((item) => item.id === existing.id ? record : item);
     else state.maintenance.push(record);
-    state.settings.vehicle.currentOdometer = Math.max(state.settings.vehicle.currentOdometer, record.odometer);
+    state.settings.vehicle.currentOdometer = Math.max(Core.safeNumber(state.settings.vehicle.currentOdometer), record.odometer);
     saveState();
     closeModal(false);
-    setRoute("vehicle", { focus: false, keepScroll: true });
-    showToast(existing ? "Maintenance record updated." : "Maintenance record added.", "success");
+    renderApp();
+    showToast(existing ? "Vehicle record updated." : "Vehicle expense added.");
   }
 
-  function openGoalModal(goal) {
-    const record = Core.normalizeGoal(goal || { name: "", target: 0, targetDate: "", note: "" });
-    const notes = formDisclosure({
-      title: "Goal note",
-      icon: "receipt",
-      meta: record.note ? "Saved note" : "Optional",
-      open: Boolean(goal && record.note),
-      className: "compact-entity-disclosure",
-      content: `<div class="field"><label for="goalNote">Notes</label><textarea id="goalNote" name="note" maxlength="1000" placeholder="Why this matters, funding plan, or any context…">${escapeHtml(record.note)}</textarea></div>`
+  function confirmDeleteMaintenance(id) {
+    const item = findMaintenance(id);
+    if (!item) return;
+    openModal({
+      title: "Delete vehicle record?",
+      subtitle: `${item.type} · ${formatMoney(item.amount)}`,
+      body: `<div class="notice is-warning">${icon("warning", "icon icon-sm")}<p>Deleting it will add this cost back to the displayed vehicle reserve balance.</p></div>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Keep record</button><button class="button button-danger" type="button" data-action="confirm-delete-maintenance" data-id="${escapeAttribute(id)}">${icon("trash", "icon icon-sm")}Delete</button>`,
+      meta: { type: "delete-maintenance", id }
     });
-    const body = `<form class="compact-entity-form" data-form="goal" data-id="${escapeAttribute(goal ? record.id : "")}" novalidate><div class="form-section compact-entity-essential"><div class="form-section-title">${icon("goal", "icon icon-sm")}Goal basics</div><div class="form-grid"><div class="field span-2"><label for="goalName">Goal name</label><input id="goalName" type="text" name="name" value="${escapeAttribute(goal ? record.name : "")}" maxlength="100" placeholder="Emergency fund, vacation, new tires…" required autofocus></div>${numberField({ id: "goalTarget", name: "target", label: "Target amount", value: record.target, prefix: "$", blankZero: true })}<div class="field"><label for="goalTargetDate">Target date</label><input id="goalTargetDate" type="date" name="targetDate" value="${escapeAttribute(record.targetDate)}"></div></div></div>${notes}</form>`;
-    const deleteButton = goal ? `<button class="button button-danger goal-delete-button" type="button" data-action="delete-goal" data-id="${escapeAttribute(record.id)}">${icon("trash", "icon icon-sm")}<span>Delete</span></button>` : "";
-    openModal({ title: goal ? "Edit goal" : "Create goal", subtitle: "Set the target now; keep extra context tucked away.", body, footer: `${deleteButton}<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-goal-form">${icon("check", "icon icon-sm")}${goal ? "Save changes" : "Create goal"}</button>`, className: `compact-entity-modal ${goal ? "goal-modal-edit" : "goal-modal-create"}`, meta: { type: "goal", id: goal ? record.id : "" } });
   }
 
-  function submitGoalForm() {
+  function deleteMaintenance(id) {
+    state.maintenance = state.maintenance.filter((item) => item.id !== id);
+    saveState();
+    closeModal(false);
+    renderApp();
+    showToast("Vehicle record deleted.");
+  }
+
+  function openOdometerModal() {
+    const current = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
+    openModal({
+      title: "Update current odometer",
+      subtitle: "This becomes the starting suggestion for your next shift.",
+      body: `<form data-form="odometer"><div class="field"><label for="odometerValue">Current mileage</label><div class="input-shell has-suffix"><input id="odometerValue" name="odometer" type="number" min="0" step="0.1" value="${escapeAttribute(current)}" inputmode="decimal" autofocus required><span class="input-suffix">mi</span></div></div></form>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-odometer">${icon("check", "icon icon-sm")}Update</button>`,
+      meta: { type: "odometer" }
+    });
+  }
+
+  function submitOdometer() {
+    const form = dom.modalRoot.querySelector('[data-form="odometer"]');
+    if (!form) return;
+    const value = new FormData(form).get("odometer");
+    state.settings.vehicle.currentOdometer = Math.max(0, Core.safeNumber(value));
+    saveState();
+    closeModal(false);
+    renderApp();
+    showToast("Current odometer updated.");
+  }
+
+  function findGoal(id) {
+    return state.goals.find((item) => item.id === id) || null;
+  }
+
+  function openGoalModal(id) {
+    const existing = id ? findGoal(id) : null;
+    if (id && !existing) return;
+    const defaults = existing || { name: "", target: 0, targetDate: "", note: "" };
+    openModal({
+      title: existing ? "Edit goal" : "Create a goal",
+      subtitle: "Track a target using the money left available after your shift plan.",
+      body: `<form data-form="goal" data-id="${escapeAttribute(existing ? existing.id : "")}"><div class="form-grid"><div class="field span-2"><label for="goalName">Goal name</label><input id="goalName" name="name" maxlength="80" value="${escapeAttribute(defaults.name)}" placeholder="Emergency fund, trip, new equipment…" autofocus required></div><div class="field"><label for="goalTarget">Target amount</label><div class="input-shell"><span class="input-prefix">$</span><input id="goalTarget" name="target" type="number" min="0" step="0.01" value="${defaults.target ? escapeAttribute(defaults.target) : ""}" inputmode="decimal" required></div></div><div class="field"><label for="goalDate">Target date</label><input id="goalDate" name="targetDate" type="date" value="${escapeAttribute(defaults.targetDate || "")}"></div><div class="field span-2"><label for="goalNote">Note</label><textarea id="goalNote" name="note" maxlength="500" placeholder="Optional">${escapeHtml(defaults.note || "")}</textarea></div></div></form>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-goal">${icon("check", "icon icon-sm")}${existing ? "Save goal" : "Create goal"}</button>`,
+      meta: { type: "goal", id: existing ? existing.id : "" }
+    });
+  }
+
+  function submitGoal() {
     const form = dom.modalRoot.querySelector('[data-form="goal"]');
     if (!form) return;
     const data = new FormData(form);
     const name = String(data.get("name") || "").trim();
-    const target = Core.safeNumber(data.get("target"));
-    if (!name) return showToast("Give the goal a name.", "error");
-    if (target <= 0) return showToast("Enter a target amount greater than zero.", "error");
-    const existing = form.dataset.id ? getGoal(form.dataset.id) : null;
+    const targetRaw = String(data.get("target") || "").trim();
+    if (!name || targetRaw === "" || Core.safeNumber(targetRaw) <= 0) {
+      showToast("Add a goal name and a target greater than zero.", "warning");
+      return;
+    }
+    const existing = form.dataset.id ? findGoal(form.dataset.id) : null;
+    const now = new Date().toISOString();
     const record = Core.normalizeGoal({
-      id: existing ? existing.id : undefined,
+      ...(existing || { id: Core.uid("goal"), contributions: [], createdAt: now }),
       name,
-      target,
-      targetDate: data.get("targetDate"),
-      note: data.get("note"),
-      archived: existing ? existing.archived : false,
-      contributions: existing ? existing.contributions : [],
-      createdAt: existing ? existing.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      target: Math.max(0, Core.safeNumber(targetRaw)),
+      targetDate: String(data.get("targetDate") || ""),
+      note: String(data.get("note") || ""),
+      updatedAt: now
     });
-    if (existing) state.goals[state.goals.findIndex((goal) => String(goal.id) === String(existing.id))] = record;
+    if (existing) state.goals = state.goals.map((item) => item.id === existing.id ? record : item);
     else state.goals.push(record);
     saveState();
     closeModal(false);
-    setRoute("goals", { focus: false, keepScroll: true });
-    showToast(existing ? "Goal updated." : "Goal created.", "success");
+    renderApp();
+    showToast(existing ? "Goal updated." : "Goal created.");
   }
 
-  function openContributionModal(goal) {
+  function openContributionModal(id) {
+    const goal = findGoal(id);
     if (!goal) return;
-    const saved = Core.goalSaved(goal);
-    const remaining = Math.max(0, goal.target - saved);
-    const body = `<form data-form="contribution" data-id="${escapeAttribute(goal.id)}" novalidate><div class="goal-total"><strong>${formatMoney(saved)}</strong><span>funded toward ${formatMoney(goal.target)} · ${formatMoney(remaining)} remaining</span></div><div class="form-grid" style="margin-top:18px">${numberField({ id: "contributionAmount", name: "amount", label: "Contribution", value: remaining || "", prefix: "$", blankZero: true })}<div class="field"><label for="contributionDate">Date</label><input id="contributionDate" type="date" name="date" value="${Core.localISODate()}" required></div><div class="field span-2"><label for="contributionNote">Note</label><textarea id="contributionNote" name="note" maxlength="500" placeholder="Optional source or context"></textarea></div></div></form>`;
-    openModal({ title: `Fund ${goal.name}`, subtitle: "Add a dated contribution without changing shift allocations.", body, footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-contribution-form">${icon("contribution", "icon icon-sm")}Add contribution</button>`, className: "modal-small", meta: { type: "contribution", id: goal.id } });
-  }
-
-  function submitContributionForm() {
-    const form = dom.modalRoot.querySelector('[data-form="contribution"]');
-    if (!form) return;
-    const goal = getGoal(form.dataset.id);
-    if (!goal) return closeModal();
-    const data = new FormData(form);
-    const amount = Core.safeNumber(data.get("amount"));
-    if (amount <= 0) return showToast("Enter a contribution greater than zero.", "error");
-    goal.contributions.push({ id: Core.uid("contribution"), date: data.get("date") || Core.localISODate(), amount: Core.round(amount, 2), note: String(data.get("note") || "") });
-    goal.updatedAt = new Date().toISOString();
-    saveState();
-    closeModal(false);
-    setRoute("goals", { focus: false, keepScroll: true });
-    showToast(`${formatMoney(amount)} added to ${goal.name}.`, "success");
-  }
-
-  function openConfirm(config) {
     openModal({
-      title: config.title,
-      subtitle: config.subtitle || "This action needs confirmation.",
-      body: `<div class="confirm-copy"><div class="confirm-icon">${icon(config.icon || "warning", "icon icon-lg")}</div><h3>${escapeHtml(config.heading || config.title)}</h3><p>${escapeHtml(config.body)}</p></div>`,
-      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button ${config.danger === false ? "button-primary" : "button-danger"}" type="button" data-action="confirm-modal">${icon(config.confirmIcon || (config.danger === false ? "check" : "trash"), "icon icon-sm")}${escapeHtml(config.confirmLabel || "Confirm")}</button>`,
-      className: "modal-small",
-      meta: { type: "confirm", onConfirm: config.onConfirm, onCancel: config.onCancel }
+      title: `Add funds to ${goal.name}`,
+      subtitle: `${formatMoney(Core.goalSaved(goal))} saved of ${formatMoney(goal.target)}`,
+      body: `<form data-form="contribution" data-id="${escapeAttribute(id)}"><div class="form-grid"><div class="field"><label for="contributionAmount">Amount</label><div class="input-shell"><span class="input-prefix">$</span><input id="contributionAmount" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" autofocus required></div></div><div class="field"><label for="contributionDate">Date</label><input id="contributionDate" name="date" type="date" value="${Core.localISODate()}" required></div><div class="field span-2"><label for="contributionNote">Note</label><input id="contributionNote" name="note" maxlength="220" placeholder="Optional"></div></div></form>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-contribution">${icon("plus", "icon icon-sm")}Add funds</button>`,
+      meta: { type: "contribution", id }
     });
   }
 
-  function openMoreModal() {
-    const body = `<div class="more-menu">${[
-      ["vehicle", "vehicle", "Vehicle", "Fund, service, and odometer"],
-      ["goals", "goal", "Goals", "Targets and contributions"],
-      ["settings", "settings", "Settings & data", "Rates, backups, and appearance"],
-      ["shifts", "download", "Export shifts", "Download the complete CSV ledger"]
-    ].map(([route, iconName, title, subtitle], index) => `<button class="more-menu-item" type="button" ${index === 3 ? 'data-action="export-csv"' : `data-route="${route}"`}><span class="more-icon">${icon(iconName, "icon icon-sm")}</span><span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></span></button>`).join("")}</div>`;
-    openModal({ title: "More tools", subtitle: "Vehicle, goals, settings, and data actions.", body, className: "modal-small", meta: { type: "more" } });
+  function submitContribution() {
+    const form = dom.modalRoot.querySelector('[data-form="contribution"]');
+    if (!form) return;
+    const goal = findGoal(form.dataset.id);
+    if (!goal) return;
+    const data = new FormData(form);
+    const amount = Core.safeNumber(data.get("amount"));
+    const date = String(data.get("date") || "");
+    if (amount <= 0 || !Core.parseISODate(date)) {
+      showToast("Add a positive amount and valid date.", "warning");
+      return;
+    }
+    goal.contributions.push({ id: Core.uid("contribution"), amount: Core.round(amount, 2), date, note: String(data.get("note") || "") });
+    goal.updatedAt = new Date().toISOString();
+    saveState();
+    closeModal(false);
+    renderApp();
+    showToast("Funds added to the goal.");
+  }
+
+  function archiveGoal(id, archived) {
+    const goal = findGoal(id);
+    if (!goal) return;
+    goal.archived = Boolean(archived);
+    goal.updatedAt = new Date().toISOString();
+    saveState();
+    renderApp();
+    showToast(archived ? "Goal archived." : "Goal restored.");
+  }
+
+  function submitSettings(form) {
+    const data = new FormData(form);
+    state.settings.defaultPlatform = String(data.get("defaultPlatform") || "Uber");
+    state.settings.weekStartsOn = Math.max(0, Math.min(1, Math.floor(Core.safeNumber(data.get("weekStartsOn")))));
+    state.settings.weeklyNetGoal = Math.max(0, Core.safeNumber(data.get("weeklyNetGoal")));
+    state.settings.monthlyNetGoal = Math.max(0, Core.safeNumber(data.get("monthlyNetGoal")));
+    state.settings.vehicle.name = String(data.get("vehicleName") || "My vehicle").trim() || "My vehicle";
+    state.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
+    saveState();
+    renderApp();
+    showToast("Preferences saved.");
   }
 
   function downloadFile(filename, content, type) {
-    const blob = content instanceof Blob ? content : new Blob([content], { type: type || "application/octet-stream" });
+    const blob = new Blob([content], { type: type || "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -2217,51 +1291,7 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function csvEscape(value) {
-    let text = String(value == null ? "" : value);
-    // Quoting alone does not stop spreadsheet apps from evaluating formula-like user text.
-    if (typeof value === "string" && /^\s*[=+\-@]/.test(text)) text = `'${text}`;
-    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  }
-
-  function csvUnprotectText(value) {
-    const text = String(value == null ? "" : value);
-    return /^'(?=\s*[=+\-@])/.test(text) ? text.slice(1) : text;
-  }
-
-  function shiftsToCSV(shifts) {
-    const headers = [
-      "id", "date", "platform", "startTime", "endTime", "gross", "fuel", "tolls", "otherExpenses",
-      "expenses", "net", "startOdometer", "endOdometer", "manualMiles", "miles", "manualHours", "hours",
-      "trips", "hourly", "netPerMile", "investmentPct", "savingsPct", "vehiclePct", "investment", "savings",
-      "vehicleFund", "spendable", "taxRate", "taxDeduction", "notes", "createdAt", "updatedAt"
-    ];
-    const rows = sortedShifts(shifts).map((raw) => {
-      const shift = Core.calculateShift(raw, state.settings);
-      return [
-        shift.id, shift.date, shift.platform, shift.startTime, shift.endTime, shift.gross, shift.fuel, shift.tolls,
-        shift.otherExpenses, shift.expenses, shift.net, shift.startOdometer, shift.endOdometer, shift.manualMiles,
-        shift.miles, shift.manualHours, shift.hours, shift.trips, shift.hourly, shift.netPerMile,
-        shift.allocationRates.investment, shift.allocationRates.savings, shift.allocationRates.vehicle,
-        shift.investment, shift.savings, shift.vehicleFund, shift.spendable, shift.taxRate, shift.taxDeduction,
-        shift.notes, shift.createdAt, shift.updatedAt
-      ];
-    });
-    return [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
-  }
-
-  function exportCSV(shifts, label) {
-    const list = Array.isArray(shifts) ? shifts : state.shifts;
-    if (!list.length) {
-      showToast("There are no shifts to export.", "warning");
-      return;
-    }
-    const filename = `driver-command-${label || "shifts"}-${Core.localISODate()}.csv`;
-    downloadFile(filename, shiftsToCSV(list), "text/csv;charset=utf-8");
-    showToast(`${list.length} shift${list.length === 1 ? "" : "s"} exported.`, "success");
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
   }
 
   function exportBackup() {
@@ -2272,7 +1302,43 @@
       ...serializeState()
     };
     downloadFile(`driver-command-backup-${Core.localISODate()}.json`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
-    showToast("Full dashboard backup downloaded.", "success");
+    showToast("Full dashboard backup downloaded.");
+  }
+
+  function csvProtect(value) {
+    const text = String(value == null ? "" : value);
+    return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  }
+
+  function csvEscape(value) {
+    const text = csvProtect(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  function shiftsToCSV() {
+    const headers = [
+      "id", "date", "platform", "startTime", "endTime", "activeHours", "pausedMinutes", "startOdometer", "endOdometer", "miles", "trips",
+      "gross", "gas", "tollsParking", "otherExpenses", "totalExpenses", "netAfterExpenses", "vehicleFund5Pct", "stocks10Pct", "crypto10Pct",
+      "bitcoin55PctOfCrypto", "solana25PctOfCrypto", "ethereum15PctOfCrypto", "aave5PctOfCrypto", "totalAllocation", "gasPlusAllocationTakeOut", "keepAvailable", "notes"
+    ];
+    const rows = sortedShifts().map((raw) => {
+      const shift = Core.calculateShift(raw, state.settings);
+      return [
+        shift.id, shift.date, shift.platform, shift.startTime, shift.endTime, shift.hours, Core.round(shift.pausedMs / 60000, 2), shift.startOdometer, shift.endOdometer, shift.miles, shift.trips,
+        shift.gross, shift.fuel, shift.tolls, shift.otherExpenses, shift.expenses, shift.net, shift.vehicleFund, shift.stock, shift.crypto,
+        shift.cryptoBreakdown.bitcoin, shift.cryptoBreakdown.solana, shift.cryptoBreakdown.ethereum, shift.cryptoBreakdown.aave, shift.allocated, shift.takeOut, shift.spendable, shift.notes
+      ];
+    });
+    return [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+  }
+
+  function exportCSV() {
+    if (!state.shifts.length) {
+      showToast("There are no shifts to export.", "warning");
+      return;
+    }
+    downloadFile(`driver-command-shifts-${Core.localISODate()}.csv`, shiftsToCSV(), "text/csv;charset=utf-8");
+    showToast("Shift CSV downloaded.");
   }
 
   function parseCSV(text) {
@@ -2280,30 +1346,18 @@
     let row = [];
     let field = "";
     let quoted = false;
-    for (let index = 0; index < text.length; index += 1) {
-      const char = text[index];
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
       if (quoted) {
-        if (char === '"' && text[index + 1] === '"') {
+        if (char === '"' && text[i + 1] === '"') {
           field += '"';
-          index += 1;
-        } else if (char === '"') {
-          quoted = false;
-        } else {
-          field += char;
-        }
-      } else if (char === '"') {
-        quoted = true;
-      } else if (char === ",") {
-        row.push(field);
-        field = "";
-      } else if (char === "\n") {
-        row.push(field.replace(/\r$/, ""));
-        if (row.some((value) => value !== "")) rows.push(row);
-        row = [];
-        field = "";
-      } else {
-        field += char;
-      }
+          i += 1;
+        } else if (char === '"') quoted = false;
+        else field += char;
+      } else if (char === '"') quoted = true;
+      else if (char === ",") { row.push(field); field = ""; }
+      else if (char === "\n") { row.push(field.replace(/\r$/, "")); if (row.some((value) => value !== "")) rows.push(row); row = []; field = ""; }
+      else field += char;
     }
     row.push(field.replace(/\r$/, ""));
     if (row.some((value) => value !== "")) rows.push(row);
@@ -2317,576 +1371,258 @@
   function csvRowsToShifts(rows) {
     if (rows.length < 2) return [];
     const headers = rows[0].map(normalizeHeader);
-    const find = (record, aliases) => {
+    const find = (row, aliases) => {
       for (const alias of aliases) {
         const index = headers.indexOf(alias);
-        if (index >= 0 && record[index] != null) return record[index];
+        if (index >= 0 && row[index] != null) return row[index];
       }
       return "";
     };
-    const findText = (record, aliases) => csvUnprotectText(find(record, aliases));
-
     return rows.slice(1).map((row) => {
-      const importedDate = findText(row, ["date", "shiftdate"]).trim();
-      if (!Core.parseISODate(importedDate)) return null;
-
-      const grossRaw = find(row, ["gross", "grossearnings", "earnings"]);
-      const fuelRaw = find(row, ["fuel", "gas", "fuelcost"]);
-      const tollsRaw = find(row, ["tolls", "tollsparking", "parking"]);
-      let otherRaw = find(row, ["otherexpenses", "othercosts"]);
-      const importedNetRaw = find(row, ["net", "netearnings"]);
-      const importedExpensesRaw = find(row, ["expenses", "totalexpenses"]);
-      const hasImportedNet = String(importedNetRaw).trim() !== "";
-      const hasImportedExpenses = String(importedExpensesRaw).trim() !== "";
-      const importedNet = Core.safeNumber(importedNetRaw);
-      const importedExpenses = Math.max(0, Core.safeNumber(importedExpensesRaw));
-      const fuel = Math.max(0, Core.safeNumber(fuelRaw));
-      const tolls = Math.max(0, Core.safeNumber(tollsRaw));
-
-      // Preserve totals from generic ledgers even when expense categories are not broken out.
-      if (hasImportedExpenses && String(otherRaw).trim() === "") {
-        otherRaw = Math.max(0, importedExpenses - fuel - tolls);
-      }
-      const inferredGross = String(grossRaw).trim() === "" && hasImportedNet
-        ? importedNet + (hasImportedExpenses ? importedExpenses : fuel + tolls + Core.safeNumber(otherRaw))
-        : grossRaw;
-
-      const allocationInvestment = find(row, ["investmentpct", "investmentpercent"]);
-      const allocationSavings = find(row, ["savingspct", "savingspercent"]);
-      const allocationVehicle = find(row, ["vehiclepct", "vehiclepercent", "vehiclefundpct"]);
-      const hasAllocationRates = [allocationInvestment, allocationSavings, allocationVehicle].some((value) => String(value).trim() !== "");
+      const date = String(find(row, ["date", "shiftdate"])).replace(/^'/, "").trim();
+      if (!Core.parseISODate(date)) return null;
+      const vehicle = find(row, ["vehiclefund5pct", "vehiclefund", "vehicleamount"]);
+      const stock = find(row, ["stocks10pct", "stock", "stockamount"]);
+      const crypto = find(row, ["crypto10pct", "crypto", "cryptoamount"]);
+      const hasNewPlan = [vehicle, stock, crypto].some((value) => String(value).trim() !== "");
       return Core.normalizeShift({
-        id: findText(row, ["id", "shiftid"]) || undefined,
-        date: importedDate,
-        platform: findText(row, ["platform", "app"]),
-        startTime: findText(row, ["starttime", "clockintime", "start"]),
-        endTime: findText(row, ["endtime", "clockouttime", "end"]),
-        gross: inferredGross,
-        fuel: fuelRaw,
-        tolls: tollsRaw,
-        otherExpenses: otherRaw,
+        id: String(find(row, ["id", "shiftid"])).replace(/^'/, "") || undefined,
+        date,
+        platform: String(find(row, ["platform", "app"])).replace(/^'/, ""),
+        startTime: find(row, ["starttime", "start"]),
+        endTime: find(row, ["endtime", "end"]),
+        manualHours: find(row, ["activehours", "manualhours", "hours"]),
+        pausedMs: Core.safeNumber(find(row, ["pausedminutes", "pauseminutes"])) * 60000,
         startOdometer: find(row, ["startodometer", "startmiles"]),
         endOdometer: find(row, ["endodometer", "endmiles"]),
-        manualMiles: find(row, ["manualmiles", "businessmiles", "miles"]),
-        manualHours: find(row, ["manualhours", "hours"]),
-        trips: find(row, ["trips", "deliveries", "rides"]),
-        notes: findText(row, ["notes", "note"]),
-        allocationRates: hasAllocationRates ? {
-          investment: allocationInvestment,
-          savings: allocationSavings,
-          vehicle: allocationVehicle
-        } : undefined,
-        investment: find(row, ["investment", "investmentamount"]),
-        savings: find(row, ["savings", "savingsamount"]),
-        vehicleFund: find(row, ["vehiclefund", "vehicleamount"]),
-        createdAt: findText(row, ["createdat"]),
-        updatedAt: findText(row, ["updatedat"])
+        manualMiles: find(row, ["miles", "manualmiles", "businessmiles"]),
+        trips: find(row, ["trips", "rides", "deliveries"]),
+        gross: find(row, ["gross", "grossearnings", "earnings"]),
+        fuel: find(row, ["gas", "fuel", "fuelcost"]),
+        tolls: find(row, ["tollsparking", "tolls", "parking"]),
+        otherExpenses: find(row, ["otherexpenses", "othercosts"]),
+        notes: String(find(row, ["notes", "note"])).replace(/^'/, ""),
+        moneyPlanRates: hasNewPlan ? state.settings.moneyPlan : undefined,
+        moneyPlanVersion: hasNewPlan ? 2 : undefined,
+        vehicleFund: vehicle,
+        stock,
+        crypto
       }, state.settings);
     }).filter(Boolean);
   }
 
-  function prepareImportPayload(value, extension) {
+  function prepareImport(text, filename) {
+    const extension = String(filename || "").split(".").pop().toLowerCase();
     if (extension === "csv") {
-      const shifts = csvRowsToShifts(parseCSV(value));
+      const shifts = csvRowsToShifts(parseCSV(text));
       if (!shifts.length) throw new Error("No valid shift rows were found in the CSV file.");
-      return { source: "CSV", shifts, maintenance: [], goals: [], settings: null, activeShift: null };
+      return Core.normalizeState({ shifts, maintenance: [], goals: [], settings: state.settings, activeShift: null });
     }
-    const parsed = JSON.parse(value);
-    const source = Array.isArray(parsed) ? { shifts: parsed } : parsed;
+    const parsed = JSON.parse(text);
+    const source = Array.isArray(parsed) ? { shifts: parsed } : (parsed.state && typeof parsed.state === "object" ? parsed.state : parsed);
     if (!source || typeof source !== "object") throw new Error("The JSON file does not contain dashboard data.");
-    const settings = source.settings ? Core.normalizeSettings(source.settings) : null;
-    const normalizationSettings = settings || state.settings;
-    const shiftsRaw = Array.isArray(source.shifts) ? source.shifts : Array.isArray(source.entries) ? source.entries : Array.isArray(source.uberEntries) ? source.uberEntries : [];
-    const maintenanceRaw = Array.isArray(source.maintenance) ? source.maintenance : Array.isArray(source.uberMaintenance) ? source.uberMaintenance : [];
-    const goalsRaw = Array.isArray(source.goals) ? source.goals : Array.isArray(source.spendingGoals) ? source.spendingGoals : [];
-    const payload = {
-      source: "JSON",
-      shifts: shiftsRaw.map((item) => Core.normalizeShift(item, normalizationSettings)),
-      maintenance: maintenanceRaw.map(Core.normalizeMaintenance),
-      goals: goalsRaw.map(Core.normalizeGoal),
-      settings,
-      activeShift: source.activeShift ? Core.normalizeShift(source.activeShift, normalizationSettings) : null
-    };
-    if (!payload.shifts.length && !payload.maintenance.length && !payload.goals.length && !payload.settings && !payload.activeShift) {
-      throw new Error("No recognizable dashboard records were found in the JSON file.");
-    }
-    return payload;
+    if (!Array.isArray(source.shifts) && Array.isArray(source.entries)) source.shifts = source.entries;
+    return Core.normalizeState(source);
   }
 
   function openImportReview(payload, filename) {
     ui.pendingImport = payload;
-    ui.pendingImportFilename = filename || "import file";
-    const body = `<div class="form-section"><h3 class="form-section-title">${icon("file", "icon icon-sm")}Import preview</h3><p class="panel-subtitle">${escapeHtml(filename)} · ${escapeHtml(payload.source)} data</p><div class="form-summary"><div class="form-summary-item"><span>Shifts</span><strong>${payload.shifts.length}</strong></div><div class="form-summary-item"><span>Maintenance</span><strong>${payload.maintenance.length}</strong></div><div class="form-summary-item"><span>Goals</span><strong>${payload.goals.length}</strong></div><div class="form-summary-item"><span>Settings</span><strong>${payload.settings ? "Included" : "No"}</strong></div></div></div><div class="form-section"><h3 class="form-section-title">Choose import behavior</h3><div class="data-actions" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="data-action-card" type="button" data-action="apply-import-merge"><span class="data-icon">${icon("plus", "icon icon-sm")}</span><h3>Merge records</h3><p>Add imported records and update matching IDs. Keep your current dashboard settings.</p><span class="button button-primary button-small">Merge safely</span></button><button class="data-action-card" type="button" data-action="apply-import-replace"><span class="data-icon" style="color:var(--amber);background:var(--amber-soft)">${icon("refresh", "icon icon-sm")}</span><h3>Replace dashboard</h3><p>Replace local records with this file. Imported settings are used when present.</p><span class="button button-secondary button-small">Replace data</span></button></div></div>`;
-    openModal({ title: "Review import", subtitle: "Nothing changes until you choose how to apply this file.", body, footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button>`, className: "modal-wide", meta: { type: "import" } });
+    ui.pendingImportName = filename;
+    openModal({
+      title: "Review import",
+      subtitle: filename,
+      body: `<div class="metric-strip" style="grid-template-columns:repeat(3,minmax(0,1fr))">${metricCard({ icon: "receipt", label: "Shifts", value: String(payload.shifts.length), meta: "Completed records" })}${metricCard({ icon: "wrench", iconClass: "is-blue", label: "Vehicle", value: String(payload.maintenance.length), meta: "Maintenance records" })}${metricCard({ icon: "target", iconClass: "is-violet", label: "Goals", value: String(payload.goals.length), meta: "Savings targets" })}</div><div class="notice" style="margin-top:12px">${icon("info", "icon icon-sm")}<p><strong>Merge</strong> keeps current records and adds imported items by ID. <strong>Replace</strong> swaps the current dashboard for the imported backup. The new 5/10/10 money plan remains the default for future shifts either way.</p></div>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-secondary" type="button" data-action="apply-import" data-mode="merge">Merge</button><button class="button button-danger" type="button" data-action="apply-import" data-mode="replace">Replace</button>`,
+      className: "modal-wide",
+      meta: { type: "import-review" }
+    });
   }
 
-  function mergeById(existing, incoming, normalize) {
-    const map = new Map(existing.map((item) => [String(item.id), item]));
-    incoming.forEach((item) => {
-      const normalized = normalize(item);
-      map.set(String(normalized.id), normalized);
-    });
+  function mergeById(current, incoming) {
+    const map = new Map();
+    current.forEach((item) => map.set(item.id, item));
+    incoming.forEach((item) => map.set(item.id, item));
     return Array.from(map.values());
   }
 
-  function applyPendingImport(mode) {
+  function applyImport(mode) {
     const payload = ui.pendingImport;
     if (!payload) return;
     if (mode === "replace") {
-      const importedSettings = payload.settings || state.settings;
-      state.settings = Core.normalizeSettings({ ...importedSettings, lastRoute: ui.route });
-      state.shifts = payload.shifts.map((item) => Core.normalizeShift(item, state.settings));
-      state.maintenance = payload.maintenance.map(Core.normalizeMaintenance);
-      state.goals = payload.goals.map(Core.normalizeGoal);
-      state.activeShift = payload.activeShift ? Core.normalizeShift(payload.activeShift, state.settings) : null;
+      state = Core.normalizeState(payload);
     } else {
-      state.shifts = mergeById(state.shifts, payload.shifts, (item) => Core.normalizeShift(item, state.settings));
-      state.maintenance = mergeById(state.maintenance, payload.maintenance, Core.normalizeMaintenance);
-      state.goals = mergeById(state.goals, payload.goals, Core.normalizeGoal);
-      if (!state.activeShift && payload.activeShift) state.activeShift = Core.normalizeShift(payload.activeShift, state.settings);
+      state.shifts = mergeById(state.shifts, payload.shifts);
+      state.maintenance = mergeById(state.maintenance, payload.maintenance);
+      state.goals = mergeById(state.goals, payload.goals);
+      if (!state.activeShift && payload.activeShift) state.activeShift = payload.activeShift;
     }
-    ui.pendingImport = null;
-    ui.pendingImportFilename = "";
-    ui.selectedShiftIds.clear();
+    state.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
     saveState();
+    ui.pendingImport = null;
+    ui.pendingImportName = "";
     closeModal(false);
     renderApp();
-    showToast(mode === "replace" ? "Dashboard data replaced from the import." : "Imported records merged into the dashboard.", "success", 5000);
+    showToast(mode === "replace" ? "Dashboard replaced from backup." : "Imported data merged.");
   }
 
-  async function handleImportFile(event) {
-    const file = event.target.files && event.target.files[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const extension = file.name.toLowerCase().endsWith(".csv") ? "csv" : "json";
-      const payload = prepareImportPayload(text, extension);
-      openImportReview(payload, file.name);
-    } catch (error) {
-      showToast(error && error.message ? error.message : "The selected file could not be imported.", "error", 5200);
-    }
-  }
-
-  function renderTaxRateRow(rate) {
-    return `<div class="rate-row" data-rate-row data-rate-id="${escapeAttribute(rate.id)}"><div class="field"><label>Effective date</label><input type="date" name="rateEffective" value="${escapeAttribute(rate.effective)}" required></div><div class="field"><label>Rate per mile</label><div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" name="rateAmount" value="${escapeAttribute(rate.rate)}" min="0" step="0.001" required></div></div><div class="field"><label>Label</label><input type="text" name="rateLabel" value="${escapeAttribute(rate.label)}" maxlength="60" required></div><button class="icon-button rate-delete" type="button" data-action="delete-tax-rate" aria-label="Remove mileage rate">${icon("trash", "icon icon-sm")}</button></div>`;
-  }
-
-  function submitSettingsForm(form) {
-    const data = new FormData(form);
-    const allocations = {
-      investment: Core.safeNumber(data.get("investmentPct")),
-      savings: Core.safeNumber(data.get("savingsPct")),
-      vehicle: Core.safeNumber(data.get("vehiclePct"))
-    };
-    const allocationTotal = allocations.investment + allocations.savings + allocations.vehicle;
-    if (allocationTotal > 100.0001) {
-      showToast("Allocation percentages must total 100% or less.", "error");
-      updateAllocationTotal();
-      return;
-    }
-    const rateRows = Array.from(form.querySelectorAll("[data-rate-row]"));
-    const taxRates = rateRows.map((row) => ({
-      id: row.dataset.rateId || Core.uid("rate"),
-      effective: row.querySelector('[name="rateEffective"]').value,
-      rate: Core.safeNumber(row.querySelector('[name="rateAmount"]').value),
-      label: row.querySelector('[name="rateLabel"]').value.trim() || "Custom rate"
-    })).filter((rate) => rate.effective && rate.rate > 0);
-    if (!taxRates.length) {
-      showToast("Keep at least one valid mileage rate in the schedule.", "error");
-      return;
-    }
-    state.settings = Core.normalizeSettings({
-      ...state.settings,
-      theme: data.get("theme"),
-      defaultPlatform: data.get("defaultPlatform"),
-      weekStartsOn: data.get("weekStartsOn"),
-      weeklyNetGoal: data.get("weeklyNetGoal"),
-      monthlyNetGoal: data.get("monthlyNetGoal"),
-      allocations,
-      taxRates,
-      vehicle: {
-        name: data.get("vehicleName"),
-        currentOdometer: data.get("vehicleOdometer"),
-        oilInterval: data.get("oilInterval"),
-        tireInterval: data.get("tireInterval")
-      },
-      lastRoute: ui.route
+  function confirmResetData() {
+    openModal({
+      title: "Reset Driver Command?",
+      subtitle: "This erases the dashboard data stored in this browser.",
+      body: `<div class="notice is-warning">${icon("warning", "icon icon-sm")}<p>Download a full backup first if you might need these shifts, goals, or vehicle records again.</p></div>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-secondary" type="button" data-action="export-backup">${icon("download", "icon icon-sm")}Back up first</button><button class="button button-danger" type="button" data-action="confirm-reset">${icon("trash", "icon icon-sm")}Erase data</button>`,
+      meta: { type: "reset" }
     });
+  }
+
+  function resetData() {
+    safeStorageRemove(Core.STORAGE_KEY);
+    Object.values(LEGACY_KEYS).flat().forEach((key) => safeStorageRemove(key));
+    state = Core.normalizeState({ settings: {} });
+    state.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
+    ui.route = "overview";
+    ui.moneyPeriod = "day";
+    ui.moneyAnchor = new Date();
+    closeModal(false);
     saveState();
     renderApp();
-    showToast("Dashboard settings saved.", "success");
+    showToast("Dashboard reset.");
   }
 
-  function deleteShiftById(id) {
-    const shift = getShift(id);
-    if (!shift) return;
-    openConfirm({
-      title: "Delete shift?",
-      heading: `${formatShortDate(shift.date)} · ${shift.platform}`,
-      body: "This permanently removes the shift from your local ledger and recalculates every summary.",
-      confirmLabel: "Delete shift",
-      onConfirm: () => {
-        state.shifts = state.shifts.filter((item) => String(item.id) !== String(id));
-        ui.selectedShiftIds.delete(String(id));
-        saveState();
-        renderApp();
-        showToast("Shift deleted.", "success");
-      }
+  function openMoreModal() {
+    openModal({
+      title: "More",
+      subtitle: "Planning and dashboard controls",
+      body: `<div class="action-stack"><button class="quick-action" type="button" data-route="calendar"><span class="quick-action-icon">${icon("calendar", "icon icon-sm")}</span><span><strong>Calendar</strong><span>Open daily earnings and money history.</span></span>${icon("chevronRight", "icon icon-sm")}</button><button class="quick-action" type="button" data-route="goals"><span class="quick-action-icon">${icon("target", "icon icon-sm")}</span><span><strong>Goals</strong><span>Track targets with your available money.</span></span>${icon("chevronRight", "icon icon-sm")}</button><button class="quick-action" type="button" data-route="settings"><span class="quick-action-icon">${icon("settings", "icon icon-sm")}</span><span><strong>Settings & data</strong><span>Backups, exports, defaults, and storage.</span></span>${icon("chevronRight", "icon icon-sm")}</button></div>`,
+      footer: false,
+      meta: { type: "more" }
     });
   }
 
-  function deleteMaintenanceById(id) {
-    const item = getMaintenance(id);
-    if (!item) return;
-    openConfirm({
-      title: "Delete maintenance record?",
-      heading: `${item.type} · ${formatShortDate(item.date)}`,
-      body: "The cost and service reminder context from this record will be removed.",
-      confirmLabel: "Delete record",
-      onConfirm: () => {
-        state.maintenance = state.maintenance.filter((record) => String(record.id) !== String(id));
-        saveState();
-        renderApp();
-        showToast("Maintenance record deleted.", "success");
-      }
-    });
+  function adjustMoneyPeriod(direction) {
+    if (ui.moneyPeriod === "all") return;
+    const date = new Date(ui.moneyAnchor);
+    if (ui.moneyPeriod === "day") date.setDate(date.getDate() + direction);
+    else if (ui.moneyPeriod === "week") date.setDate(date.getDate() + 7 * direction);
+    else if (ui.moneyPeriod === "month") date.setMonth(date.getMonth() + direction);
+    else if (ui.moneyPeriod === "year") date.setFullYear(date.getFullYear() + direction);
+    ui.moneyAnchor = date;
+    renderCurrentRoute();
   }
 
-  function deleteGoalById(id) {
-    const goal = getGoal(id);
-    if (!goal) return;
-    openConfirm({
-      title: "Delete goal?",
-      heading: goal.name,
-      body: `This also removes ${goal.contributions.length} saved contribution${goal.contributions.length === 1 ? "" : "s"}. Shift history is not affected.`,
-      confirmLabel: "Delete goal",
-      onConfirm: () => {
-        state.goals = state.goals.filter((item) => String(item.id) !== String(id));
-        saveState();
-        renderApp();
-        showToast("Goal deleted.", "success");
-      }
-    });
+  function openTodayMoney() {
+    ui.moneyPeriod = "day";
+    ui.moneyAnchor = new Date();
+    setRoute("analytics");
   }
 
-  function handleAction(action, element, event) {
-    const id = element.dataset.id;
+  function openMoneyDay(dateValue) {
+    const date = Core.parseISODate(dateValue);
+    if (!date) return;
+    ui.moneyPeriod = "day";
+    ui.moneyAnchor = date;
+    if (ui.route === "analytics") renderCurrentRoute();
+    else setRoute("analytics");
+  }
+
+  function moveCalendar(direction) {
+    const date = new Date(ui.calendarCursor);
+    date.setMonth(date.getMonth() + direction, 1);
+    ui.calendarCursor = date;
+    renderCurrentRoute();
+  }
+
+  function selectCalendarDate(dateValue) {
+    const date = Core.parseISODate(dateValue);
+    if (!date) return;
+    ui.calendarSelected = dateValue;
+    if (date.getMonth() !== ui.calendarCursor.getMonth() || date.getFullYear() !== ui.calendarCursor.getFullYear()) {
+      ui.calendarCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+    renderCurrentRoute();
+  }
+
+  function handleAction(action, element) {
+    const id = element.dataset.id || "";
     switch (action) {
       case "toggle-theme":
         state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
         saveState({ silent: true });
         renderApp();
-        showToast(`${state.settings.theme === "dark" ? "Dark" : "Light"} theme enabled.`, "success");
         break;
-      case "open-add-shift":
-        openShiftModal("add", element.dataset.date ? { date: element.dataset.date } : null);
+      case "primary-shift-action": state.activeShift ? openEndShiftModal() : openStartShiftModal(); break;
+      case "start-shift": openStartShiftModal(); break;
+      case "end-shift": openEndShiftModal(); break;
+      case "pause-shift": pauseShift(); break;
+      case "resume-shift": resumeShift(); break;
+      case "cancel-active-shift": confirmCancelActiveShift(); break;
+      case "confirm-cancel-active": cancelActiveShift(); break;
+      case "submit-start-shift": submitStartShift(); break;
+      case "submit-end-shift": submitEndShift(); break;
+      case "add-shift": openManualShiftModal(); break;
+      case "add-shift-for-date": openManualShiftModal("", element.dataset.date); break;
+      case "edit-shift": openManualShiftModal(id); break;
+      case "submit-manual-shift": submitManualShift(); break;
+      case "view-money-plan": openMoneyPlanModal(id, false); break;
+      case "delete-shift": confirmDeleteShift(id); break;
+      case "confirm-delete-shift": deleteShift(id); break;
+      case "shift-filter":
+        ui.shiftFilter = element.dataset.value || "30";
+        renderCurrentRoute();
         break;
-      case "add-shift-on-date":
-        openShiftModal("add", { date: element.dataset.date || ui.calendarSelected });
-        break;
-      case "start-shift":
-        if (state.activeShift) openShiftModal("update", state.activeShift);
-        else openShiftModal("start");
-        break;
-      case "update-active-shift":
-        if (state.activeShift) openShiftModal("update", state.activeShift);
-        else showToast("There is no active shift to update.", "warning");
-        break;
-      case "end-active-shift":
-        if (state.activeShift) openMileagePrompt("end", state.activeShift);
-        else showToast("There is no active shift to finish.", "warning");
-        break;
-      case "edit-end-mileage": {
-        const form = dom.modalRoot.querySelector('[data-form="shift"][data-mode="end"]');
-        const draft = form ? shiftFromForm(form, false) : (ui.modal && ui.modal.supplied) || state.activeShift;
+      case "open-today-money": openTodayMoney(); break;
+      case "view-money-page":
         closeModal(false);
-        openMileagePrompt("end", draft);
+        openMoneyDay(element.dataset.date || Core.localISODate());
         break;
-      }
-      case "submit-shift-form":
-        submitShiftForm();
+      case "money-period":
+        ui.moneyPeriod = element.dataset.value || "day";
+        renderCurrentRoute();
         break;
-      case "edit-shift": {
-        const shift = getShift(id);
-        if (shift) openShiftModal("edit", shift);
-        break;
-      }
-      case "duplicate-shift": {
-        const shift = getShift(id);
-        if (shift) openShiftModal("add", { ...Core.clone(shift), id: "", createdAt: "", updatedAt: "" });
-        break;
-      }
-      case "delete-shift":
-        deleteShiftById(id);
-        break;
-      case "toggle-shift-manage":
-        ui.shiftManageMode = !ui.shiftManageMode;
-        if (!ui.shiftManageMode) ui.selectedShiftIds.clear();
-        dom.main.innerHTML = renderShiftsPage();
-        updateShiftResults();
-        break;
-      case "show-more-shifts":
-        ui.shiftVisibleCount += 5;
-        updateShiftResults();
-        break;
-      case "show-fewer-shifts":
-        ui.shiftVisibleCount = 5;
-        updateShiftResults();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        break;
-      case "toggle-shift-select":
-        if (element.checked) ui.selectedShiftIds.add(String(id));
-        else ui.selectedShiftIds.delete(String(id));
-        updateShiftResults();
-        break;
-      case "select-all-shifts": {
-        const visible = filteredShifts();
-        if (element.checked) visible.forEach((shift) => ui.selectedShiftIds.add(String(shift.id)));
-        else visible.forEach((shift) => ui.selectedShiftIds.delete(String(shift.id)));
-        updateShiftResults();
-        break;
-      }
-      case "clear-shift-selection":
-        ui.selectedShiftIds.clear();
-        updateShiftResults();
-        break;
-      case "export-selected-shifts": {
-        const selected = state.shifts.filter((shift) => ui.selectedShiftIds.has(String(shift.id)));
-        exportCSV(selected, "selected-shifts");
-        break;
-      }
-      case "delete-selected-shifts": {
-        const ids = new Set(Array.from(ui.selectedShiftIds));
-        if (!ids.size) return;
-        openConfirm({
-          title: `Delete ${ids.size} selected shift${ids.size === 1 ? "" : "s"}?`,
-          heading: "Bulk delete",
-          body: "This permanently removes every selected entry and recalculates all dashboard totals.",
-          confirmLabel: `Delete ${ids.size}`,
-          onConfirm: () => {
-            state.shifts = state.shifts.filter((shift) => !ids.has(String(shift.id)));
-            ui.selectedShiftIds.clear();
-            saveState();
-            renderApp();
-            showToast(`${ids.size} shift${ids.size === 1 ? "" : "s"} deleted.`, "success");
-          }
-        });
-        break;
-      }
-      case "clear-shift-filters":
-        ui.shiftFilters = { search: "", range: "all", platform: "all", sort: "dateDesc" };
-        ui.shiftVisibleCount = 5;
-        ui.selectedShiftIds.clear();
-        dom.main.innerHTML = renderShiftsPage();
-        updateShiftResults();
-        break;
-      case "export-csv":
-        exportCSV(state.shifts, "shifts");
-        if (ui.modal && ui.modal.type === "more") closeModal(false);
-        break;
-      case "analytics-period":
-        ui.analyticsPeriod = element.dataset.period || "month";
-        dom.main.innerHTML = renderAnalyticsPage();
-        break;
-      case "analytics-view":
-        ui.analyticsView = element.dataset.view || "trend";
-        dom.main.innerHTML = renderAnalyticsPage();
-        break;
-      case "calendar-prev":
-        ui.calendarCursor = new Date(ui.calendarCursor.getFullYear(), ui.calendarCursor.getMonth() - 1, 1);
-        ui.calendarSelected = Core.localISODate(ui.calendarCursor);
-        dom.main.innerHTML = renderCalendarPage();
-        break;
-      case "calendar-next":
-        ui.calendarCursor = new Date(ui.calendarCursor.getFullYear(), ui.calendarCursor.getMonth() + 1, 1);
-        ui.calendarSelected = Core.localISODate(ui.calendarCursor);
-        dom.main.innerHTML = renderCalendarPage();
-        break;
+      case "money-prev": adjustMoneyPeriod(-1); break;
+      case "money-next": adjustMoneyPeriod(1); break;
+      case "money-today": ui.moneyAnchor = new Date(); renderCurrentRoute(); break;
+      case "open-money-day": openMoneyDay(element.dataset.date); break;
+      case "calendar-prev": moveCalendar(-1); break;
+      case "calendar-next": moveCalendar(1); break;
       case "calendar-today":
         ui.calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         ui.calendarSelected = Core.localISODate();
-        dom.main.innerHTML = renderCalendarPage();
+        renderCurrentRoute();
         break;
-      case "calendar-select": {
-        const selected = Core.parseISODate(element.dataset.date);
-        if (selected) {
-          ui.calendarSelected = element.dataset.date;
-          if (selected.getMonth() !== ui.calendarCursor.getMonth() || selected.getFullYear() !== ui.calendarCursor.getFullYear()) {
-            ui.calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
-          }
-          dom.main.innerHTML = renderCalendarPage();
-          if (isCompactViewport()) openCalendarDayModal(ui.calendarSelected);
-        }
-        break;
-      }
-      case "open-calendar-day":
-        openCalendarDayModal(element.dataset.date || ui.calendarSelected);
-        break;
-      case "vehicle-view":
-        ui.vehicleView = element.dataset.view || "status";
-        dom.main.innerHTML = renderVehiclePage();
-        updateVehicleResults();
-        break;
-      case "show-more-maintenance":
-        ui.maintenanceVisibleCount += 5;
-        updateVehicleResults();
-        break;
-      case "show-fewer-maintenance":
-        ui.maintenanceVisibleCount = 5;
-        updateVehicleResults();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        break;
-      case "open-maintenance":
-        openMaintenanceModal(null);
-        break;
-      case "edit-maintenance":
-        openMaintenanceModal(getMaintenance(id));
-        break;
-      case "submit-maintenance-form":
-        submitMaintenanceForm();
-        break;
-      case "delete-maintenance":
-        deleteMaintenanceById(id);
-        break;
-      case "clear-maintenance-filters":
-        ui.vehicleFilters = { search: "", type: "all" };
-        ui.maintenanceVisibleCount = 5;
-        dom.main.innerHTML = renderVehiclePage();
-        updateVehicleResults();
-        break;
-      case "goal-view":
-        ui.goalView = element.dataset.view || "active";
-        ui.goalVisibleCount = 3;
-        dom.main.innerHTML = renderGoalsPage();
-        break;
-      case "show-more-goals":
-        ui.goalVisibleCount += 3;
-        dom.main.innerHTML = renderGoalsPage();
-        break;
-      case "show-fewer-goals":
-        ui.goalVisibleCount = 3;
-        dom.main.innerHTML = renderGoalsPage();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        break;
-      case "open-goal":
-        openGoalModal(null);
-        break;
-      case "edit-goal":
-        openGoalModal(getGoal(id));
-        break;
-      case "submit-goal-form":
-        submitGoalForm();
-        break;
-      case "add-contribution":
-        openContributionModal(getGoal(id));
-        break;
-      case "submit-contribution-form":
-        submitContributionForm();
-        break;
-      case "archive-goal": {
-        const goal = getGoal(id);
-        if (goal) {
-          goal.archived = !goal.archived;
-          goal.updatedAt = new Date().toISOString();
-          saveState();
-          renderApp();
-          showToast(goal.archived ? "Goal archived." : "Goal restored.", "success");
-        }
+      case "calendar-select": selectCalendarDate(element.dataset.date); break;
+      case "add-maintenance": openMaintenanceModal(); break;
+      case "edit-maintenance": openMaintenanceModal(id); break;
+      case "submit-maintenance": submitMaintenance(); break;
+      case "delete-maintenance": confirmDeleteMaintenance(id); break;
+      case "confirm-delete-maintenance": deleteMaintenance(id); break;
+      case "update-odometer": openOdometerModal(); break;
+      case "submit-odometer": submitOdometer(); break;
+      case "add-goal": openGoalModal(); break;
+      case "edit-goal": openGoalModal(id); break;
+      case "submit-goal": submitGoal(); break;
+      case "add-contribution": openContributionModal(id); break;
+      case "submit-contribution": submitContribution(); break;
+      case "archive-goal": archiveGoal(id, true); break;
+      case "restore-goal": archiveGoal(id, false); break;
+      case "export-backup": exportBackup(); break;
+      case "export-csv": exportCSV(); break;
+      case "import-data": dom.importFileInput.click(); break;
+      case "apply-import": applyImport(element.dataset.mode || "merge"); break;
+      case "reset-data": confirmResetData(); break;
+      case "confirm-reset": resetData(); break;
+      case "open-more": openMoreModal(); break;
+      case "close-modal": closeModal(); break;
+      case "dismiss-toast": {
+        const toast = dom.toastRoot.querySelector(`[data-toast-id="${escapeAttribute(id)}"]`);
+        if (toast) toast.remove();
         break;
       }
-      case "delete-goal":
-        deleteGoalById(id);
-        break;
-      case "add-tax-rate": {
-        const root = document.getElementById("taxRateList");
-        if (!root) return;
-        const current = Core.getMileageRate(Core.localISODate(), state.settings.taxRates);
-        root.insertAdjacentHTML("beforeend", renderTaxRateRow({ id: Core.uid("rate"), effective: Core.localISODate(), rate: current.rate || 0.67, label: "Custom rate" }));
-        const last = root.lastElementChild;
-        const input = last && last.querySelector('[name="rateEffective"]');
-        if (input) input.focus();
-        break;
-      }
-      case "delete-tax-rate": {
-        const row = element.closest("[data-rate-row]");
-        const list = document.querySelectorAll("[data-rate-row]");
-        if (list.length <= 1) showToast("Keep at least one mileage rate.", "warning");
-        else if (row) row.remove();
-        break;
-      }
-      case "restore-default-rates": {
-        const root = document.getElementById("taxRateList");
-        if (root) {
-          root.innerHTML = Core.clone(Core.DEFAULT_TAX_RATES).map(renderTaxRateRow).join("");
-          showToast("Built-in mileage schedule restored in the form. Save settings to apply it.", "info");
-        }
-        break;
-      }
-      case "export-backup":
-        exportBackup();
-        break;
-      case "import-data":
-        dom.importFileInput.click();
-        break;
-      case "apply-import-merge":
-        applyPendingImport("merge");
-        break;
-      case "apply-import-replace": {
-        const pending = ui.pendingImport;
-        const filename = ui.pendingImportFilename;
-        openConfirm({
-          title: "Replace local dashboard?",
-          heading: "Imported data will become the source of truth",
-          body: "Your current local records will be replaced. Download a backup first if you may need to recover them.",
-          confirmLabel: "Replace dashboard",
-          onConfirm: () => applyPendingImport("replace"),
-          onCancel: () => openImportReview(pending, filename)
-        });
-        break;
-      }
-      case "reset-data":
-        openConfirm({
-          title: "Reset the entire dashboard?",
-          heading: "All local records will be erased",
-          body: "This removes shifts, maintenance, goals, settings, and any active shift. Export a backup before continuing if you may need the data.",
-          confirmLabel: "Reset everything",
-          onConfirm: () => {
-            [STORAGE_KEY, ...Object.values(LEGACY_KEYS), "investmentPct", "savingsPct", "vehiclePct", "monthlyNetGoal", "dashboardTheme"].forEach((key) => localStorage.removeItem(key));
-            state = { version: Core.APP_VERSION, shifts: [], maintenance: [], goals: [], settings: Core.normalizeSettings(Core.clone(Core.DEFAULT_SETTINGS)), activeShift: null };
-            ui.selectedShiftIds.clear();
-            ui.pendingImport = null;
-            ui.route = "overview";
-            saveState();
-            setRoute("overview", { focus: false });
-            showToast("Dashboard reset to a clean state.", "success");
-          }
-        });
-        break;
-      case "open-more":
-        openMoreModal();
-        break;
-      case "confirm-modal": {
-        const callback = ui.modal && ui.modal.onConfirm;
-        closeModal(false);
-        if (typeof callback === "function") callback();
-        break;
-      }
-      case "close-modal":
-        dismissModal();
-        break;
-      case "modal-backdrop":
-        if (event.target === element) dismissModal();
-        break;
-      case "close-toast":
-        closeToast(element.dataset.toastId);
-        break;
-      default:
-        break;
+      default: break;
     }
   }
 
-  function handleClick(event) {
+  document.addEventListener("click", (event) => {
     const routeElement = event.target.closest("[data-route]");
     if (routeElement) {
       event.preventDefault();
@@ -2894,123 +1630,115 @@
       return;
     }
     const actionElement = event.target.closest("[data-action]");
-    if (!actionElement) return;
-    const action = actionElement.dataset.action;
-    // The backdrop is an action only when the backdrop itself is tapped. Treating it
-    // as the action for every descendant would cancel native form submission.
-    if (action === "modal-backdrop" && event.target !== actionElement) return;
-    if (action !== "toggle-shift-select" && action !== "select-all-shifts") event.preventDefault();
-    handleAction(action, actionElement, event);
-  }
+    if (actionElement) {
+      event.preventDefault();
+      handleAction(actionElement.dataset.action, actionElement);
+      return;
+    }
+    if (event.target === dom.modalRoot) closeModal();
+  });
 
-  function handleInput(event) {
+  let searchTimer = null;
+  document.addEventListener("input", (event) => {
     const target = event.target;
-    if (target.matches('[data-form="shift-mileage"] input')) {
-      updateMileagePrompt(target.closest('[data-form="shift-mileage"]'));
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+    if (target.dataset.input === "shift-search") {
+      ui.shiftSearch = target.value;
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(() => {
+        if (ui.route !== "shifts") return;
+        renderCurrentRoute();
+        const replacement = dom.main.querySelector('[data-input="shift-search"]');
+        if (replacement instanceof HTMLInputElement) {
+          replacement.focus({ preventScroll: true });
+          replacement.setSelectionRange(replacement.value.length, replacement.value.length);
+        }
+      }, 130);
     }
-    if (target.matches('[data-form="shift"] input, [data-form="shift"] select, [data-form="shift"] textarea')) {
-      updateShiftPreview(target.closest('[data-form="shift"]'));
-    }
-    if (target.matches("[data-allocation]")) updateAllocationTotal();
-    const filter = target.dataset.filter;
-    if (filter === "shift-search") {
-      ui.shiftFilters.search = target.value;
-      ui.shiftVisibleCount = 5;
-      ui.selectedShiftIds.clear();
-      window.clearTimeout(filterInputTimer);
-      filterInputTimer = window.setTimeout(updateShiftResults, 90);
-    }
-    if (filter === "maintenance-search") {
-      ui.vehicleFilters.search = target.value;
-      ui.maintenanceVisibleCount = 5;
-      window.clearTimeout(filterInputTimer);
-      filterInputTimer = window.setTimeout(updateVehicleResults, 90);
-    }
-  }
+    if (target.closest('[data-form="end-shift"]')) updateEndPreview();
+    if (target.closest('[data-form="manual-shift"]')) updateManualPreview();
+  });
 
-  function handleChange(event) {
-    const target = event.target;
-    const filter = target.dataset.filter;
-    if (filter === "shift-range") {
-      ui.shiftFilters.range = target.value;
-      ui.shiftVisibleCount = 5;
-      ui.selectedShiftIds.clear();
-      updateShiftResults();
-    } else if (filter === "shift-platform") {
-      ui.shiftFilters.platform = target.value;
-      ui.shiftVisibleCount = 5;
-      ui.selectedShiftIds.clear();
-      updateShiftResults();
-    } else if (filter === "shift-sort") {
-      ui.shiftFilters.sort = target.value;
-      ui.shiftVisibleCount = 5;
-      updateShiftResults();
-    } else if (filter === "maintenance-type") {
-      ui.vehicleFilters.type = target.value;
-      ui.maintenanceVisibleCount = 5;
-      updateVehicleResults();
-    }
-  }
-
-  function handleSubmit(event) {
+  document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
     event.preventDefault();
-    const type = form.dataset.form;
-    if (type === "settings") submitSettingsForm(form);
-    else if (type === "shift") submitShiftForm();
-    else if (type === "shift-mileage") submitMileagePrompt(form);
-    else if (type === "maintenance") submitMaintenanceForm();
-    else if (type === "goal") submitGoalForm();
-    else if (type === "contribution") submitContributionForm();
-  }
+    if (form.dataset.form === "settings") submitSettings(form);
+    else if (form.dataset.form === "start-shift") submitStartShift();
+    else if (form.dataset.form === "end-shift") submitEndShift();
+    else if (form.dataset.form === "manual-shift") submitManualShift();
+    else if (form.dataset.form === "maintenance") submitMaintenance();
+    else if (form.dataset.form === "odometer") submitOdometer();
+    else if (form.dataset.form === "goal") submitGoal();
+    else if (form.dataset.form === "contribution") submitContribution();
+  });
+
+  dom.importFileInput.addEventListener("change", () => {
+    const file = dom.importFileInput.files && dom.importFileInput.files[0];
+    dom.importFileInput.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      try {
+        const payload = prepareImport(String(reader.result || ""), file.name);
+        openImportReview(payload, file.name);
+      } catch (error) {
+        showToast(error && error.message ? error.message : "The selected file could not be imported.", "error", 6500);
+      }
+    });
+    reader.addEventListener("error", () => showToast("The selected file could not be read.", "error"));
+    reader.readAsText(file);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !dom.modalRoot.hidden) {
+      event.preventDefault();
+      closeModal();
+      return;
+    }
+    if (event.key === "Tab" && !dom.modalRoot.hidden) {
+      const focusable = Array.from(dom.modalRoot.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((node) => node.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    const route = window.location.hash.replace(/^#/, "");
+    if (ROUTES.includes(route) && route !== ui.route) {
+      ui.route = route;
+      renderApp();
+    }
+  });
 
   function updateLiveElements() {
     if (!state.activeShift) return;
-    const duration = formatDuration(activeDurationHours(), true);
-    document.querySelectorAll("[data-live-duration]").forEach((element) => {
-      element.textContent = duration;
-    });
-    const shiftForm = dom.modalRoot && dom.modalRoot.querySelector('[data-form="shift"]');
-    if (shiftForm && ["update", "end"].includes(shiftForm.dataset.mode)) updateShiftPreview(shiftForm);
+    const now = new Date();
+    document.querySelectorAll("[data-live-work]").forEach((node) => { node.textContent = formatDuration(Core.activeDurationMs(state.activeShift, now), true); });
+    document.querySelectorAll("[data-live-paused]").forEach((node) => { node.textContent = formatDuration(Core.activePausedMs(state.activeShift, now), false); });
   }
 
-  function startLiveTimer() {
-    window.clearInterval(liveTimer);
-    liveTimer = window.setInterval(updateLiveElements, 1000);
-  }
-
-  function registerServiceWorker() {
-    if (!("serviceWorker" in navigator) || !/^https?:$/.test(window.location.protocol)) return;
-    navigator.serviceWorker.register("service-worker.js").catch(() => {
-      // The dashboard remains fully usable without registration (for example under file://).
-    });
-  }
-
-  function init() {
-    dom.versionLabel.textContent = `Version ${Core.APP_VERSION} · Local-first`;
-    dom.topbarAddIcon.innerHTML = icon("plus", "icon icon-sm");
-    applyTheme();
+  function initialize() {
+    state.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
+    dom.versionLabel.textContent = `Version ${Core.APP_VERSION}`;
+    saveState({ silent: true });
     renderApp();
-    startLiveTimer();
-    registerServiceWorker();
-
-    document.addEventListener("click", handleClick);
-    document.addEventListener("input", handleInput);
-    document.addEventListener("change", handleChange);
-    document.addEventListener("submit", handleSubmit);
-    dom.importFileInput.addEventListener("change", handleImportFile);
-    window.addEventListener("online", updateConnectionStatus);
-    window.addEventListener("offline", updateConnectionStatus);
-    window.addEventListener("hashchange", () => {
-      const route = window.location.hash.replace("#", "");
-      if (ROUTES.includes(route) && route !== ui.route) setRoute(route, { focus: false });
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && ui.modal) dismissModal();
-      else if (event.key === "Tab" && ui.modal) trapModalFocus(event);
-    });
+    window.setInterval(updateLiveElements, 1000);
+    document.addEventListener("visibilitychange", updateLiveElements);
+    if ("serviceWorker" in navigator && /^https?:$/.test(window.location.protocol)) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
+    }
   }
 
-  init();
+  window.DriverCommand = {
+    version: Core.APP_VERSION,
+    getState: () => JSON.parse(JSON.stringify(serializeState())),
+    calculateShift: (shift) => Core.calculateShift(shift, state.settings),
+    renderMoneyPlan: moneyPlanMarkup
+  };
+
+  initialize();
 })();
