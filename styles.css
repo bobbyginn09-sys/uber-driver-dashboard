@@ -834,3 +834,65 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
     padding: 7px 8px;
   }
 }
+
+/* 3.8: editable investment lists. Totals and Save stay visible while rows scroll. */
+.modal-investment-editor.modal-card { width: min(640px, 100%); max-height: 92vh; max-height: 92dvh; }
+.modal-investment-editor .modal-footer { display: block; }
+.modal-investment-editor .modal-header p { font-size: 11px; }
+.plan-editor-intro { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.plan-bucket-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; margin-bottom: 10px; }
+.plan-assets-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.plan-assets-header .form-section-title { margin: 0; }
+.plan-assets-header .button { min-height: 40px; font-size: 11px; }
+.investment-editor-row { display: grid; grid-template-columns: minmax(0, 1fr) 88px 44px; align-items: end; column-gap: 8px; row-gap: 4px; }
+.investment-editor-row + .investment-editor-row { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
+.investment-editor-row .investment-delete { width: 44px; height: 44px; min-width: 44px; }
+.investment-gross-help { grid-column: 1 / -1; margin: 0; }
+.modal-investment-editor .field label { font-size: 11px; }
+.modal-investment-editor .field input { font-size: 16px; min-height: 44px; }
+.modal-investment-editor .input-shell.has-suffix input { padding-left: 10px; padding-right: 25px; }
+.modal-investment-editor .input-suffix { font-size: 12px; }
+.modal-investment-editor .field-help { font-size: 10px; line-height: 1.4; }
+.modal-investment-editor .form-section-title { font-size: 11px; }
+.plan-live-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5px 12px; font-size: 10px; color: var(--muted); }
+.plan-live-summary strong { display: block; color: var(--text); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }
+.plan-live-summary > p { grid-column: 1 / -1; margin: 3px 0 9px; font-size: 11px; line-height: 1.4; color: var(--accent); }
+.plan-live-summary > p.is-invalid { color: var(--amber); }
+.plan-footer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plan-footer-actions .button { min-height: 44px; font-size: 13px; }
+.plan-footer-actions .button:disabled { opacity: .45; cursor: not-allowed; }
+.plan-empty-copy { margin: 10px 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.plan-empty-copy[hidden] { display: none; }
+.crypto-grid.investment-grid, .crypto-rules.investment-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.investment-grid .crypto-coin span, .investment-grid .crypto-coin small, .investment-rules .crypto-rule span, .investment-rules .crypto-rule small { white-space: normal; overflow: visible; overflow-wrap: anywhere; text-transform: none; }
+.investment-grid .crypto-coin span, .investment-rules .crypto-rule span { font-size: 11px; color: var(--text-soft); }
+.investment-grid .crypto-coin strong { font-size: 17px; }
+.investment-rules .crypto-rule strong { font-size: 16px; }
+.investment-grid .crypto-coin small, .investment-rules .crypto-rule small { font-size: 10px; line-height: 1.4; color: var(--muted); }
+.settings-plan-item span { overflow-wrap: anywhere; }
+.saved-plan-group { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.saved-plan-group summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; font-size: 11px; line-height: 1.4; color: var(--text-soft); }
+.saved-plan-group summary > span { min-width: 0; overflow-wrap: anywhere; }
+.saved-plan-group summary > span::before { content: "+ "; color: var(--accent); }
+.saved-plan-group[open] summary > span::before { content: "− "; }
+.saved-plan-group summary small { display: block; font-size: 10px; color: var(--muted); }
+.saved-plan-group summary strong { flex-shrink: 0; font-size: 14px; }
+.saved-plan-group .investment-grid { margin-top: 10px; }
+.instruction-card > span:not(.instruction-number) { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .modal-investment-editor .modal-body { padding: 10px 12px; }
+  .modal-investment-editor .form-section { padding: 10px; }
+  .investment-editor-row { grid-template-columns: minmax(0, 1fr) 76px 44px; column-gap: 6px; }
+  .plan-bucket-row { grid-template-columns: minmax(0, 1fr) 88px; }
+}
+.plan-buckets > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; color: var(--text-soft); font-size: 12px; font-weight: 780; }
+.plan-buckets > summary::-webkit-details-marker { display: none; }
+.plan-buckets > summary small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 500; }
+.plan-buckets[open] > summary > .icon { transform: rotate(180deg); }
+.plan-main-rates { margin: 8px 0 0; color: var(--accent); font-size: 12px; font-weight: 750; }
+/* Summary rates stay visible while the name/rate controls are collapsed. */
+.plan-buckets > summary .plan-main-rates { margin-top: 6px; color: var(--accent); font-size: 11px; font-weight: 750; }
+.plan-bucket-fields { padding-top: 12px; }
+.investment-editor-head { display: grid; grid-template-columns: minmax(0, 1fr) 88px 44px; column-gap: 8px; margin-bottom: 6px; font-size: 10px; font-weight: 780; color: var(--muted); }
+.investment-editor-row + .investment-editor-row { margin-top: 8px; padding-top: 8px; }
+@media (max-width: 420px) { .investment-editor-head { grid-template-columns: minmax(0, 1fr) 76px 44px; column-gap: 6px; } }

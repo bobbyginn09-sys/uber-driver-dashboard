@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.7.0";
+  const APP_VERSION = "3.8.0";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
   const LEGACY_MONEY_PLAN_V2 = Object.freeze({
@@ -22,7 +22,7 @@
     })
   });
 
-  const DEFAULT_MONEY_PLAN = Object.freeze({
+  const LEGACY_MONEY_PLAN_V3 = Object.freeze({
     version: 3,
     basis: "gross",
     vehiclePct: 5,
@@ -33,6 +33,24 @@
       schg: 20,
       aave: 10
     })
+  });
+
+  const DEFAULT_INVESTMENTS = Object.freeze([
+    Object.freeze({ id: "bitcoin", name: "Bitcoin", pct: 40 }),
+    Object.freeze({ id: "solana", name: "Solana", pct: 30 }),
+    Object.freeze({ id: "schg", name: "SCHG", pct: 20 }),
+    Object.freeze({ id: "aave", name: "AAVE", pct: 10 })
+  ]);
+
+  const DEFAULT_MONEY_PLAN = Object.freeze({
+    version: 4,
+    basis: "gross",
+    vehicleName: "Vehicle fund",
+    investmentName: "Investments",
+    vehiclePct: 5,
+    investmentPct: 20,
+    investments: DEFAULT_INVESTMENTS,
+    investmentMix: LEGACY_MONEY_PLAN_V3.investmentMix
   });
 
   const DEFAULT_SETTINGS = Object.freeze({
@@ -174,30 +192,95 @@
     return normalizeMix(value, DEFAULT_MONEY_PLAN.investmentMix, ["bitcoin", "solana", "schg", "aave"]);
   }
 
+  function cleanPlanName(value, fallback) {
+    const name = String(value == null ? "" : value).replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+    return (name || fallback).slice(0, 60);
+  }
+
+  // Identity is independent of the name: renaming a row cannot relabel a saved shift.
+  // Repair missing/duplicate IDs deterministically, including unsafe object-property names.
+  function normalizeInvestments(value) {
+    const rows = Array.isArray(value) ? value : DEFAULT_INVESTMENTS;
+    const seen = new Set();
+    return rows.map((value, index) => {
+      const row = value && typeof value === "object" ? value : {};
+      let id = String(row.id || "");
+      if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id) || ["__proto__", "constructor", "prototype"].includes(id) || seen.has(id)) {
+        id = `investment_${index + 1}`;
+        while (seen.has(id)) id += "_";
+      }
+      seen.add(id);
+      return {
+        id,
+        name: cleanPlanName(row.name, `Investment ${index + 1}`),
+        pct: normalizePercentage(row.pct, 0)
+      };
+    });
+  }
+
+  function validateMoneyPlan(value) {
+    const plan = value && typeof value === "object" ? value : {};
+    const entries = Array.isArray(plan.investments) ? plan.investments : [];
+    const errors = [];
+    const numeric = (value) => value != null && String(value).trim() !== "" && Number.isFinite(Number(value));
+    const percentage = (value) => numeric(value) && Number(value) >= 0 && Number(value) <= 100;
+    const rates = [plan.vehiclePct, plan.investmentPct, ...entries.map((item) => item && item.pct)];
+    if (!rates.every(percentage)) errors.push("Each percentage must be a number from 0% to 100%.");
+    else if (rates.some((value) => Math.abs(Number(value) - round(Number(value), 4)) > 1e-9)) errors.push("Use no more than four decimal places per percentage.");
+    const totalPct = round(safeNumber(plan.vehiclePct) + safeNumber(plan.investmentPct), 4);
+    if (totalPct > 100) errors.push("The vehicle and investment rates cannot total more than 100%.");
+    for (const [key, label] of [["vehicleName", "Vehicle fund"], ["investmentName", "Investment group"]]) {
+      const text = String(plan[key] == null ? "" : plan[key]).trim();
+      if (!text || text.length > 60) errors.push(`${label} needs a name of 1–60 characters.`);
+    }
+    const names = new Set();
+    const ids = new Set();
+    for (const row of entries) {
+      const name = String(row && row.name || "").trim();
+      if (!name || name.length > 60) {
+        errors.push("Give every investment a name of 1–60 characters.");
+        break;
+      }
+      const canonical = name.toLocaleLowerCase("en-US");
+      if (names.has(canonical)) {
+        errors.push("Use a different name for each investment so the breakdown stays clear.");
+        break;
+      }
+      names.add(canonical);
+      const id = String(row && row.id || "");
+      if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id) || ["__proto__", "constructor", "prototype"].includes(id) || ids.has(id)) {
+        errors.push("Each investment needs a unique ID. Remove and re-add the affected row.");
+        break;
+      }
+      ids.add(id);
+    }
+    const mixTotal = round(entries.reduce((sum, row) => sum + safeNumber(row && row.pct), 0), 4);
+    if (safeNumber(plan.investmentPct) > 0) {
+      if (!entries.length) errors.push("Add an investment or set the investment rate to 0%.");
+      else if (Math.abs(mixTotal - 100) > 0.00005) errors.push(`The investment split must total 100%. It currently totals ${mixTotal}%.`);
+    }
+    return { valid: errors.length === 0, errors, mixTotal, totalPct };
+  }
+
+  function editableMoneyPlan(value) {
+    const plan = normalizeMoneyPlan(value);
+    if (plan.version < 3) return normalizeMoneyPlan(DEFAULT_MONEY_PLAN);
+    return normalizeMoneyPlan({ ...plan, version: 4, investments: plan.investments });
+  }
+
   function moneyPlanSignature(value) {
     const plan = normalizeMoneyPlan(value);
     if (plan.version >= 3) {
-      return [
-        `v${plan.version}`,
-        plan.basis,
-        plan.vehiclePct,
-        plan.investmentPct,
-        plan.investmentMix.bitcoin,
-        plan.investmentMix.solana,
-        plan.investmentMix.schg,
-        plan.investmentMix.aave
-      ].join("|");
+      // Equivalent v3 and v4 plans stay equivalent after the one-time editor upgrade.
+      // Preserve order because it is also the tie-breaker for allocating the last cent.
+      return JSON.stringify([
+        "gross", plan.vehicleName, plan.vehiclePct, plan.investmentName, plan.investmentPct,
+        plan.investments.map((row) => [row.id, row.name, row.pct])
+      ]);
     }
     return [
-      `v${plan.version}`,
-      plan.basis,
-      plan.vehiclePct,
-      plan.stockPct,
-      plan.cryptoPct,
-      plan.cryptoMix.bitcoin,
-      plan.cryptoMix.solana,
-      plan.cryptoMix.ethereum,
-      plan.cryptoMix.aave
+      `v${plan.version}`, plan.basis, plan.vehiclePct, plan.stockPct, plan.cryptoPct,
+      plan.cryptoMix.bitcoin, plan.cryptoMix.solana, plan.cryptoMix.ethereum, plan.cryptoMix.aave
     ].join("|");
   }
 
@@ -242,12 +325,20 @@
       };
     }
 
+    const isEditable = explicitVersion >= 4 || (explicitVersion !== 3 && Array.isArray(source.investments)) || !Object.keys(source).length;
+    const investmentMix = isEditable ? null : normalizeInvestmentMix(source.investmentMix || source.mix);
+    const investments = isEditable
+      ? normalizeInvestments(source.investments)
+      : DEFAULT_INVESTMENTS.map((row) => ({ ...row, pct: investmentMix[row.id] }));
     return {
-      version: Math.max(3, explicitVersion || DEFAULT_MONEY_PLAN.version),
+      version: isEditable ? 4 : 3,
       basis: "gross",
+      vehicleName: cleanPlanName(source.vehicleName, "Vehicle fund"),
+      investmentName: cleanPlanName(source.investmentName, "Investments"),
       vehiclePct: normalizePercentage(source.vehiclePct, DEFAULT_MONEY_PLAN.vehiclePct),
       investmentPct: normalizePercentage(source.investmentPct, DEFAULT_MONEY_PLAN.investmentPct),
-      investmentMix: normalizeInvestmentMix(source.investmentMix || source.mix)
+      investments,
+      investmentMix: Object.fromEntries(investments.map((row) => [row.id, row.pct]))
     };
   }
 
@@ -270,7 +361,7 @@
       weeklyNetGoal: Math.max(0, safeNumber(source.weeklyNetGoal, source.weeklyGoal || DEFAULT_SETTINGS.weeklyNetGoal)),
       monthlyNetGoal: Math.max(0, safeNumber(source.monthlyNetGoal, source.monthlyGoal || DEFAULT_SETTINGS.monthlyNetGoal)),
       lastRoute: String(source.lastRoute || DEFAULT_SETTINGS.lastRoute),
-      moneyPlan: normalizeMoneyPlan(source.moneyPlan),
+      moneyPlan: normalizeMoneyPlan(source.moneyPlan).version >= 3 ? editableMoneyPlan(source.moneyPlan) : normalizeMoneyPlan(source.moneyPlan),
       vehicle: {
         ...vehicleSource,
         name: String(vehicleSource.name || DEFAULT_SETTINGS.vehicle.name),
@@ -449,7 +540,8 @@
       ? normalizeMoneyPlan(source.moneyPlanRates || source.allocationPlan || {
           version: source.moneyPlanVersion,
           cryptoMix: source.cryptoMix,
-          investmentMix: source.investmentMix
+          investmentMix: source.investmentMix,
+          investments: source.investments
         })
       : null;
 
@@ -612,14 +704,30 @@
     const vehicleFund = round(grossBase * plan.vehiclePct / 100, 2);
     const investment = round(grossBase * plan.investmentPct / 100, 2);
     const mix = plan.investmentMix;
-    const investmentBreakdown = allocateMoneyByMix(investment, mix, ["bitcoin", "solana", "schg", "aave"]);
-    const stock = investmentBreakdown.schg;
-    const crypto = round(investmentBreakdown.bitcoin + investmentBreakdown.solana + investmentBreakdown.aave, 2);
+    const mixTotal = round(plan.investments.reduce((sum, row) => sum + row.pct, 0), 4);
+    // A damaged/externally edited plan must not silently lose an investment contribution.
+    // The editor and import validator prevent this state; receipts disclose it if encountered.
+    const hasUsableSplit = mixTotal > 0 && (plan.version === 3 || Math.abs(mixTotal - 100) <= 0.00005);
+    const investmentBreakdown = allocateMoneyByMix(hasUsableSplit ? investment : 0, mix, plan.investments.map((row) => row.id));
+    const investmentAllocations = plan.investments.map((row) => ({
+      ...row,
+      amount: safeNumber(investmentBreakdown[row.id]),
+      grossPct: round(plan.investmentPct * row.pct / 100, 4)
+    }));
+    const unassignedInvestment = hasUsableSplit ? 0 : investment;
+    // Keep legacy API/CSV convenience fields only when they still name that actual asset.
+    // Renaming Bitcoin to another asset must never report the new asset as Bitcoin.
+    const knownInvestmentBreakdown = Object.fromEntries(DEFAULT_INVESTMENTS.map((asset) => [asset.id,
+      investmentAllocations.filter((row) => row.id === asset.id && row.name === asset.name).reduce((sum, row) => sum + row.amount, 0)
+    ]));
+    const stock = knownInvestmentBreakdown.schg;
+    const crypto = round(knownInvestmentBreakdown.bitcoin + knownInvestmentBreakdown.solana + knownInvestmentBreakdown.aave, 2);
+    const otherInvestment = round(investment - stock - crypto - unassignedInvestment, 2);
     const cryptoBreakdown = {
-      bitcoin: investmentBreakdown.bitcoin,
-      solana: investmentBreakdown.solana,
+      bitcoin: knownInvestmentBreakdown.bitcoin,
+      solana: knownInvestmentBreakdown.solana,
       ethereum: 0,
-      aave: investmentBreakdown.aave
+      aave: knownInvestmentBreakdown.aave
     };
     const allocated = round(vehicleFund + investment, 2);
     return {
@@ -630,7 +738,11 @@
       investment,
       stock,
       crypto,
+      otherInvestment,
       investmentBreakdown,
+      knownInvestmentBreakdown,
+      investmentAllocations,
+      unassignedInvestment,
       cryptoBreakdown,
       allocated
     };
@@ -680,6 +792,10 @@
     let crypto = 0;
     let cryptoBreakdown = { bitcoin: 0, solana: 0, ethereum: 0, aave: 0 };
     let investmentBreakdown = { bitcoin: 0, solana: 0, schg: 0, aave: 0 };
+    let investmentAllocations = [];
+    let knownInvestmentBreakdown = investmentBreakdown;
+    let unassignedInvestment = 0;
+    let otherInvestment = 0;
     let legacyInvestment = 0;
     let investment = 0;
     let savings = 0;
@@ -698,6 +814,10 @@
       crypto = result.crypto;
       cryptoBreakdown = result.cryptoBreakdown;
       investmentBreakdown = result.investmentBreakdown;
+      knownInvestmentBreakdown = result.knownInvestmentBreakdown || result.investmentBreakdown;
+      investmentAllocations = result.investmentAllocations || [];
+      unassignedInvestment = result.unassignedInvestment || 0;
+      otherInvestment = result.otherInvestment || 0;
       allocated = result.allocated;
       investment = result.investment;
     } else {
@@ -729,11 +849,14 @@
       crypto,
       cryptoBreakdown,
       investmentBreakdown,
-      bitcoin: investmentBreakdown.bitcoin,
-      solana: investmentBreakdown.solana,
-      schg: investmentBreakdown.schg,
+      investmentAllocations,
+      unassignedInvestment,
+      otherInvestment,
+      bitcoin: safeNumber(knownInvestmentBreakdown.bitcoin),
+      solana: safeNumber(knownInvestmentBreakdown.solana),
+      schg: safeNumber(knownInvestmentBreakdown.schg),
       ethereum: cryptoBreakdown.ethereum,
-      aave: investmentBreakdown.aave,
+      aave: safeNumber(knownInvestmentBreakdown.aave),
       legacyInvestment,
       investment,
       savings,
@@ -806,6 +929,29 @@
       historicalEthereum: sumWhere((item) => !item.isCurrentMoneyPlan, "ethereum"),
       historicalAllocated: sumWhere((item) => !item.isCurrentMoneyPlan, "allocated")
     };
+    // Group by saved plan, not today's names or weights. Older custom assets remain
+    // visible in every date range even after being renamed or removed from settings.
+    const investmentGroups = new Map();
+    list.filter((shift) => shift.isGrossMoneyPlan).forEach((shift) => {
+      const signature = moneyPlanSignature(shift.moneyPlan);
+      if (!investmentGroups.has(signature)) {
+        investmentGroups.set(signature, {
+          signature, plan: shift.moneyPlan, isCurrent: shift.isCurrentMoneyPlan, count: 0,
+          investment: 0, vehicleFund: 0, allocated: 0, unassignedInvestment: 0,
+          allocations: shift.investmentAllocations.map((row) => ({ ...row, amount: 0 }))
+        });
+      }
+      const group = investmentGroups.get(signature);
+      group.count += 1;
+      for (const key of ["investment", "vehicleFund", "allocated", "unassignedInvestment"]) group[key] = round(group[key] + shift[key], 2);
+      group.allocations.forEach((row, index) => { row.amount = round(row.amount + shift.investmentAllocations[index].amount, 2); });
+    });
+    summary.investmentGroups = Array.from(investmentGroups.values());
+    summary.unassignedInvestment = sum("unassignedInvestment");
+    summary.otherInvestment = sum("otherInvestment");
+    summary.preSplitInvestment = sumWhere((shift) => !shift.isGrossMoneyPlan, "investment");
+    const activeGroup = summary.investmentGroups.find((group) => group.isCurrent);
+    summary.currentInvestmentAllocations = activeGroup ? activeGroup.allocations : [];
     summary.hourly = summary.hours > 0 ? round(summary.net / summary.hours, 2) : 0;
     summary.netPerMile = summary.miles > 0 ? round(summary.net / summary.miles, 2) : 0;
     summary.averageShift = summary.count ? round(summary.net / summary.count, 2) : 0;
@@ -904,6 +1050,8 @@
     APP_VERSION,
     STORAGE_KEY,
     LEGACY_MONEY_PLAN_V2,
+    LEGACY_MONEY_PLAN_V3,
+    DEFAULT_INVESTMENTS,
     DEFAULT_MONEY_PLAN,
     DEFAULT_SETTINGS,
     safeNumber,
@@ -922,6 +1070,8 @@
     startOfYear,
     endOfYear,
     normalizeMoneyPlan,
+    editableMoneyPlan,
+    validateMoneyPlan,
     moneyPlanSignature,
     allocateMoneyByMix,
     normalizeSettings,
