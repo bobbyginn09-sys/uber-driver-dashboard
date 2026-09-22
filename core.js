@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.8.0";
+  const APP_VERSION = "3.9.0";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
   const LEGACY_MONEY_PLAN_V2 = Object.freeze({
@@ -43,8 +43,8 @@
   ]);
 
   const DEFAULT_MONEY_PLAN = Object.freeze({
-    version: 4,
-    basis: "gross",
+    version: 5,
+    basis: "positiveNet",
     vehicleName: "Vehicle fund",
     investmentName: "Investments",
     vehiclePct: 5,
@@ -265,16 +265,16 @@
   function editableMoneyPlan(value) {
     const plan = normalizeMoneyPlan(value);
     if (plan.version < 3) return normalizeMoneyPlan(DEFAULT_MONEY_PLAN);
-    return normalizeMoneyPlan({ ...plan, version: 4, investments: plan.investments });
+    return normalizeMoneyPlan({ ...plan, version: 5, basis: "positiveNet", investments: plan.investments });
   }
 
   function moneyPlanSignature(value) {
     const plan = normalizeMoneyPlan(value);
     if (plan.version >= 3) {
-      // Equivalent v3 and v4 plans stay equivalent after the one-time editor upgrade.
+      // Preserve historical gross plans. A net plan has a different signature.
       // Preserve order because it is also the tie-breaker for allocating the last cent.
       return JSON.stringify([
-        "gross", plan.vehicleName, plan.vehiclePct, plan.investmentName, plan.investmentPct,
+        plan.basis, plan.vehicleName, plan.vehiclePct, plan.investmentName, plan.investmentPct,
         plan.investments.map((row) => [row.id, row.name, row.pct])
       ]);
     }
@@ -325,14 +325,15 @@
       };
     }
 
-    const isEditable = explicitVersion >= 4 || (explicitVersion !== 3 && Array.isArray(source.investments)) || !Object.keys(source).length;
+    const isNet = explicitVersion >= 5 || source.basis === "positiveNet" || !Object.keys(source).length;
+    const isEditable = isNet || explicitVersion >= 4 || (explicitVersion !== 3 && Array.isArray(source.investments)) || !Object.keys(source).length;
     const investmentMix = isEditable ? null : normalizeInvestmentMix(source.investmentMix || source.mix);
     const investments = isEditable
       ? normalizeInvestments(source.investments)
       : DEFAULT_INVESTMENTS.map((row) => ({ ...row, pct: investmentMix[row.id] }));
     return {
-      version: isEditable ? 4 : 3,
-      basis: "gross",
+      version: isNet ? 5 : isEditable ? 4 : 3,
+      basis: isNet ? "positiveNet" : "gross",
       vehicleName: cleanPlanName(source.vehicleName, "Vehicle fund"),
       investmentName: cleanPlanName(source.investmentName, "Investments"),
       vehiclePct: normalizePercentage(source.vehiclePct, DEFAULT_MONEY_PLAN.vehiclePct),
@@ -416,11 +417,20 @@
     const startedAt = String(value.startedAt || value.clockInAt || inferStartedAt(date, startTime));
     const pausedMs = Math.max(0, safeNumber(value.pausedMs, safeNumber(value.totalPausedMs, safeNumber(value.pausedMinutes) * 60000)));
     const pauseStartedAt = value.pauseStartedAt ? String(value.pauseStartedAt) : "";
+    const earnings = normalizeGrossBreakdown(value, value.platform || value.app || settings.defaultPlatform, settings.defaultPlatform);
     return {
       ...value,
       id: String(value.id || uid("active")),
       date,
-      platform: String(value.platform || value.app || settings.defaultPlatform),
+      platform: earnings.platform,
+      uberGross: earnings.uberGross,
+      lyftGross: earnings.lyftGross,
+      otherGross: earnings.otherGross,
+      unassignedGross: earnings.unassignedGross,
+      gross: earnings.gross,
+      fuel: Math.max(0, round(safeNumber(value.fuel, value.gas), 2)),
+      tolls: Math.max(0, round(safeNumber(value.tolls, value.parking), 2)),
+      otherExpenses: Math.max(0, round(safeNumber(value.otherExpenses, value.other), 2)),
       startTime,
       startedAt,
       startOdometer: Math.max(0, safeNumber(value.startOdometer, value.startMiles)),
@@ -700,9 +710,15 @@
 
   function calculateVersion3Plan(base, planValue) {
     const plan = normalizeMoneyPlan(planValue || DEFAULT_MONEY_PLAN);
-    const grossBase = Math.max(0, safeNumber(base));
-    const vehicleFund = round(grossBase * plan.vehiclePct / 100, 2);
-    const investment = round(grossBase * plan.investmentPct / 100, 2);
+    // Versions 3/4 receive gross; version 5 receives earnings after expenses.
+    const allocationBase = Math.max(0, safeNumber(base));
+    const vehicleFund = round(allocationBase * plan.vehiclePct / 100, 2);
+    const roundedInvestment = round(allocationBase * plan.investmentPct / 100, 2);
+    // At a 100% total rate, separate rounding must not allocate more than net.
+    // Keep the original calculation untouched for historical gross plans.
+    const investment = plan.basis === "positiveNet" && plan.vehiclePct + plan.investmentPct <= 100.00005
+      ? Math.min(roundedInvestment, Math.max(0, round(allocationBase - vehicleFund, 2)))
+      : roundedInvestment;
     const mix = plan.investmentMix;
     const mixTotal = round(plan.investments.reduce((sum, row) => sum + row.pct, 0), 4);
     // A damaged/externally edited plan must not silently lose an investment contribution.
@@ -712,7 +728,10 @@
     const investmentAllocations = plan.investments.map((row) => ({
       ...row,
       amount: safeNumber(investmentBreakdown[row.id]),
-      grossPct: round(plan.investmentPct * row.pct / 100, 4)
+      basisPct: round(plan.investmentPct * row.pct / 100, 4),
+      basis: plan.basis,
+      grossPct: plan.basis === "gross" ? round(plan.investmentPct * row.pct / 100, 4) : 0,
+      netPct: plan.basis === "positiveNet" ? round(plan.investmentPct * row.pct / 100, 4) : 0
     }));
     const unassignedInvestment = hasUsableSplit ? 0 : investment;
     // Keep legacy API/CSV convenience fields only when they still name that actual asset.
@@ -732,8 +751,8 @@
     const allocated = round(vehicleFund + investment, 2);
     return {
       plan,
-      allocationBase: grossBase,
-      allocationBasis: "gross",
+      allocationBase,
+      allocationBasis: plan.basis,
       vehicleFund,
       investment,
       stock,
@@ -782,9 +801,11 @@
     const miles = round(mileage(shift), 2);
     const isNewPlan = Boolean(shift.moneyPlanRates);
     const moneyPlanVersion = isNewPlan ? Math.max(2, Math.floor(safeNumber(shift.moneyPlanRates.version, shift.moneyPlanVersion))) : 0;
-    const isGrossMoneyPlan = moneyPlanVersion >= 3;
+    const isSplitMoneyPlan = moneyPlanVersion >= 3;
+    const isGrossMoneyPlan = isSplitMoneyPlan && shift.moneyPlanRates.basis === "gross";
+    const isNetMoneyPlan = isNewPlan && shift.moneyPlanRates.basis === "positiveNet";
     const activeMoneyPlan = normalizeMoneyPlan(settings.moneyPlan || DEFAULT_MONEY_PLAN);
-    const isCurrentMoneyPlan = isGrossMoneyPlan && activeMoneyPlan.version >= 3
+    const isCurrentMoneyPlan = isSplitMoneyPlan && activeMoneyPlan.version >= 3
       && moneyPlanSignature(shift.moneyPlanRates) === moneyPlanSignature(activeMoneyPlan);
     const isPreviousMoneyPlan = moneyPlanVersion === 2;
     let vehicleFund = 0;
@@ -867,12 +888,35 @@
       moneyPlanVersion,
       isNewMoneyPlan: isNewPlan,
       isGrossMoneyPlan,
+      isSplitMoneyPlan,
+      isNetMoneyPlan,
       isCurrentMoneyPlan,
       isPreviousMoneyPlan,
       allocationBase,
       allocationBasis,
       taxRate: rate,
       taxDeduction: round(miles * rate, 2)
+    };
+  }
+
+  function calculateActiveShift(value, settingsValue, nowValue) {
+    if (!value) return null;
+    const settings = normalizeSettings(settingsValue || DEFAULT_SETTINGS);
+    const active = normalizeActiveShift(value, settings);
+    const now = nowValue instanceof Date ? nowValue : nowValue ? new Date(nowValue) : new Date();
+    const hours = activeDurationMs(active, now) / 3600000;
+    const shift = calculateShift({
+      ...active,
+      endedAt: now.toISOString(),
+      manualHours: hours,
+      pausedMs: activePausedMs(active, now),
+      moneyPlanRates: settings.moneyPlan,
+      endOdometer: active.startOdometer
+    }, settings);
+    // Keep full timer precision for live rates, including the first second.
+    return { ...shift, hours,
+      grossHourly: hours > 0 ? round(shift.gross / hours, 2) : 0,
+      hourly: hours > 0 ? round(shift.net / hours, 2) : 0
     };
   }
 
@@ -932,7 +976,7 @@
     // Group by saved plan, not today's names or weights. Older custom assets remain
     // visible in every date range even after being renamed or removed from settings.
     const investmentGroups = new Map();
-    list.filter((shift) => shift.isGrossMoneyPlan).forEach((shift) => {
+    list.filter((shift) => shift.isSplitMoneyPlan).forEach((shift) => {
       const signature = moneyPlanSignature(shift.moneyPlan);
       if (!investmentGroups.has(signature)) {
         investmentGroups.set(signature, {
@@ -949,10 +993,11 @@
     summary.investmentGroups = Array.from(investmentGroups.values());
     summary.unassignedInvestment = sum("unassignedInvestment");
     summary.otherInvestment = sum("otherInvestment");
-    summary.preSplitInvestment = sumWhere((shift) => !shift.isGrossMoneyPlan, "investment");
+    summary.preSplitInvestment = sumWhere((shift) => !shift.isSplitMoneyPlan, "investment");
     const activeGroup = summary.investmentGroups.find((group) => group.isCurrent);
     summary.currentInvestmentAllocations = activeGroup ? activeGroup.allocations : [];
     summary.hourly = summary.hours > 0 ? round(summary.net / summary.hours, 2) : 0;
+    summary.grossHourly = summary.hours > 0 ? round(summary.gross / summary.hours, 2) : 0;
     summary.netPerMile = summary.miles > 0 ? round(summary.net / summary.miles, 2) : 0;
     summary.averageShift = summary.count ? round(summary.net / summary.count, 2) : 0;
     summary.rideshareGross = round(summary.uberGross + summary.lyftGross, 2);
@@ -1091,6 +1136,7 @@
     calculateVersion3Plan,
     calculateNewPlan,
     calculateShift,
+    calculateActiveShift,
     summarizeShifts,
     filterShiftsByDate,
     rangeForPeriod,

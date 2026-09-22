@@ -185,6 +185,10 @@
     return Core.round(Core.safeNumber(plan.vehiclePct) + Core.safeNumber(plan.investmentPct), 4);
   }
 
+  function moneyBasisLabel(plan) {
+    return plan && plan.basis === "gross" ? "gross" : "net";
+  }
+
   function investmentGrossPct(planValue, asset) {
     const plan = planValue || currentMoneyPlan();
     const mix = plan.investmentMix || {};
@@ -194,14 +198,14 @@
   function investmentCards(allocations) {
     return `<div class="crypto-grid investment-grid">${allocations.map((row) => `
       <div class="crypto-coin"><span>${escapeHtml(row.name)}</span><strong>${formatMoney(row.amount)}</strong>
-      <small>${formatPercent(row.pct)}% of investments · ${formatPercent(row.grossPct)}% gross</small></div>`).join("")}</div>`;
+      <small>${formatPercent(row.pct)}% of investments · ${formatPercent(row.basisPct == null ? row.grossPct : row.basisPct)}% ${moneyBasisLabel(row)}</small></div>`).join("")}</div>`;
   }
 
   function investmentRules(plan) {
     if (!plan.investments.length) return `<p class="plan-empty-copy">No investments added. The investment rate is ${formatPercent(plan.investmentPct)}%.</p>`;
     return `<div class="crypto-rules investment-rules">${plan.investments.map((row) => `
       <div class="crypto-rule"><span>${escapeHtml(row.name)}</span><strong>${formatPercent(row.pct)}%</strong>
-      <small>${formatPercent(investmentGrossPct(plan, row.id))}% of gross</small></div>`).join("")}</div>`;
+      <small>${formatPercent(investmentGrossPct(plan, row.id))}% of ${moneyBasisLabel(plan)}</small></div>`).join("")}</div>`;
   }
 
   function unassignedInvestmentNotice(amount) {
@@ -296,7 +300,7 @@
     if (!source) source = loadLegacyState();
     if (!Array.isArray(source.shifts) && Array.isArray(source.entries)) source.shifts = source.entries;
     const normalized = Core.normalizeState(source);
-    // Upgrade the former 5/10/10 default once. Core upgrades v3 settings to editable rows without changing their rates or saved shifts.
+    // Upgrade current settings to net-based contributions. Saved shifts retain their original basis and rates.
     if (!normalized.settings.moneyPlan || Core.safeNumber(normalized.settings.moneyPlan.version) < 3) {
       normalized.settings.moneyPlan = Core.normalizeMoneyPlan(Core.DEFAULT_MONEY_PLAN);
     }
@@ -474,6 +478,16 @@
     return state.shifts.filter((item) => item.date === today);
   }
 
+  function renderHourlyCard() {
+    const active = state.activeShift;
+    const totals = active ? Core.calculateActiveShift(active, state.settings) : Core.summarizeShifts(todayShifts(), state.settings);
+    return `<article class="metric-card hourly-card"><div class="metric-head"><span class="metric-icon is-amber">${icon("clock", "icon icon-sm")}</span><span class="pill">${active ? active.pauseStartedAt ? "Paused" : "Live" : "Today"}</span></div>
+      <span class="metric-label">${active ? "Shift hourly" : "Today hourly"}</span>
+      <strong class="metric-value"><span data-live-hourly>${formatMoney(totals.grossHourly)}</span><small>/hr</small></strong>
+      <div class="metric-meta">Gross · net <span data-live-net-hourly>${formatMoney(totals.hourly)}</span>/hr</div>
+      <div class="metric-meta">${active ? "Current shift, breaks excluded" : "Completed shifts today"}</div></article>`;
+  }
+
   function renderActiveHero() {
     const active = state.activeShift;
     if (!active) {
@@ -490,10 +504,13 @@
     const now = new Date();
     const workMs = Core.activeDurationMs(active, now);
     const pauseMs = Core.activePausedMs(active, now);
+    const live = Core.calculateActiveShift(active, state.settings, now);
     return `<section class="shift-hero panel"><div class="hero-content">
       <div class="hero-top"><div><span class="hero-kicker">${escapeHtml(active.platform)} · ${escapeHtml(formatDate(active.date, { weekday: "short", month: "short", day: "numeric" }))}</span><span class="pill ${paused ? "pill-warning" : "pill-success"}">${paused ? "Paused" : "Live shift"}</span></div><span class="metric-icon ${paused ? "is-amber" : ""}">${icon(paused ? "pause" : "clock", "icon icon-lg")}</span></div>
       <div class="hero-main"><h2 data-live-work>${formatDuration(workMs, true)}</h2><p>${paused ? "Work time is frozen. Resume when you are ready to drive again." : "Active driving time. Lunches and errands will not count after you pause."}</p></div>
+      <div class="live-money-line"><span>Earned <strong>${formatMoney(live.gross)}</strong></span><span>Expenses <strong>${formatMoney(live.expenses)}</strong></span></div>
       <div class="hero-actions">
+        <button class="button button-primary" type="button" data-action="edit-active-shift">${icon("edit", "icon icon-sm")}Edit shift</button>
         <button class="button ${paused ? "button-primary" : "button-warning"}" type="button" data-action="${paused ? "resume-shift" : "pause-shift"}">${icon(paused ? "resume" : "pause", "icon icon-sm")}${paused ? "Resume shift" : "Pause shift"}</button>
         <button class="button button-secondary" type="button" data-action="end-shift">${icon("stop", "icon icon-sm")}End shift</button>
         <button class="button button-ghost" type="button" data-action="cancel-active-shift">${icon("trash", "icon icon-sm")}Cancel shift</button>
@@ -510,7 +527,7 @@
     const mixedPlans = summary.historicalPlanCount > 0;
     const nonVehicleAllocation = Core.round(summary.allocated - summary.vehicleFund, 2);
     const investmentLabel = summary.historicalSavings > 0 ? "Investments + old savings" : "Investments";
-    const subtitle = list.length && mixedPlans ? "Gas plus each shift’s saved allocation" : `Gas plus ${formatPercent(totalPct)}% of gross earnings`;
+    const subtitle = list.length && mixedPlans ? "Gas plus each shift’s saved allocation" : `Gas plus ${formatPercent(totalPct)}% of net earnings`;
     return `<section class="today-plan panel">
       <div class="panel-header"><div><h2 class="panel-title">Today’s money move</h2><p class="panel-subtitle">${subtitle}</p></div><button class="button button-ghost button-small" type="button" data-action="open-today-money">Details${icon("chevronRight", "icon icon-sm")}</button></div>
       <div class="plan-total"><span>Take out / move</span><strong>${formatMoney(summary.takeOut)}</strong><p>${list.length ? `${formatMoney(summary.fuel)} gas + ${formatMoney(summary.allocated)} allocated` : "Finish a shift and your directions will appear here."}</p></div>
@@ -531,15 +548,13 @@
     const weekRange = Core.rangeForPeriod("week", new Date(), state.settings.weekStartsOn);
     const weekList = Core.filterShiftsByDate(state.shifts, weekRange.start, weekRange.end);
     const week = Core.summarizeShifts(weekList, state.settings);
-    const goal = Core.safeNumber(state.settings.weeklyNetGoal);
-    const goalPct = goal > 0 ? Math.min(100, Math.max(0, week.net / goal * 100)) : 0;
     return `<div class="overview-stack">
       <div class="overview-grid">${renderActiveHero()}${renderTodayPlan()}</div>
-      <section class="metric-strip" aria-label="This week">
+      <section class="metric-strip overview-metrics" aria-label="Weekly totals and current hourly pay">
         ${metricCard({ icon: "dollar", label: "Week net", value: formatMoney(week.net), meta: `${rideshareGrossText(week)} · ${formatMoney(week.expenses)} expenses` })}
-        ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Net hourly", value: `${formatMoney(week.hourly)}/hr`, meta: `${formatNumber(week.hours, 1)} active hours` })}
+        ${metricCard({ icon: "clock", iconClass: "is-blue", label: "Week net hourly", value: `${formatMoney(week.hourly)}/hr`, meta: `${formatNumber(week.hours, 1)} active hours` })}
         ${metricCard({ icon: "wallet", iconClass: "is-violet", label: "Move out", value: formatMoney(week.takeOut), meta: `Gas + ${formatMoney(week.allocated)} plan` })}
-        ${metricCard({ icon: "target", iconClass: "is-amber", label: "Weekly goal", value: `${formatNumber(goalPct, 0)}%`, meta: goal ? `${formatMoney(Math.max(0, goal - week.net))} remaining` : "Set a goal in settings" })}
+        ${renderHourlyCard()}
       </section>
       <div class="lower-grid">
         <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Recent shifts</h2><p class="panel-subtitle">Tap the wallet for exact directions</p></div><button class="button button-ghost button-small" type="button" data-route="shifts">All shifts${icon("chevronRight", "icon icon-sm")}</button></div>${renderRecentShifts(5)}</section>
@@ -636,11 +651,11 @@
     const current = summary.investmentGroups.find((group) => group.isCurrent);
     const older = summary.investmentGroups.filter((group) => !group.isCurrent);
     const historic = older.map((group) => `<details class="saved-plan-group"${!current && older.length === 1 ? " open" : ""}>
-      <summary><span>${escapeHtml(group.plan.investmentName)} · ${formatPercent(group.plan.investmentPct)}% of gross<small>${group.count} shift${group.count === 1 ? "" : "s"} · saved names & percentages</small></span><strong>${formatMoney(group.investment)}</strong></summary>
+      <summary><span>${escapeHtml(group.plan.investmentName)} · ${formatPercent(group.plan.investmentPct)}% of ${moneyBasisLabel(group.plan)}<small>${group.count} shift${group.count === 1 ? "" : "s"} · saved names & percentages</small></span><strong>${formatMoney(group.investment)}</strong></summary>
       ${investmentCards(group.allocations)}${unassignedInvestmentNotice(group.unassignedInvestment)}</details>`).join("");
     const oldTotals = !current ? `<div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Vehicle fund</span><strong>${formatMoney(summary.historicalVehicleFund)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Older investments</span><strong>${formatMoney(summary.historicalInvestment)}</strong></div>${summary.historicalSavings ? `<div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Older savings allocation</span><strong>${formatMoney(summary.historicalSavings)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Total saved allocation</span><strong>${formatMoney(summary.historicalAllocated)}</strong></div></div>` : "";
     const historicalNotice = summary.historicalPlanCount ? `<div class="notice" style="margin-top:10px">${icon("info", "icon icon-sm")}<p>${formatMoney(summary.historicalAllocated)} from ${summary.historicalPlanCount} older shift${summary.historicalPlanCount === 1 ? " is" : "s are"} included in the period totals. Their saved names and splits are kept, not changed to today's plan.${summary.preSplitInvestment ? ` ${formatMoney(summary.preSplitInvestment)} comes from pre-split investment plans; open those shift receipts for the original details.` : ""}</p></div>` : "";
-    return `<section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">${current ? "Investment directions" : "Historical allocations"}</h2><p class="panel-subtitle">${current ? `${escapeHtml(plan.investmentName)} · ${formatPercent(plan.investmentPct)}% of gross` : "These shifts keep their original allocation plans"}</p></div><span class="pill pill-blue">${formatMoney(current ? current.investment : summary.historicalInvestment)}</span></div>
+    return `<section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">${current ? "Investment directions" : "Historical allocations"}</h2><p class="panel-subtitle">${current ? `${escapeHtml(plan.investmentName)} · ${formatPercent(plan.investmentPct)}% of ${moneyBasisLabel(plan)}` : "These shifts keep their original allocation plans"}</p></div><span class="pill pill-blue">${formatMoney(current ? current.investment : summary.historicalInvestment)}</span></div>
       ${current ? (current.allocations.length ? investmentCards(current.allocations) : `<p class="plan-empty-copy">Investment contributions are turned off for these shifts.</p>`) + unassignedInvestmentNotice(current.unassignedInvestment) : oldTotals}
       ${historic}${historicalNotice}</section>`;
   }
@@ -653,8 +668,8 @@
     const mixedPlans = summary.historicalPlanCount > 0;
     const nonVehicleAllocation = Core.round(summary.allocated - summary.vehicleFund, 2);
     const investmentLabel = summary.historicalSavings > 0 ? "Investments + old savings" : mixedPlans ? "Investments" : plan.investmentName;
-    const vehicleMeta = mixedPlans ? "Saved plans combined" : `Current plan: ${formatPercent(plan.vehiclePct)}% of gross`;
-    const investmentMeta = summary.historicalSavings > 0 ? `${formatMoney(summary.historicalSavings)} older savings included` : mixedPlans ? "Saved plans combined" : `Current plan: ${formatPercent(plan.investmentPct)}% of gross`;
+    const vehicleMeta = mixedPlans ? "Saved plans combined" : `Current plan: ${formatPercent(plan.vehiclePct)}% of ${moneyBasisLabel(plan)}`;
+    const investmentMeta = summary.historicalSavings > 0 ? `${formatMoney(summary.historicalSavings)} older savings included` : mixedPlans ? "Saved plans combined" : `Current plan: ${formatPercent(plan.investmentPct)}% of ${moneyBasisLabel(plan)}`;
     const allocationMeta = mixedPlans ? "Each shift keeps its saved plan" : `Current plan totals ${formatPercent(totalPct)}%`;
     const periods = [["day", "Day"], ["week", "Week"], ["month", "Month"], ["year", "Year"], ["all", "All"]];
     return `<div class="page-stack">
@@ -665,7 +680,7 @@
         <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Period totals</h2><p class="panel-subtitle">Uber and Lyft combine into overall gross</p></div></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Uber gross</span><strong>${formatMoney(summary.uberGross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Lyft gross</span><strong>${formatMoney(summary.lyftGross)}</strong></div>${summary.otherGross ? `<div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Other app gross</span><strong>${formatMoney(summary.otherGross)}</strong></div>` : ""}${summary.unassignedGross ? `<div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Older unassigned gross</span><strong>${formatMoney(summary.unassignedGross)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Overall gross</span><strong>${formatMoney(summary.gross)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>All expenses</span><strong>−${formatMoney(summary.expenses)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Net after expenses</span><strong>${formatMoney(summary.net)}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Total allocation</span><strong>−${formatMoney(summary.allocated)}</strong></div>${summary.historicalAllocated ? `<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Older plans included above</span><strong>${formatMoney(summary.historicalAllocated)}</strong></div>` : ""}<div class="breakdown-row"><span class="breakdown-dot is-cyan"></span><span>Keep available</span><strong>${formatMoney(summary.spendable)}</strong></div></div></section></aside>
       </div>
       <section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Day-by-day breakdown</h2><p class="panel-subtitle">Tap a day to isolate it</p></div><span class="pill">${list.length} shift${list.length === 1 ? "" : "s"}</span></div>${dailyMoneyRows(list)}</section>
-      <div class="notice">${icon("info", "icon icon-sm")}<p>New shifts put ${formatPercent(plan.vehiclePct)}% of gross earnings into the vehicle fund and ${formatPercent(plan.investmentPct)}% into investments. “Take out” adds your recorded gas on top. Older shifts keep the allocation plan saved with them. This is your custom money-management plan, not investment or tax advice.</p></div>
+      <div class="notice">${icon("info", "icon icon-sm")}<p>New shifts put ${formatPercent(plan.vehiclePct)}% of ${moneyBasisLabel(plan)} earnings into the vehicle fund and ${formatPercent(plan.investmentPct)}% into investments. “Take out” adds your recorded gas on top. Older shifts keep the allocation plan saved with them. This is your custom money-management plan, not investment or tax advice.</p></div>
     </div>`;
   }
 
@@ -720,7 +735,7 @@
     const fund = vehicleFundSummary();
     const odometer = Core.currentOdometer(state.shifts, state.maintenance, state.settings);
     const latest = state.maintenance.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
-    return `<div class="page-stack"><div class="vehicle-grid"><section class="vehicle-fund panel"><div class="panel-header"><div><h2 class="panel-title">Vehicle reserve</h2><p class="panel-subtitle">5% of gross earnings from every new shift</p></div><span class="pill pill-success">Fund</span></div><strong class="vehicle-fund-value">${formatMoney(fund.balance)}</strong><p class="vehicle-fund-copy">Reserve balance after subtracting all logged maintenance costs.</p><div class="vehicle-mini-grid"><div class="vehicle-mini"><span>Contributed</span><strong>${formatMoney(fund.contributions)}</strong></div><div class="vehicle-mini"><span>Spent</span><strong>${formatMoney(fund.spent)}</strong></div><div class="vehicle-mini"><span>New rate</span><strong>5%</strong></div></div></section><section class="odometer-card panel"><div class="panel-header"><div><h2 class="panel-title">Current odometer</h2><p class="panel-subtitle">Highest mileage in your records</p></div><span class="metric-icon is-blue">${icon("route", "icon icon-sm")}</span></div><strong class="odometer-value">${formatNumber(odometer, 1)}</strong><p class="odometer-copy">${escapeHtml(state.settings.vehicle.name)}${latest ? ` · Last service ${formatDate(latest.date, { month: "short", day: "numeric" })}` : " · Add maintenance to build service history"}</p><button class="button button-secondary button-wide" style="margin-top:15px" type="button" data-action="update-odometer">${icon("edit", "icon icon-sm")}Update odometer</button></section></div><section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Maintenance & vehicle expenses</h2><p class="panel-subtitle">These costs reduce the displayed vehicle reserve</p></div><button class="button button-primary button-small" type="button" data-action="add-maintenance">${icon("plus", "icon icon-sm")}Add service</button></div>${renderMaintenanceList()}</section></div>`;
+    return `<div class="page-stack"><div class="vehicle-grid"><section class="vehicle-fund panel"><div class="panel-header"><div><h2 class="panel-title">Vehicle reserve</h2><p class="panel-subtitle">${formatPercent(currentMoneyPlan().vehiclePct)}% of net earnings from each new shift</p></div><span class="pill pill-success">Fund</span></div><strong class="vehicle-fund-value">${formatMoney(fund.balance)}</strong><p class="vehicle-fund-copy">Reserve balance after subtracting all logged maintenance costs.</p><div class="vehicle-mini-grid"><div class="vehicle-mini"><span>Contributed</span><strong>${formatMoney(fund.contributions)}</strong></div><div class="vehicle-mini"><span>Spent</span><strong>${formatMoney(fund.spent)}</strong></div><div class="vehicle-mini"><span>New rate</span><strong>${formatPercent(currentMoneyPlan().vehiclePct)}%</strong></div></div></section><section class="odometer-card panel"><div class="panel-header"><div><h2 class="panel-title">Current odometer</h2><p class="panel-subtitle">Highest mileage in your records</p></div><span class="metric-icon is-blue">${icon("route", "icon icon-sm")}</span></div><strong class="odometer-value">${formatNumber(odometer, 1)}</strong><p class="odometer-copy">${escapeHtml(state.settings.vehicle.name)}${latest ? ` · Last service ${formatDate(latest.date, { month: "short", day: "numeric" })}` : " · Add maintenance to build service history"}</p><button class="button button-secondary button-wide" style="margin-top:15px" type="button" data-action="update-odometer">${icon("edit", "icon icon-sm")}Update odometer</button></section></div><section class="panel panel-pad"><div class="panel-header"><div><h2 class="panel-title">Maintenance & vehicle expenses</h2><p class="panel-subtitle">These costs reduce the displayed vehicle reserve</p></div><button class="button button-primary button-small" type="button" data-action="add-maintenance">${icon("plus", "icon icon-sm")}Add service</button></div>${renderMaintenanceList()}</section></div>`;
   }
 
   function goalTiming(goal) {
@@ -761,7 +776,7 @@
     const plan = currentMoneyPlan();
     const totalPct = moneyPlanTotalPct(plan);
     const serializedBytes = new Blob([JSON.stringify(serializeState())]).size;
-    return `<div class="settings-layout"><form class="settings-stack" data-form="settings"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Dashboard preferences</h2><p class="panel-subtitle">Defaults used for future entries</p></div><span class="pill">Local</span></div><div class="form-grid"><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${PLATFORM_OPTIONS.map((option) => `<option value="${escapeAttribute(option)}"${state.settings.defaultPlatform === option ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="0"${state.settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="1"${state.settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option></select></div><div class="field"><label for="settingWeeklyGoal">Weekly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingWeeklyGoal" name="weeklyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.weeklyNetGoal)}"></div></div><div class="field"><label for="settingMonthlyGoal">Monthly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingMonthlyGoal" name="monthlyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.monthlyNetGoal)}"></div></div><div class="field span-2"><label for="settingVehicleName">Vehicle name</label><input id="settingVehicleName" name="vehicleName" value="${escapeAttribute(state.settings.vehicle.name)}" maxlength="60"></div></div><button class="button button-primary button-wide" style="margin-top:12px" type="submit">${icon("check", "icon icon-sm")}Save preferences</button></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Your money plan</h2><p class="panel-subtitle">Rename, add, remove, or change your investments</p></div><button class="button button-secondary button-small" type="button" data-action="edit-money-plan">${icon("edit", "icon icon-sm")}Edit plan</button></div><div class="settings-plan-grid"><div class="settings-plan-item"><span>${escapeHtml(plan.vehicleName)}</span><strong>${formatPercent(plan.vehiclePct)}%</strong><small>of gross earnings</small></div><div class="settings-plan-item"><span>${escapeHtml(plan.investmentName)}</span><strong>${formatPercent(plan.investmentPct)}%</strong><small>of gross earnings</small></div></div><div class="plan-split-head"><span>Investment split</span><strong>${formatPercent(totalPct)}% total plan</strong></div>${investmentRules(plan)}<div class="notice is-success" style="margin-top:10px">${icon("check", "icon icon-sm")}<p>There is no savings allocation. The final “take out” amount is recorded gas plus the full ${formatPercent(totalPct)}% plan. Saved shifts keep the plan they originally used.</p></div></section></form><aside class="settings-stack"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Backups & exports</h2><p class="panel-subtitle">Protect the records stored on this device</p></div></div><div class="data-actions"><button class="data-action" type="button" data-action="export-backup"><span class="metric-icon">${icon("download", "icon icon-sm")}</span><strong>Full backup</strong><span>Download shifts, goals, maintenance, settings, and an active shift.</span></button><button class="data-action" type="button" data-action="import-data"><span class="metric-icon is-blue">${icon("upload", "icon icon-sm")}</span><strong>Import data</strong><span>Restore a JSON backup or import compatible shift CSV rows.</span></button><button class="data-action" type="button" data-action="export-csv"><span class="metric-icon is-violet">${icon("receipt", "icon icon-sm")}</span><strong>Export shifts</strong><span>Download a spreadsheet-friendly CSV with money-plan amounts.</span></button><button class="data-action" type="button" data-action="reset-data"><span class="metric-icon is-amber">${icon("trash", "icon icon-sm")}</span><strong>Reset dashboard</strong><span>Erase this dashboard’s locally stored data after confirmation.</span></button></div></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Storage & version</h2><p class="panel-subtitle">No account, server, or analytics</p></div><span class="pill pill-blue">v${Core.APP_VERSION}</span></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Saved shifts</span><strong>${state.shifts.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Maintenance records</span><strong>${state.maintenance.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Goals</span><strong>${state.goals.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Approx. backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div></section></aside></div>`;
+    return `<div class="settings-layout"><form class="settings-stack" data-form="settings"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Dashboard preferences</h2><p class="panel-subtitle">Defaults used for future entries</p></div><span class="pill">Local</span></div><div class="form-grid"><div class="field"><label for="settingPlatform">Default platform</label><select id="settingPlatform" name="defaultPlatform">${PLATFORM_OPTIONS.map((option) => `<option value="${escapeAttribute(option)}"${state.settings.defaultPlatform === option ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></div><div class="field"><label for="settingWeekStart">Week starts on</label><select id="settingWeekStart" name="weekStartsOn"><option value="0"${state.settings.weekStartsOn === 0 ? " selected" : ""}>Sunday</option><option value="1"${state.settings.weekStartsOn === 1 ? " selected" : ""}>Monday</option></select></div><div class="field"><label for="settingWeeklyGoal">Weekly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingWeeklyGoal" name="weeklyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.weeklyNetGoal)}"></div></div><div class="field"><label for="settingMonthlyGoal">Monthly net goal</label><div class="input-shell"><span class="input-prefix">$</span><input id="settingMonthlyGoal" name="monthlyNetGoal" type="number" min="0" step="1" value="${escapeAttribute(state.settings.monthlyNetGoal)}"></div></div><div class="field span-2"><label for="settingVehicleName">Vehicle name</label><input id="settingVehicleName" name="vehicleName" value="${escapeAttribute(state.settings.vehicle.name)}" maxlength="60"></div></div><button class="button button-primary button-wide" style="margin-top:12px" type="submit">${icon("check", "icon icon-sm")}Save preferences</button></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Your money plan</h2><p class="panel-subtitle">Rename, add, remove, or change your investments</p></div><button class="button button-secondary button-small" type="button" data-action="edit-money-plan">${icon("edit", "icon icon-sm")}Edit plan</button></div><div class="settings-plan-grid"><div class="settings-plan-item"><span>${escapeHtml(plan.vehicleName)}</span><strong>${formatPercent(plan.vehiclePct)}%</strong><small>of net after expenses</small></div><div class="settings-plan-item"><span>${escapeHtml(plan.investmentName)}</span><strong>${formatPercent(plan.investmentPct)}%</strong><small>of net after expenses</small></div></div><div class="plan-split-head"><span>Investment split</span><strong>${formatPercent(totalPct)}% total plan</strong></div>${investmentRules(plan)}<div class="notice is-success" style="margin-top:10px">${icon("check", "icon icon-sm")}<p>There is no savings allocation. The final “take out” amount is recorded gas plus the full ${formatPercent(totalPct)}% plan. Saved shifts keep the plan they originally used.</p></div></section></form><aside class="settings-stack"><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Backups & exports</h2><p class="panel-subtitle">Protect the records stored on this device</p></div></div><div class="data-actions"><button class="data-action" type="button" data-action="export-backup"><span class="metric-icon">${icon("download", "icon icon-sm")}</span><strong>Full backup</strong><span>Download shifts, goals, maintenance, settings, and an active shift.</span></button><button class="data-action" type="button" data-action="import-data"><span class="metric-icon is-blue">${icon("upload", "icon icon-sm")}</span><strong>Import data</strong><span>Restore a JSON backup or import compatible shift CSV rows.</span></button><button class="data-action" type="button" data-action="export-csv"><span class="metric-icon is-violet">${icon("receipt", "icon icon-sm")}</span><strong>Export shifts</strong><span>Download a spreadsheet-friendly CSV with money-plan amounts.</span></button><button class="data-action" type="button" data-action="reset-data"><span class="metric-icon is-amber">${icon("trash", "icon icon-sm")}</span><strong>Reset dashboard</strong><span>Erase this dashboard’s locally stored data after confirmation.</span></button></div></section><section class="settings-section panel"><div class="panel-header"><div><h2 class="panel-title">Storage & version</h2><p class="panel-subtitle">No account, server, or analytics</p></div><span class="pill pill-blue">v${Core.APP_VERSION}</span></div><div class="breakdown-list"><div class="breakdown-row"><span class="breakdown-dot"></span><span>Saved shifts</span><strong>${state.shifts.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-blue"></span><span>Maintenance records</span><strong>${state.maintenance.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-violet"></span><span>Goals</span><strong>${state.goals.length}</strong></div><div class="breakdown-row"><span class="breakdown-dot is-amber"></span><span>Approx. backup size</span><strong>${formatBytes(serializedBytes)}</strong></div></div></section></aside></div>`;
   }
 
   function renderCurrentRoute() {
@@ -804,7 +819,7 @@
       unassignedGross: read("unassignedGross")
     };
     const hasEntry = Object.values(raw).some((value) => value !== "");
-    const hasNegative = Object.values(raw).some((value) => value !== "" && Core.safeNumber(value) < 0);
+    const hasNegative = Object.values(raw).some((value) => value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0));
     return {
       ...raw,
       hasEntry,
@@ -829,9 +844,125 @@
     return `<div class="form-grid earnings-grid"><div class="field"><label for="${prefix}UberGross">Uber gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}UberGross" name="uberGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.uberGross)}" inputmode="decimal" placeholder="0.00"></div></div><div class="field"><label for="${prefix}LyftGross">Lyft gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}LyftGross" name="lyftGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.lyftGross)}" inputmode="decimal" placeholder="0.00"></div></div></div><details class="optional-earnings"${otherOpen ? " open" : ""}><summary>${icon("plus", "icon icon-sm")}Other / older earnings</summary><div class="form-grid${includeUnassigned ? "" : " is-one"}"><div class="field"><label for="${prefix}OtherGross">${escapeHtml(otherLabel)}</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}OtherGross" name="otherGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.otherGross)}" inputmode="decimal" placeholder="0.00"></div><p class="field-help">${escapeHtml(otherHelp)}</p></div>${includeUnassigned ? `<div class="field"><label for="${prefix}UnassignedGross">Older unassigned gross</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}UnassignedGross" name="unassignedGross" type="number" min="0" step="0.01" value="${amountInputValue(defaults.unassignedGross)}" inputmode="decimal" placeholder="0.00"></div><p class="field-help">Only older Uber + Lyft records may have money here. Move it into the two fields above when you know the split.</p></div>` : ""}</div></details>`;
   }
 
+  function expenseFieldsMarkup(prefix, values) {
+    return `<div class="form-grid expense-grid">${[["fuel", "Gas"], ["tolls", "Tolls / parking"], ["otherExpenses", "Other expenses"]].map(([name, label]) => `<div class="field${name === "otherExpenses" ? " span-2" : ""}"><label for="${prefix}-${name}">${label}</label><div class="input-shell"><span class="input-prefix">$</span><input id="${prefix}-${name}" name="${name}" type="number" min="0" step="0.01" value="${amountInputValue(values[name])}" inputmode="decimal" placeholder="0.00"></div></div>`).join("")}</div>`;
+  }
+
+  function activeEditorValues(form) {
+    const data = new FormData(form);
+    const earnings = earningsFormValues(data);
+    return {
+      ...state.activeShift,
+      uberGross: Core.safeNumber(earnings.uberGross),
+      lyftGross: Core.safeNumber(earnings.lyftGross),
+      otherGross: Core.safeNumber(earnings.otherGross),
+      unassignedGross: Core.safeNumber(earnings.unassignedGross),
+      // Write the recomputed total too, so lowering an app total never creates a residual.
+      gross: earnings.gross,
+      fuel: Core.safeNumber(data.get("fuel")),
+      tolls: Core.safeNumber(data.get("tolls")),
+      otherExpenses: Core.safeNumber(data.get("otherExpenses"))
+    };
+  }
+
+  function updateActivePreview() {
+    const form = dom.modalRoot.querySelector('[data-form="active-shift"]');
+    if (!form || !state.activeShift) return;
+    const shift = Core.calculateActiveShift(activeEditorValues(form), state.settings);
+    const amounts = {
+      "gross": shift.gross, "net": shift.net, "allocated": shift.allocated,
+      "takeout": shift.takeOut, "keep": shift.spendable,
+      "hourly": shift.grossHourly, "net-hourly": shift.hourly
+    };
+    Object.entries(amounts).forEach(([key, amount]) => {
+      const node = form.querySelector(`[data-preview-${key}]`);
+      if (node) node.textContent = formatMoney(amount);
+    });
+  }
+
+  function addActiveExpense(form, quiet) {
+    if (!form) return false;
+    const input = form.querySelector('[name="expenseAmount"]');
+    const raw = input ? input.value.trim() : "";
+    if (!raw) {
+      if (!quiet) showToast("Enter the expense amount first.", "warning");
+      return Boolean(quiet);
+    }
+    const amount = Number(raw);
+    const kind = form.querySelector('[name="expenseKind"]').value;
+    if (!Number.isFinite(amount) || amount <= 0 || !["fuel", "tolls", "otherExpenses"].includes(kind)) {
+      showToast("Enter an expense greater than zero.", "warning");
+      return false;
+    }
+    const total = form.querySelector(`[name="${kind}"]`);
+    const previous = total.value.trim() === "" ? 0 : Number(total.value);
+    if (!Number.isFinite(previous) || previous < 0) {
+      showToast("Correct the expense total first.", "warning");
+      return false;
+    }
+    total.value = Core.round(previous + amount, 2).toFixed(2);
+    input.value = "";
+    const status = form.querySelector('[data-expense-status]');
+    if (status) status.textContent = `${formatMoney(amount)} added to the total. Save changes to keep your update.`;
+    updateActivePreview();
+    return true;
+  }
+
+  function openActiveShiftEditor() {
+    const active = state.activeShift;
+    if (!active) return;
+    const shift = Core.calculateActiveShift(active, state.settings);
+    openModal({
+      title: "Edit current shift",
+      subtitle: "Update earnings and expenses without stopping your shift.",
+      body: `<form data-form="active-shift" data-id="${escapeAttribute(active.id)}">
+        <p class="form-section-copy">Enter your totals so far, not only the latest ride. Saving replaces the previous totals.</p>
+        <div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings so far</div>
+        ${earningsFieldsMarkup("live", active, { includeUnassigned: Core.safeNumber(active.unassignedGross) > 0 })}
+        <div class="form-section live-expense-section"><div class="form-section-title">${icon("receipt", "icon icon-sm")}Expenses so far</div>
+          ${expenseFieldsMarkup("live", active)}
+          <details class="quick-expense"><summary>${icon("plus", "icon icon-sm")}Add a new expense</summary>
+            <div class="quick-expense-fields"><div class="field"><label for="liveExpenseKind">Category</label><select id="liveExpenseKind" name="expenseKind"><option value="fuel">Gas</option><option value="tolls">Tolls / parking</option><option value="otherExpenses">Other expenses</option></select></div>
+            <div class="field"><label for="liveExpenseAmount">New amount</label><div class="input-shell"><span class="input-prefix">$</span><input id="liveExpenseAmount" name="expenseAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
+            <button class="button button-secondary" type="button" data-action="add-active-expense">${icon("plus", "icon icon-sm")}Add to total</button></div>
+            <p class="field-help" data-expense-status role="status">Adds this purchase to the selected expense total.</p>
+          </details>
+        </div>
+        <div class="live-rate-preview"><span>Gross <strong data-preview-hourly>${formatMoney(shift.grossHourly)}</strong>/hr</span><span>Net <strong data-preview-net-hourly>${formatMoney(shift.hourly)}</strong>/hr</span></div>
+        ${moneyPreviewMarkup(shift)}
+      </form>`,
+      footer: `<button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="save-active-shift">${icon("check", "icon icon-sm")}Save changes</button>`,
+      className: "modal-wide modal-active-editor",
+      meta: { type: "active-shift" }
+    });
+  }
+
+  function saveActiveShift() {
+    const form = dom.modalRoot.querySelector('[data-form="active-shift"]');
+    if (!form || !state.activeShift || form.dataset.id !== state.activeShift.id) return;
+    if (typeof form.reportValidity === "function" && !form.reportValidity()) return;
+    // An entered purchase is included even when Save is pressed instead of Add to total.
+    if (!addActiveExpense(form, true)) return;
+    const data = new FormData(form);
+    const earnings = earningsFormValues(data);
+    const invalidExpenses = ["fuel", "tolls", "otherExpenses"].some((key) => {
+      const raw = String(data.get(key) || "").trim();
+      return raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0);
+    });
+    if (earnings.hasNegative || invalidExpenses) {
+      showToast("Use zero or a positive amount for earnings and expenses.", "warning");
+      return;
+    }
+    state.activeShift = Core.normalizeActiveShift({ ...activeEditorValues(form), updatedAt: new Date().toISOString() }, state.settings);
+    const persisted = saveState();
+    closeModal(false);
+    renderApp();
+    showToast(persisted ? "Shift updated. Earnings and expenses saved." : "Update kept for this session only. Browser storage is unavailable. Export a backup before closing.", persisted ? "success" : "warning", persisted ? 4000 : 10000);
+  }
+
   function moneyPreviewMarkup(shiftValue) {
     const shift = Core.calculateShift(shiftValue, state.settings);
-    const planLabel = shift.isGrossMoneyPlan ? `${formatPercent(moneyPlanTotalPct(shift.moneyPlan))}% gross plan` : "Saved allocation";
+    const planLabel = shift.isSplitMoneyPlan ? `${formatPercent(moneyPlanTotalPct(shift.moneyPlan))}% ${moneyBasisLabel(shift.moneyPlan)} plan` : "Saved allocation";
     return `<div class="preview-strip preview-strip-five"><div class="preview-item preview-overall"><span>Overall gross</span><strong data-preview-gross>${formatMoney(shift.gross)}</strong><small>All app earnings combined</small></div><div class="preview-item"><span>Net after expenses</span><strong data-preview-net>${formatMoney(shift.net)}</strong></div><div class="preview-item"><span>${planLabel}</span><strong data-preview-allocated>${formatMoney(shift.allocated)}</strong></div><div class="preview-item"><span>Take out + gas</span><strong data-preview-takeout>${formatMoney(shift.takeOut)}</strong></div><div class="preview-item"><span>Keep available</span><strong data-preview-keep>${formatMoney(shift.spendable)}</strong></div></div>`;
   }
 
@@ -935,19 +1066,7 @@
     }
     const now = new Date();
     const paused = Boolean(active.pauseStartedAt);
-    const preview = {
-      uberGross: 0,
-      lyftGross: 0,
-      otherGross: 0,
-      unassignedGross: 0,
-      fuel: 0,
-      tolls: 0,
-      otherExpenses: 0,
-      moneyPlanRates: state.settings.moneyPlan,
-      manualHours: Core.activeDurationMs(active, now) / 3600000,
-      startOdometer: active.startOdometer,
-      endOdometer: active.startOdometer
-    };
+    const preview = { ...active, moneyPlanRates: state.settings.moneyPlan, manualHours: Core.activeDurationMs(active, now) / 3600000, endOdometer: active.startOdometer };
     const rideshareFlags = /uber/i.test(active.platform) || /lyft/i.test(active.platform);
     const otherLabel = rideshareFlags ? "Other app gross" : `${active.platform} gross`;
     const body = `<form data-form="end-shift">
@@ -961,17 +1080,14 @@
       </div>
       <div class="form-section">
         <div class="form-section-title">${icon("dollar", "icon icon-sm")}Earnings by app</div>
-        <p class="form-section-copy">Enter each app separately. Driver Command adds them together for overall gross and uses that total for every money calculation.</p>
+        <p class="form-section-copy">Your saved totals are filled in below. Update each app to the final total. Driver Command adds them together for overall gross, then subtracts expenses before calculating your contributions.</p>
         ${earningsFieldsMarkup("end", preview, {
           otherOpen: !rideshareFlags,
+          includeUnassigned: Core.safeNumber(active.unassignedGross) > 0,
           otherLabel,
           otherHelp: rideshareFlags ? "Optional earnings from another driving app." : `Use this for ${active.platform} or another app.`
         })}
-        <div class="form-grid expense-grid">
-          <div class="field"><label for="endFuel">Gas</label><div class="input-shell"><span class="input-prefix">$</span><input id="endFuel" name="fuel" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
-          <div class="field"><label for="endTolls">Tolls / parking</label><div class="input-shell"><span class="input-prefix">$</span><input id="endTolls" name="tolls" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
-          <div class="field span-2"><label for="endOther">Other expenses</label><div class="input-shell"><span class="input-prefix">$</span><input id="endOther" name="otherExpenses" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
-        </div>
+        ${expenseFieldsMarkup("end", active)}
         ${moneyPreviewMarkup(preview)}
       </div>
       <div class="form-section">
@@ -996,6 +1112,7 @@
     const form = dom.modalRoot.querySelector('[data-form="end-shift"]');
     const activeOriginal = state.activeShift;
     if (!form || !activeOriginal) return;
+    if (typeof form.reportValidity === "function" && !form.reportValidity()) return;
     const data = new FormData(form);
     const endRaw = String(data.get("endOdometer") || "").trim();
     const earnings = earningsFormValues(data);
@@ -1022,7 +1139,7 @@
       uberGross: Math.max(0, Core.safeNumber(earnings.uberGross)),
       lyftGross: Math.max(0, Core.safeNumber(earnings.lyftGross)),
       otherGross: Math.max(0, Core.safeNumber(earnings.otherGross)),
-      unassignedGross: 0,
+      unassignedGross: Math.max(0, Core.safeNumber(earnings.unassignedGross)),
       fuel: Math.max(0, Core.safeNumber(data.get("fuel"))),
       tolls: Math.max(0, Core.safeNumber(data.get("tolls"))),
       otherExpenses: Math.max(0, Core.safeNumber(data.get("otherExpenses"))),
@@ -1085,14 +1202,14 @@
 
     const plan = shift.moneyPlan;
     const totalPct = moneyPlanTotalPct(plan);
-    return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} from the ${formatPercent(totalPct)}% gross plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div>
+    return `<div class="money-command"><div class="money-command-top"><div><span>Take out / move</span><strong>${formatMoney(shift.takeOut)}</strong><p>${formatMoney(shift.fuel)} gas + ${formatMoney(shift.allocated)} from the ${formatPercent(totalPct)}% ${moneyBasisLabel(plan)} plan</p></div><span class="command-icon">${icon("wallet", "icon icon-lg")}</span></div>
       <div class="money-instructions"><div class="instruction-card"><span class="instruction-number">1</span><span><span>Replace gas</span><strong>Put back what the shift used</strong></span><strong class="instruction-amount">${formatMoney(shift.fuel)}</strong></div>
-      <div class="instruction-card"><span class="instruction-number">2</span><span><span>${escapeHtml(plan.vehicleName)} · ${formatPercent(plan.vehiclePct)}%</span><strong>Set aside from overall gross</strong></span><strong class="instruction-amount">${formatMoney(shift.vehicleFund)}</strong></div>
+      <div class="instruction-card"><span class="instruction-number">2</span><span><span>${escapeHtml(plan.vehicleName)} · ${formatPercent(plan.vehiclePct)}%</span><strong>Set aside from ${plan.basis === "gross" ? "overall gross" : "net after expenses"}</strong></span><strong class="instruction-amount">${formatMoney(shift.vehicleFund)}</strong></div>
       <div class="instruction-card"><span class="instruction-number">3</span><span><span>${escapeHtml(plan.investmentName)} · ${formatPercent(plan.investmentPct)}%</span><strong>${plan.investmentPct ? "Use the saved split below" : "No investment contribution"}</strong></span><strong class="instruction-amount">${formatMoney(shift.investment)}</strong></div></div></div>
       <div class="crypto-box"><div class="crypto-box-head"><strong>Split the ${formatMoney(shift.investment)} investment contribution</strong><span class="pill pill-blue">${shift.unassignedInvestment ? "Check split" : plan.investmentPct ? "100%" : "Off"}</span></div>
       ${shift.investmentAllocations.length ? investmentCards(shift.investmentAllocations) : `<p class="plan-empty-copy">No investments in this saved plan.</p>`}${unassignedInvestmentNotice(shift.unassignedInvestment)}</div>
       <div class="keep-box"><div><span>Keep available</span><p>After all expenses and the ${formatPercent(totalPct)}% plan</p></div><strong>${formatMoney(shift.spendable)}</strong></div>
-      <div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>The percentage base is ${formatMoney(shift.gross)} in overall gross (${grossBreakdownText(shift)}). Gas, tolls, and other expenses reduce what stays available, but they do not reduce the vehicle or investment contribution. Names and percentages are saved with this shift.</p></div>`;
+      <div class="notice" style="margin-top:11px">${icon("info", "icon icon-sm")}<p>${plan.basis === "gross" ? `This saved plan uses ${formatMoney(shift.gross)} in overall gross (${grossBreakdownText(shift)}). Its original gross-based contributions are preserved.` : `The percentage base is ${formatMoney(shift.allocationBase)} after subtracting ${formatMoney(shift.expenses)} in gas, tolls, parking, and other expenses from ${formatMoney(shift.gross)} earned. When expenses equal or exceed earnings, both contributions are $0.00.`} Names and percentages are saved with this shift.</p></div>`;
   }
 
   function openMoneyPlanModal(id, justFinished) {
@@ -1535,8 +1652,8 @@
     const data = new FormData(form);
     const number = (value) => value == null || String(value).trim() === "" ? Number.NaN : Number(value);
     return {
-      version: 4,
-      basis: "gross",
+      version: 5,
+      basis: "positiveNet",
       vehicleName: String(data.get("vehicleName") || "").trim(),
       investmentName: String(data.get("investmentName") || "").trim(),
       vehiclePct: number(data.get("vehiclePct")),
@@ -1555,7 +1672,7 @@
       <div class="field investment-name-field"><label class="visually-hidden" for="assetName-${id}">Investment name</label><input id="assetName-${id}" data-investment-name value="${escapeAttribute(entry.name)}" maxlength="60" placeholder="Name or ticker" autocomplete="off" required></div>
       <div class="field investment-percent-field"><label class="visually-hidden" for="assetPct-${id}">% of pool</label><div class="input-shell has-suffix"><input id="assetPct-${id}" data-investment-pct type="number" min="0" max="100" step="0.0001" value="${escapeAttribute(entry.pct)}" inputmode="decimal" required><span class="input-suffix">%</span></div></div>
       <button class="icon-button is-danger investment-delete" type="button" data-action="remove-investment" aria-label="Remove ${escapeAttribute(entry.name || "investment")}">${icon("trash", "icon icon-sm")}</button>
-      <p class="field-help investment-gross-help"><span data-investment-gross>0%</span> of overall gross</p>
+      <p class="field-help investment-gross-help"><span data-investment-gross>0%</span> of net after expenses</p>
     </div>`;
   }
 
@@ -1568,7 +1685,7 @@
       const node = dom.modalRoot.querySelector(selector);
       if (node) node.textContent = text;
     };
-    setText("[data-plan-total]", `${formatPercent(validation.totalPct)}% of gross + gas`);
+    setText("[data-plan-total]", `${formatPercent(validation.totalPct)}% of net + gas`);
     setText("[data-plan-mix-total]", `${formatPercent(validation.mixTotal)}% / 100%`);
     setText("[data-plan-main-rates]", `${formatPercent(values.vehiclePct)}% vehicle + ${formatPercent(values.investmentPct)}% investments`);
     const status = dom.modalRoot.querySelector("[data-plan-status]");
@@ -1615,11 +1732,11 @@
     const plan = currentMoneyPlan();
     const body = `<form data-form="money-plan">
       <p class="plan-editor-intro">Add, rename, or remove investments. Save applies changes to future shifts only; Cancel discards them.</p>
-      <details class="form-section plan-buckets"><summary data-main-plan-toggle><span>Your main plan<small>Edit group names & gross percentages</small><small class="plan-main-rates" data-plan-main-rates>${formatPercent(plan.vehiclePct)}% vehicle + ${formatPercent(plan.investmentPct)}% investments</small></span>${icon("chevronDown", "icon icon-sm")}</summary><div class="plan-bucket-fields">
+      <details class="form-section plan-buckets"><summary data-main-plan-toggle><span>Your main plan<small>Edit group names & net percentages</small><small class="plan-main-rates" data-plan-main-rates>${formatPercent(plan.vehiclePct)}% vehicle + ${formatPercent(plan.investmentPct)}% investments</small></span>${icon("chevronDown", "icon icon-sm")}</summary><div class="plan-bucket-fields">
         <div class="plan-bucket-row"><div class="field"><label for="planVehicleName">Vehicle fund name</label><input id="planVehicleName" name="vehicleName" value="${escapeAttribute(plan.vehicleName)}" maxlength="60" required></div>
-        <div class="field"><label for="planVehiclePct">% of gross</label><div class="input-shell has-suffix"><input id="planVehiclePct" name="vehiclePct" type="number" min="0" max="100" step="0.0001" value="${escapeAttribute(plan.vehiclePct)}" inputmode="decimal" required><span class="input-suffix">%</span></div></div></div>
+        <div class="field"><label for="planVehiclePct">% of net</label><div class="input-shell has-suffix"><input id="planVehiclePct" name="vehiclePct" type="number" min="0" max="100" step="0.0001" value="${escapeAttribute(plan.vehiclePct)}" inputmode="decimal" required><span class="input-suffix">%</span></div></div></div>
         <div class="plan-bucket-row"><div class="field"><label for="planInvestmentName">Investment group name</label><input id="planInvestmentName" name="investmentName" value="${escapeAttribute(plan.investmentName)}" maxlength="60" required></div>
-        <div class="field"><label for="planInvestmentPct">% of gross</label><div class="input-shell has-suffix"><input id="planInvestmentPct" name="investmentPct" type="number" min="0" max="100" step="0.0001" value="${escapeAttribute(plan.investmentPct)}" inputmode="decimal" required><span class="input-suffix">%</span></div></div></div>
+        <div class="field"><label for="planInvestmentPct">% of net</label><div class="input-shell has-suffix"><input id="planInvestmentPct" name="investmentPct" type="number" min="0" max="100" step="0.0001" value="${escapeAttribute(plan.investmentPct)}" inputmode="decimal" required><span class="input-suffix">%</span></div></div></div>
         <p class="field-help">Based on Uber + Lyft combined. Set a rate to 0% to turn it off. Savings allocation: 0%.</p>
       </div></details>
       <section class="form-section plan-assets"><div class="plan-assets-header"><div class="form-section-title">${icon("stock", "icon icon-sm")}Your investments</div><button class="button button-secondary button-small" type="button" data-action="add-investment">${icon("plus", "icon icon-sm")}Add investment</button></div>
@@ -1631,7 +1748,7 @@
       title: "Edit money plan",
       subtitle: "Your names, your investments, your split.",
       body,
-      footer: `<div class="plan-live-summary"><span>Investment split <strong data-plan-mix-total>100% / 100%</strong></span><span>Take out <strong data-plan-total>${formatPercent(moneyPlanTotalPct(plan))}% of gross + gas</strong></span><p data-plan-status role="status" aria-live="polite"></p></div><div class="plan-footer-actions"><button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-money-plan">${icon("check", "icon icon-sm")}Save plan</button></div>`,
+      footer: `<div class="plan-live-summary"><span>Investment split <strong data-plan-mix-total>100% / 100%</strong></span><span>Take out <strong data-plan-total>${formatPercent(moneyPlanTotalPct(plan))}% of net + gas</strong></span><p data-plan-status role="status" aria-live="polite"></p></div><div class="plan-footer-actions"><button class="button button-ghost" type="button" data-action="close-modal">Cancel</button><button class="button button-primary" type="button" data-action="submit-money-plan">${icon("check", "icon icon-sm")}Save plan</button></div>`,
       className: "modal-wide modal-investment-editor",
       meta: { type: "money-plan-editor" }
     });
@@ -1716,7 +1833,7 @@
     const rows = source.map((raw) => {
       const shift = Core.calculateShift(raw, state.settings);
       const plan = shift.moneyPlan || {};
-      const currentMix = shift.isGrossMoneyPlan ? Object.fromEntries(plan.investments
+      const currentMix = shift.isSplitMoneyPlan ? Object.fromEntries(plan.investments
         .filter((row) => Core.DEFAULT_INVESTMENTS.some((known) => known.id === row.id && known.name === row.name))
         .map((row) => [row.id, row.pct])) : {};
       const previousMix = shift.isPreviousMoneyPlan ? plan.cryptoMix : {};
@@ -1725,7 +1842,7 @@
         shift.uberGross, shift.lyftGross, shift.otherGross, shift.unassignedGross, shift.gross, shift.fuel, shift.tolls, shift.otherExpenses, shift.expenses, shift.net,
         shift.moneyPlanVersion, shift.allocationBasis, shift.allocationBase,
         plan.vehiclePct == null ? "" : plan.vehiclePct,
-        shift.isGrossMoneyPlan ? plan.investmentPct : "",
+        shift.isSplitMoneyPlan ? plan.investmentPct : "",
         shift.isPreviousMoneyPlan ? plan.stockPct : "",
         shift.isPreviousMoneyPlan ? plan.cryptoPct : "",
         currentMix.bitcoin == null ? (previousMix.bitcoin == null ? "" : previousMix.bitcoin) : currentMix.bitcoin,
@@ -1738,7 +1855,7 @@
         shift.allocated, shift.takeOut, shift.spendable, shift.notes,
         shift.investmentAllocations.map((row) => `${row.name}: ${formatPercent(row.pct)}% (${formatMoney(row.amount)})`).join("; "),
         shift.moneyPlan ? JSON.stringify(shift.moneyPlan) : "",
-        shift.isGrossMoneyPlan ? JSON.stringify(shift.investmentAllocations) : "",
+        shift.isSplitMoneyPlan ? JSON.stringify(shift.investmentAllocations) : "",
         shift.unassignedInvestment
       ];
     });
@@ -2090,6 +2207,9 @@
       case "primary-shift-action": state.activeShift ? openEndShiftModal() : openStartShiftModal(); break;
       case "start-shift": openStartShiftModal(); break;
       case "end-shift": openEndShiftModal(); break;
+      case "edit-active-shift": openActiveShiftEditor(); break;
+      case "save-active-shift": saveActiveShift(); break;
+      case "add-active-expense": addActiveExpense(dom.modalRoot.querySelector('[data-form="active-shift"]'), false); break;
       case "pause-shift": pauseShift(); break;
       case "resume-shift": resumeShift(); break;
       case "cancel-active-shift": confirmCancelActiveShift(); break;
@@ -2196,6 +2316,7 @@
         }
       }, 130);
     }
+    if (target.closest('[data-form="active-shift"]')) updateActivePreview();
     if (target.closest('[data-form="end-shift"]')) updateEndPreview();
     if (target.closest('[data-form="manual-shift"]')) updateManualPreview();
     if (target.closest('[data-form="money-plan"]')) updateMoneyPlanPreview();
@@ -2207,6 +2328,7 @@
     event.preventDefault();
     if (form.dataset.form === "settings") submitSettings(form);
     else if (form.dataset.form === "start-shift") submitStartShift();
+    else if (form.dataset.form === "active-shift") saveActiveShift();
     else if (form.dataset.form === "end-shift") submitEndShift();
     else if (form.dataset.form === "manual-shift") submitManualShift();
     else if (form.dataset.form === "maintenance") submitMaintenance();
@@ -2262,6 +2384,10 @@
     const now = new Date();
     document.querySelectorAll("[data-live-work]").forEach((node) => { node.textContent = formatDuration(Core.activeDurationMs(state.activeShift, now), true); });
     document.querySelectorAll("[data-live-paused]").forEach((node) => { node.textContent = formatDuration(Core.activePausedMs(state.activeShift, now), false); });
+    const live = Core.calculateActiveShift(state.activeShift, state.settings, now);
+    document.querySelectorAll("[data-live-hourly]").forEach((node) => { node.textContent = formatMoney(live.grossHourly); });
+    document.querySelectorAll("[data-live-net-hourly]").forEach((node) => { node.textContent = formatMoney(live.hourly); });
+    updateActivePreview();
   }
 
   function initialize() {

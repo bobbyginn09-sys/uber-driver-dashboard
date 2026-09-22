@@ -896,3 +896,36 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .investment-editor-head { display: grid; grid-template-columns: minmax(0, 1fr) 88px 44px; column-gap: 8px; margin-bottom: 6px; font-size: 10px; font-weight: 780; color: var(--muted); }
 .investment-editor-row + .investment-editor-row { margin-top: 8px; padding-top: 8px; }
 @media (max-width: 420px) { .investment-editor-head { grid-template-columns: minmax(0, 1fr) 76px 44px; column-gap: 6px; } }
+
+/* 3.9: compact live earnings and mid-shift updates. */
+.live-money-line { display: flex; flex-wrap: wrap; gap: 7px 20px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+.live-money-line strong { margin-left: 4px; color: var(--text); font-variant-numeric: tabular-nums; }
+.hourly-card .metric-value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hourly-card .metric-value small { margin-left: 2px; font-size: .6em; color: var(--muted); }
+.hourly-card .pill { font-size: 9px; padding: 3px 7px; }
+.live-rate-preview { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; padding: 10px; border-radius: 10px; background: var(--accent-soft); font-size: 12px; }
+.quick-expense { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 9px; }
+.quick-expense summary { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 700; }
+.quick-expense-fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
+.modal-active-editor .form-section-copy { margin: 0 0 12px; }
+.modal-active-editor .live-expense-section { margin-top: 12px; }
+@media (max-width: 680px) {
+  /* Keep the hourly block visible without horizontal swiping. */
+  .overview-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  .overview-metrics .metric-card { min-height: 0; padding: 10px; }
+  .overview-metrics .metric-head { margin-bottom: 5px; }
+  .overview-metrics .metric-value { font-size: clamp(16px, 4.5vw, 20px); }
+  .quick-expense-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-expense-fields > .button { grid-column: 1 / -1; }
+  .live-money-line { font-size: 11px; gap: 6px 16px; }
+  .modal-active-editor .preview-strip { margin-top: 9px; }
+}
+
+@media (max-width: 680px) {
+  .overview-stack > .overview-grid { display: contents; }
+  .overview-stack > .overview-grid > .shift-hero { order: 0; }
+  .overview-stack > .overview-metrics { order: 1; }
+  .overview-metrics .hourly-card { order: -1; }
+  .overview-stack > .overview-grid > .today-plan { order: 2; }
+  .overview-stack > .lower-grid { order: 3; }
+}
