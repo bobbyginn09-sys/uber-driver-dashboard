@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.9.1";
+  const APP_VERSION = "3.10.0";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
   const LEGACY_MONEY_PLAN_V2 = Object.freeze({
@@ -36,17 +36,14 @@
   });
 
   const DEFAULT_INVESTMENTS = Object.freeze([
-    Object.freeze({ id: "bitcoin", name: "Bitcoin", pct: 40 }),
-    Object.freeze({ id: "solana", name: "Solana", pct: 30 }),
-    Object.freeze({ id: "schg", name: "SCHG", pct: 20 }),
-    Object.freeze({ id: "aave", name: "AAVE", pct: 10 })
+    Object.freeze({ id: "debt", name: "Debt payment", pct: 100 })
   ]);
 
   const DEFAULT_MONEY_PLAN = Object.freeze({
-    version: 5,
+    version: 6,
     basis: "positiveNet",
     vehicleName: "Vehicle fund",
-    investmentName: "Investments",
+    investmentName: "Debt",
     vehiclePct: 5,
     investmentPct: 20,
     investmentsPaused: false,
@@ -266,7 +263,7 @@
   function editableMoneyPlan(value) {
     const plan = normalizeMoneyPlan(value);
     if (plan.version < 3) return normalizeMoneyPlan(DEFAULT_MONEY_PLAN);
-    return normalizeMoneyPlan({ ...plan, version: 5, basis: "positiveNet", investments: plan.investments });
+    return normalizeMoneyPlan({ ...plan, version: Math.max(6, plan.version), basis: "positiveNet", investments: plan.investments });
   }
 
   function moneyPlanSignature(value) {
@@ -333,10 +330,10 @@
       ? normalizeInvestments(source.investments)
       : DEFAULT_INVESTMENTS.map((row) => ({ ...row, pct: investmentMix[row.id] }));
     return {
-      version: isNet ? 5 : isEditable ? 4 : 3,
+      version: isNet ? (explicitVersion >= 6 ? 6 : 5) : isEditable ? 4 : 3,
       basis: isNet ? "positiveNet" : "gross",
       vehicleName: cleanPlanName(source.vehicleName, "Vehicle fund"),
-      investmentName: cleanPlanName(source.investmentName, "Investments"),
+      investmentName: cleanPlanName(source.investmentName, explicitVersion >= 6 ? "Debt" : "Investments"),
       vehiclePct: normalizePercentage(source.vehiclePct, DEFAULT_MONEY_PLAN.vehiclePct),
       investmentPct: normalizePercentage(source.investmentPct, DEFAULT_MONEY_PLAN.investmentPct),
       // Missing flags in existing records mean investments were not paused.
@@ -861,7 +858,10 @@
       allocated = legacy.allocated;
     }
 
-    const takeOut = round(shift.fuel + allocated, 2);
+    // Debt stays in checking. Only gas reimbursement and the vehicle fund are moved out.
+    const debtStaysInChecking = Boolean(plan && safeNumber(plan.version) >= 6);
+    const takeOut = round(shift.fuel + (debtStaysInChecking ? vehicleFund : allocated), 2);
+    const checkingDeposit = round(net - vehicleFund, 2);
     const spendable = round(net - allocated, 2);
     const rate = getMileageRate(shift.date, settings.taxRates).rate;
 
@@ -894,6 +894,7 @@
       savings,
       allocated,
       takeOut,
+      checkingDeposit,
       spendable,
       moneyPlan: plan,
       moneyPlanVersion,
