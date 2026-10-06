@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const APP_VERSION = "3.9.0";
+  const APP_VERSION = "3.9.1";
   const STORAGE_KEY = "uberDriverDashboard.v3";
 
   const LEGACY_MONEY_PLAN_V2 = Object.freeze({
@@ -49,6 +49,7 @@
     investmentName: "Investments",
     vehiclePct: 5,
     investmentPct: 20,
+    investmentsPaused: false,
     investments: DEFAULT_INVESTMENTS,
     investmentMix: LEGACY_MONEY_PLAN_V3.investmentMix
   });
@@ -275,7 +276,7 @@
       // Preserve order because it is also the tie-breaker for allocating the last cent.
       return JSON.stringify([
         plan.basis, plan.vehicleName, plan.vehiclePct, plan.investmentName, plan.investmentPct,
-        plan.investments.map((row) => [row.id, row.name, row.pct])
+        plan.investments.map((row) => [row.id, row.name, row.pct]), plan.investmentsPaused
       ]);
     }
     return [
@@ -338,6 +339,8 @@
       investmentName: cleanPlanName(source.investmentName, "Investments"),
       vehiclePct: normalizePercentage(source.vehiclePct, DEFAULT_MONEY_PLAN.vehiclePct),
       investmentPct: normalizePercentage(source.investmentPct, DEFAULT_MONEY_PLAN.investmentPct),
+      // Missing flags in existing records mean investments were not paused.
+      investmentsPaused: source.investmentsPaused === true,
       investments,
       investmentMix: Object.fromEntries(investments.map((row) => [row.id, row.pct]))
     };
@@ -708,15 +711,23 @@
     };
   }
 
+  function effectiveInvestmentPct(planValue) {
+    const plan = normalizeMoneyPlan(planValue || DEFAULT_MONEY_PLAN);
+    return plan.investmentsPaused ? 0 : safeNumber(plan.investmentPct);
+  }
+
   function calculateVersion3Plan(base, planValue) {
     const plan = normalizeMoneyPlan(planValue || DEFAULT_MONEY_PLAN);
     // Versions 3/4 receive gross; version 5 receives earnings after expenses.
     const allocationBase = Math.max(0, safeNumber(base));
     const vehicleFund = round(allocationBase * plan.vehiclePct / 100, 2);
-    const roundedInvestment = round(allocationBase * plan.investmentPct / 100, 2);
+    // Keep the configured rate and split in the saved plan. Pausing affects only
+    // the effective contribution, never the vehicle fund or completed records.
+    const investmentPct = effectiveInvestmentPct(plan);
+    const roundedInvestment = round(allocationBase * investmentPct / 100, 2);
     // At a 100% total rate, separate rounding must not allocate more than net.
     // Keep the original calculation untouched for historical gross plans.
-    const investment = plan.basis === "positiveNet" && plan.vehiclePct + plan.investmentPct <= 100.00005
+    const investment = plan.basis === "positiveNet" && plan.vehiclePct + investmentPct <= 100.00005
       ? Math.min(roundedInvestment, Math.max(0, round(allocationBase - vehicleFund, 2)))
       : roundedInvestment;
     const mix = plan.investmentMix;
@@ -728,10 +739,10 @@
     const investmentAllocations = plan.investments.map((row) => ({
       ...row,
       amount: safeNumber(investmentBreakdown[row.id]),
-      basisPct: round(plan.investmentPct * row.pct / 100, 4),
+      basisPct: round(investmentPct * row.pct / 100, 4),
       basis: plan.basis,
-      grossPct: plan.basis === "gross" ? round(plan.investmentPct * row.pct / 100, 4) : 0,
-      netPct: plan.basis === "positiveNet" ? round(plan.investmentPct * row.pct / 100, 4) : 0
+      grossPct: plan.basis === "gross" ? round(investmentPct * row.pct / 100, 4) : 0,
+      netPct: plan.basis === "positiveNet" ? round(investmentPct * row.pct / 100, 4) : 0
     }));
     const unassignedInvestment = hasUsableSplit ? 0 : investment;
     // Keep legacy API/CSV convenience fields only when they still name that actual asset.
@@ -1118,6 +1129,7 @@
     editableMoneyPlan,
     validateMoneyPlan,
     moneyPlanSignature,
+    effectiveInvestmentPct,
     allocateMoneyByMix,
     normalizeSettings,
     normalizeActiveShift,

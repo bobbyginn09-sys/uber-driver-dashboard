@@ -929,3 +929,11 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
   .overview-stack > .overview-grid > .today-plan { order: 2; }
   .overview-stack > .lower-grid { order: 3; }
 }
+
+/* 3.9.1: one-tap investment pause, independent of the shift timer. */
+.investment-control { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.investment-control .button { min-height: 44px; white-space: nowrap; }
+.investment-control-copy { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.investment-control[data-investments-paused="true"] .investment-control-copy { color: var(--amber); }
+.shift-hero .investment-control { margin-top: 12px; }
+.settings-section .investment-control { margin-bottom: 12px; }
